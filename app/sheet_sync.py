@@ -14,6 +14,10 @@ from .models import KVStore
 IMPORTED_CASES_KEY = "embryomatrix-imported-cases"
 IMPORT_HISTORY_KEY = "embryomatrix-import-history"
 SYNC_STATUS_KEY = "embryomatrix-sheet-sync-status"
+# DNA readings from the WGA batch sheets, per embryo tag ("AS1: 18.8, AS2: 25").
+DNA_UNPURIFIED_FIELD = "dna conc unpurified"
+DNA_PURIFIED_FIELD = "dna conc purified"
+DNA_OLD_FIELD = "dna conc"  # single combined column used before the split
 
 
 def _normalize_header(h, i: int) -> str:
@@ -146,8 +150,10 @@ def _find_dna_header_row(rows: list[dict]) -> dict | None:
     for r in rows:
         labels = {str(v).strip().lower(): k for k, v in r.items()}
         if "patient name" in labels and "embryo tag" in labels and any("dna conc" in lbl for lbl in labels):
-            dna_key = next(k for lbl, k in labels.items() if "dna conc" in lbl)
-            return {"patient": labels["patient name"], "embryo": labels["embryo tag"], "dna_conc": dna_key}
+            # "DNA Conc. (ng/uL)" is the unpurified reading; "Purified WGA Conc." the purified one.
+            dna_key = next(k for lbl, k in labels.items() if "dna conc" in lbl and "purified" not in lbl)
+            purified_key = next((k for lbl, k in labels.items() if "purified" in lbl and "conc" in lbl), None)
+            return {"patient": labels["patient name"], "embryo": labels["embryo tag"], "dna_conc": dna_key, "purified": purified_key}
     return None
 
 
@@ -168,9 +174,10 @@ def _extract_dna_records(rows: list[dict]) -> list[dict]:
             last_patient = patient
         embryo = str(r.get(header["embryo"], "")).strip()
         dna_conc = str(r.get(header["dna_conc"], "")).strip()
-        if not last_patient or not embryo or not dna_conc:
+        purified = str(r.get(header["purified"], "")).strip() if header["purified"] else ""
+        if not last_patient or not embryo or not (dna_conc or purified):
             continue
-        records.append({"patient": last_patient, "embryo_tag": embryo.upper(), "dna_conc": dna_conc})
+        records.append({"patient": last_patient, "embryo_tag": embryo.upper(), "dna_conc": dna_conc, "purified": purified})
     return records
 
 
@@ -199,8 +206,12 @@ def _apply_dna_conc(by_key: dict, dna_records: list[dict]) -> None:
             matches = [rec for rec in recs if rec["embryo_tag"] in tags]
             if not matches:
                 continue
-            pairs = sorted({f"{m['embryo_tag']}: {m['dna_conc']}" for m in matches})
-            by_key[key] = {**row, "dna conc": ", ".join(pairs)}
+            joined = lambda f: ", ".join(sorted({f"{m['embryo_tag']}: {m[f]}" for m in matches if m[f]}))
+            out = {k: v for k, v in row.items() if k != DNA_OLD_FIELD}
+            for field_name, rec_key in ((DNA_UNPURIFIED_FIELD, "dna_conc"), (DNA_PURIFIED_FIELD, "purified")):
+                if joined(rec_key):
+                    out[field_name] = joined(rec_key)
+            by_key[key] = out
 
 
 def parse_sources(sheet_ids: str) -> list[str]:
@@ -286,6 +297,11 @@ def sync_sources(db: Session, sheet_ids: list[str]) -> dict:
     # when case-grouping reorders things.
     for i, row in enumerate(merged_rows):
         row["_seq"] = i
+        # The old combined column held the unpurified "DNA Conc." reading; carry it over once.
+        if DNA_OLD_FIELD in row:
+            old = row.pop(DNA_OLD_FIELD)
+            if old and not row.get(DNA_UNPURIFIED_FIELD):
+                row[DNA_UNPURIFIED_FIELD] = old
     # Whether anything besides the per-run bookkeeping fields differs from what the
     # UI already has, so a page that just loaded the data can skip re-downloading it.
     volatile = ("_mergedAt", "_seq")

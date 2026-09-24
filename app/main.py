@@ -203,6 +203,58 @@ def append_upload_log(payload: KVValue, request: Request, db: Session = Depends(
     db.commit()
     return {"value": log}
 
+RESULT_FILES_KEY = "embryomatrix-result-files"
+
+def _result_files(db: Session):
+    row = db.get(KVStore, RESULT_FILES_KEY)
+    return row, (list(row.value) if row and isinstance(row.value, list) else [])
+
+def _save_result_files(db: Session, row, files):
+    if row:
+        row.value = files
+    else:
+        db.add(KVStore(key=RESULT_FILES_KEY, value=files))
+    db.commit()
+
+@app.post("/api/result-files")
+def add_result_file(payload: KVValue, request: Request, db: Session = Depends(get_db)):
+    """Register an uploaded result file and the samples it filled in, so a later
+    upload for the same samples can be refused until this one is deleted."""
+    user = request.state.user
+    data = payload.value if isinstance(payload.value, dict) else {}
+    row, files = _result_files(db)
+    entry = {
+        "id": str(data.get("id") or uuid.uuid4().hex),
+        "fileName": str(data.get("fileName") or ""),
+        "run": str(data.get("run") or ""),
+        "at": data.get("at"),
+        "samples": [str(k) for k in data.get("samples", [])],
+        "sampleNames": [str(k) for k in data.get("sampleNames", [])],
+        "matched": int(data.get("matched", 0)),
+        "by": user.get("username") or "",
+        "role": user.get("role") or "",
+    }
+    files.append(entry)
+    _save_result_files(db, row, files)
+    return {"value": files}
+
+@app.delete("/api/result-files/{file_id}")
+def delete_result_file(file_id: str, request: Request, db: Session = Depends(get_db)):
+    row, files = _result_files(db)
+    gone = next((f for f in files if f.get("id") == file_id), None)
+    files = [f for f in files if f.get("id") != file_id]
+    _save_result_files(db, row, files)
+    label = (gone or {}).get("fileName") or file_id
+    log_activity(db, "result_delete", f"{label} · results removed from {len((gone or {}).get('samples', []))} embryo(s)", request=request)
+    return {"value": files}
+
+@app.post("/api/result-files/log-delete")
+def log_legacy_result_delete(payload: KVValue, request: Request, db: Session = Depends(get_db)):
+    # Earlier uploads (before file tracking) have no registry entry; still record who removed them.
+    data = payload.value if isinstance(payload.value, dict) else {}
+    log_activity(db, "result_delete", f"{data.get('fileName') or 'Earlier upload'} · results removed from {int(data.get('count', 0))} embryo(s)", request=request)
+    return {"ok": True}
+
 def _require_admin(request: Request):
     if (request.state.user or {}).get("role") != "admin":
         raise HTTPException(403, "Only the admin can reset logs")
@@ -379,16 +431,22 @@ async def _background_sheet_sync():
         finally:
             db.close()
 
+_background_tasks: set = set()  # keep a reference so the sync task is not garbage-collected
+
 @app.on_event("startup")
 async def _startup_sheet_sync():
     sources = parse_sources(settings.sheet_sources)
     if not sources:
         return
-    db = SessionLocal()
-    try:
-        await asyncio.to_thread(sync_sources, db, sources)
-    except Exception:
-        pass
-    finally:
-        db.close()
-    asyncio.create_task(_background_sheet_sync())
+    # Run the first sync in the background: awaiting it here held up startup, so the
+    # server answered nothing (the tunnel showed 502) until every workbook was fetched.
+    async def first_then_periodic():
+        db = SessionLocal()
+        try:
+            await asyncio.to_thread(sync_sources, db, sources)
+        except Exception:
+            pass
+        finally:
+            db.close()
+        await _background_sheet_sync()
+    _background_tasks.add(asyncio.create_task(first_then_periodic()))
