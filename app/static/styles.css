@@ -607,3 +607,15 @@ button.rgt-num:hover{background:#e6f3ee;color:#0a7180}
 .rgt-total{display:flex;align-items:center;gap:10px}
 .rgt-total .rank-bar-track{flex:1 1 auto;min-width:50px}
 .rgt-total strong{flex:0 0 48px;text-align:right;font:700 15px "Inter";color:#0b5660;font-variant-numeric:tabular-nums}
+
+/* Overview: test-wise samples (full-width card) */
+.tw-card{grid-column:1/-1}
+.tw-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(var(--tw-rows,1),auto);grid-auto-flow:column;column-gap:36px;margin-top:6px}
+.tw-row{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(80px,1fr) 56px 52px;align-items:center;gap:12px;padding:9px 6px;border:0;border-bottom:1px solid #edf0eb;background:none;text-align:left;cursor:pointer;border-radius:6px}
+.tw-row:hover{background:#eef7f6}
+.tw-name{font:600 13.5px "Inter";color:#26352f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tw-bar{height:8px;border-radius:999px;background:#eef3f1;overflow:hidden}
+.tw-bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0a7180,#20aaa6)}
+.tw-count{text-align:right;font:700 14px "Inter";color:#0b5660;font-variant-numeric:tabular-nums}
+.tw-pct{text-align:right;font:500 12px "Inter";color:#7b8a84;font-variant-numeric:tabular-nums}
+@media(max-width:900px){.tw-list{grid-template-columns:1fr;grid-template-rows:none;grid-auto-flow:row}}
