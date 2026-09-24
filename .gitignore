@@ -1,0 +1,17 @@
+.env
+*.db
+__pycache__/
+.venv/
+venv/
+*.pyc
+app/uploads/
+image_sync/sync-config.json
+image_sync/sync-state.json
+image_sync/sync.log
+
+# Real sequencing run exports (patient/sample data)
+Analysis_*.xlsx
+
+# Old prototype and packaged builds (contain sheet IDs; not needed to run the app)
+prototype-v15/
+*.tar.gz

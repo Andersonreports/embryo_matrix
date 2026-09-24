@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#eef3ea" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="EmbryoMatrix" />
+  <meta name="description" content="EmbryoMatrix PGT connects embryo-level molecular testing, samples, images, and PGT results." />
+  <title>EmbryoMatrix PGT — Molecular testing intelligence</title>
+  <link rel="manifest" href="/static/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/static/og.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&family=DM+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <div class="login-gate" id="loginGate">
+      <form class="login-card" id="loginForm">
+        <div class="brand"><span class="brand-mark">EM</span><span><span class="brand-title">EmbryoMatrix</span><small>PGT INTELLIGENCE</small></span></div>
+        <p class="login-sub">Sign in to continue</p>
+        <label>Username<input id="loginUsername" type="text" autocomplete="username" required></label>
+        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required></label>
+        <p class="login-error hidden" id="loginError"></p>
+        <button type="submit" class="primary">Sign in</button>
+      </form>
+    </div>
+    <main>
+      <div class="topbar">
+        <div class="brand"><span class="brand-mark">EM</span><span><span class="brand-title">EmbryoMatrix</span><small>PGT INTELLIGENCE</small></span></div>
+        <nav class="topnav" aria-label="Main navigation">
+          <button class="nav-item nav-color-teal active" data-view="overview"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg></span> Overview</button>
+          <button class="nav-item nav-color-blue" data-view="samples"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/></svg></span> Samples <b id="caseCount">0</b></button>
+          <button class="nav-item nav-color-teal hidden" data-view="reportprep"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 17H8"/><path d="m13.5 12.5 1.5 1.5 3-3"/></svg></span> Report prep <b id="reportPrepNavCount">0</b></button>
+          <button class="nav-item nav-color-amber" data-view="tests"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7 6.82 21.18a2.83 2.83 0 0 1-3.99-.01a2.83 2.83 0 0 1 0-4L17 3"/><path d="m16 2 6 6"/><path d="M12 16H4"/></svg></span> Tests <b id="testTypeCount">0</b></button>
+          <button class="nav-item nav-color-violet" data-view="images"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span> Image vault</button>
+          <button class="nav-item nav-color-green" data-view="protocols"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span> Protocols</button>
+        </nav>
+        <div class="search-wrap"><span>⌕</span><input id="patientSearch" placeholder="Search patient, case ID, test, client…"></div>
+        <div class="session-info" id="sessionInfo">
+          <button type="button" id="sessionUsername" aria-haspopup="menu" aria-expanded="false"></button>
+          <div class="session-menu hidden" id="sessionMenu" role="menu">
+            <button type="button" role="menuitem" class="session-menu-item" data-view="activity"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity log</button>
+            <button type="button" role="menuitem" id="logoutBtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sign out</button>
+          </div>
+        </div>
+      </div>
+
+      <header>
+        <button class="text-button hidden" id="headerBackBtn" data-view="overview">← Back</button>
+        <button class="menu-button" aria-label="Toggle menu">☰</button>
+        <nav class="header-nav" aria-label="Workspace navigation">
+          <button class="nav-item" data-view="import"><span>↥</span> <span class="nav-label">Import data</span></button>
+          <button class="nav-item" id="newExperiment"><span>＋</span> <span class="nav-label">New test record</span></button>
+        </nav>
+      </header>
+
+      <section class="content" id="overviewView">
+        <div class="stats">
+          <article class="stat-card tone-teal"><div class="stat-top"><small>TOTAL SAMPLES</small><span class="stat-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/></svg></span></div><strong id="totalSamplesStat">0</strong><p id="totalSamplesSub">All sample records</p></article>
+          <article class="stat-card tone-amber"><div class="stat-top"><small>ONGOING SAMPLES</small><span class="stat-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span></div><strong id="activeStat">0</strong></article>
+          <article class="stat-card tone-violet stat-card-link" id="reportPrepCard" role="button" tabindex="0" title="Open the Report preparation list"><div class="stat-top"><small>REPORT PREPARATION</small><span class="stat-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 17H8"/><path d="m13.5 12.5 1.5 1.5 3-3"/></svg></span></div><strong id="reportPrepStat">0</strong><p id="reportPrepSub">Attune upload &amp; NGS report pending</p></article>
+          <article class="stat-card tone-blue"><div class="stat-top"><small>EMBRYOS TRACKED</small><span class="stat-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="9.5" cy="10" r="2.2"/><circle cx="14.5" cy="10" r="2.2"/><circle cx="12" cy="14.8" r="2.2"/></svg></span></div><strong id="trackedStat">0</strong></article>
+          <article class="stat-card tone-green"><div class="stat-top"><small>COMPLETED TESTS</small><span class="stat-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg></span></div><strong id="completedStat">0</strong><div class="stat-meter"><span id="completedMeter"></span></div></article>
+        </div>
+
+        <section class="analytics-grid" aria-label="PGT analytics">
+          <article class="panel chart-card"><div class="chart-head"><div><p class="eyebrow">SAMPLE VOLUME</p><h2>Monthly samples</h2></div><div class="chart-head-right"><span id="monthlyTotal">—</span></div></div><div class="chart-container" id="monthlyChart"></div><div class="other-pills" id="monthlyOther"></div></article>
+          <article class="panel chart-card"><div class="chart-head"><div><p class="eyebrow">CLINICAL OUTCOMES</p><h2>Result-wise</h2></div><div class="chart-head-right"><span id="resultTotal">—</span></div></div><div class="chart-container" id="resultStack"></div><div class="legend" id="resultLegend" style="display:flex;gap:16px;margin-top:8px"></div></article>
+          <article class="panel chart-card"><div class="chart-head"><div><p class="eyebrow">SEQUENCING PLATFORM</p><h2>Platform-wise samples</h2></div><select class="chart-filter" id="platformMonthFilter" aria-label="Filter Sequencing Platform by month"><option value="">All months</option></select></div><div class="chart-container" id="platformChart"></div></article>
+          <article class="panel chart-card"><div class="chart-head"><div><p class="eyebrow">REGIONAL DISTRIBUTION</p><h2>Region-wise samples</h2></div><select class="chart-filter" id="regionMonthFilter" aria-label="Filter Regional Distribution by month"><option value="">All months</option></select></div><div class="chart-container" id="regionChart"></div><button class="text-button" data-view="regions">View all regions →</button></article>
+          <article class="panel chart-card"><div class="chart-head"><div><p class="eyebrow">CLIENT DISTRIBUTION</p><h2>Client-wise samples</h2><p class="chart-subtitle" id="clientChartNote">Clients with 50+ samples</p></div><select class="chart-filter" id="clientMonthFilter" aria-label="Filter Client Distribution by month"><option value="">All months</option></select></div><div class="pie-layout"><div class="pie" id="clientDonut"></div><div class="legend pie-legend pie-legend-scroll" id="clientLegend"></div></div><button class="text-button" data-view="clients">View all clients →</button></article>
+          <article class="panel chart-card quality-card"><div class="chart-head"><div><p class="eyebrow">QUALITY COMPARISON</p><h2>Top embryologists</h2><p class="chart-subtitle">Ranked by QC pass rate, then test volume</p></div><div class="chart-head-right"><div class="rate-kpis"><span title="Share of QC'd samples that failed"><strong id="failureRate">0%</strong> fail (of tested)</span><span title="Share of all samples that haven't been QC'd yet"><strong id="inconclusiveRate">0%</strong> awaiting (of all)</span></div><select class="chart-filter" id="qualityMonthFilter" aria-label="Filter Quality comparison by month"><option value="">All months</option></select></div></div><div class="quality-chart" id="qualityChart"></div><button class="text-button" data-view="embryologists">View all embryologists →</button></article>
+        </section>
+
+      </section>
+
+      <section class="content hidden" id="samplesView">
+        <section class="panel cases-panel">
+          <div class="panel-title"><div><h2>Patient & embryo registry<span class="record-count-badge" id="registryCount"></span></h2></div><div class="registry-actions">
+            <button class="toolbar-btn" id="sortToggle"><span>⇅</span> <span id="sortToggleLabel">Sheet order</span></button>
+            <button class="toolbar-btn" id="freezeToggle" title="Click the pin on any column header to freeze it"><span>⇤</span> <span id="freezeToggleLabel">Freeze columns</span></button>
+            <div class="filters-wrap">
+              <button class="toolbar-btn" id="filtersToggle"><span>▽</span> Filters <b class="filters-badge" id="filtersBadge">0</b></button>
+              <div class="filters-panel hidden" id="filtersPanel">
+                <select id="samplesMonthFilter"><option value="">All months</option></select>
+                <select id="testFilter"><option value="">All tests</option></select>
+                <select id="clientFilter"><option value="">All clients</option></select>
+                <select id="embryologistFilter"><option value="">All embryologists</option></select>
+                <select id="regionFilter"><option value="">All regions</option></select>
+                <select id="resultFilter"><option value="">All results</option><option>Normal</option><option>Abnormal</option><option>Inconclusive</option><option>Pass</option><option>Fail</option></select>
+                <select id="storageFilter"><option value="">All storage</option></select>
+                <select id="transferFilter"><option value="">All transfer</option></select>
+                <select id="reportStatusFilter"><option value="">All report statuses</option><option>Pending</option><option>Completed</option></select>
+              </div>
+            </div>
+            <div class="export-wrap"><button class="secondary compact" id="downloadCsv">↓ Export data</button><div class="export-menu hidden" id="exportMenu"><button data-format="csv">CSV</button><button data-format="excel">Excel</button><button data-format="json">JSON</button><button data-format="pdf">PDF</button></div></div><button class="text-button" id="clearFilters">Clear filters</button></div></div>
+          <div class="case-table" id="caseTable"></div>
+        </section>
+      </section>
+
+      <section class="content hidden" id="genericView"></section>
+    </main>
+  </div>
+
+  <dialog id="experimentDialog">
+    <form method="dialog" id="experimentForm">
+      <div class="dialog-head"><div><p class="eyebrow">NEW RECORD</p><h2>Start an experiment</h2></div><button value="cancel" formnovalidate class="close" aria-label="Close">×</button></div>
+      <label>Experiment name<input name="name" required placeholder="e.g. PCR optimization — gradient 02" /></label>
+      <div class="form-grid"><label>Project<input name="project" required placeholder="Project or study" /></label><label>Owner<input name="owner" value="AP" maxlength="3" /></label></div>
+      <label>Protocol / objective<textarea name="objective" placeholder="What are you testing, and what outcome do you expect?"></textarea></label>
+      <div class="form-grid"><label>Status<select name="status"><option>In progress</option><option>Planned</option><option>Completed</option></select></label><label>Next action<input name="next" placeholder="e.g. Image gel at 14:30" /></label></div>
+      <div class="dialog-actions"><button value="cancel" formnovalidate class="secondary">Cancel</button><button value="default" class="primary" id="saveExperiment">Save experiment</button></div>
+    </form>
+  </dialog>
+  <dialog id="patientDialog" class="patient-dialog"><div id="patientDetail"></div></dialog>
+  <dialog id="imageLightbox" class="image-lightbox"><button class="icon-btn lightbox-close" id="lightboxClose" aria-label="Close">✕</button><h3 id="lightboxTitle" class="hidden"></h3><img id="lightboxImg" alt=""><div id="lightboxGallery" class="lightbox-gallery hidden"></div></dialog>
+
+  <dialog id="noteDialog">
+    <form method="dialog" id="noteForm">
+      <div class="dialog-head"><div><p class="eyebrow">QUICK CAPTURE</p><h2>Add a bench note</h2></div><button value="cancel" formnovalidate class="close">×</button></div>
+      <label>Observation<textarea name="note" required autofocus placeholder="What did you observe?"></textarea></label>
+      <label>Link to experiment<select name="experiment" id="noteExperiment"></select></label>
+      <div class="dialog-actions"><button value="cancel" formnovalidate class="secondary">Cancel</button><button value="default" class="primary" id="saveNote">Save note</button></div>
+    </form>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
