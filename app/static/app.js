@@ -332,12 +332,13 @@ const TEST_CANONICAL=[
  ['PGT-SR',['PGT-SR','PGT SR','PGTSR','PGT-A/PGT-SR','PGT-SR analysis only']],
  ['PGT-M',['PGT-M','PGT M','PGTM','PGT-M only','PGTM first','PGT-M first']],
  ['Embryo Sure',['Embryo Sure','Embryosure','PGT-A plus','PGT A plus','PGT/Embryosure','PGT-A/Embryosure','PGT-A+Embryo sure']],
- ['PGT-HLA-C Typing',['PGT-HLA-C typing','PGT HLA C typing','PGT-A HLA C typing','PGT-A+HLA C','PGT-A+HLA C typing']],
+ ['PGT-HLA-C Typing',['PGT-HLA-C typing','PGT HLA C typing']],
  ['Express Molecular Karyotyping by NGS',['Express molecular karyotyping by NGS','Express molecular typing by NGS','NGS karyotyping','AF','AF-NGS','CVS','POC']],
  ['NIPGS',['NIPGS','NIPGT']],
  ['PGT-M/Embryo Sure',['PGT-M/Embryosure','Embryosure/PGT-M','PGT-M+Embryosure']],
  ['Embryo Sure/HLA-C Typing',['Embryosure/HLA-C typing','Embryosure+HLA-C','Embryosure+HLC-C','Embryosure HLA C typing']],
- ['PGT-A/M/HLA-C Typing',['PGT-A/M/HLA-C typing','PGT-A+M+HLA','PGT-A+M+HLA-C','PGT-A+M+HLA C typing']],
+ // PGT-A together with HLA-C typing is reported under PGT-A/M/HLA-C Typing.
+ ['PGT-A/M/HLA-C Typing',['PGT-A/M/HLA-C typing','PGT-A+M+HLA','PGT-A+M+HLA-C','PGT-A+M+HLA C typing','PGT-A HLA C typing','PGT-A+HLA C','PGT-A+HLA C typing','PGT-A/HLA-C typing','PGTA HLA C']],
  ['PGT-A+M',['PGT-A+M','PGT-M+A','PGTA+M','PGT-A/M']],
  ['Embryology Validation',['Embryology validation','Embryo validation','Validation','Validaton']],
  ['Test Pending',['Test pending','TP','T.P','TET','N/A','NA']]
@@ -410,9 +411,8 @@ function renderStatCards(allRows){
  const total=allRows.length,ongoing=allRows.filter(e=>e._importSource==='Pending').length,embryos=allRows.reduce((s,e)=>s+embryoUnits(e),0),completed=allRows.filter(e=>reportStatus(e)==='Completed').length;
  countUp($('#totalSamplesStat'),total);countUp($('#activeStat'),ongoing);countUp($('#trackedStat'),embryos);countUp($('#completedStat'),completed);const rebiopsyNav=$('#rebiopsyNavCount');if(rebiopsyNav)rebiopsyNav.textContent=allRows.filter(isRebiopsy).length.toLocaleString();const prepMonths=reportPrepMonths(),prep=allRows.filter(e=>isReportPrep(e,prepMonths)).length;countUp($('#reportPrepStat'),prep);const prepNav=$('#reportPrepNavCount');if(prepNav)prepNav.textContent=prep.toLocaleString();$('#reportPrepSub').innerHTML=`In <b>${escapeHtml(monthLabel(prepMonths[0],{month:'short'}))}</b> &amp; <b>${escapeHtml(monthLabel(prepMonths[1],{month:'short'}))}</b> · Attune &amp; NGS report pending`;
  const months=[...new Set(allRows.map(recordMonth).filter(isDateMonth))].sort(),latest=months[months.length-1],latestCount=latest?allRows.filter(e=>recordMonth(e)===latest).length:0;
- const pct=n=>total?Math.round(n/total*100):0;
  $('#totalSamplesSub').innerHTML=latest?`<b>+${latestCount.toLocaleString()}</b> in ${escapeHtml(monthLabel(latest,{month:'long'}))}`:'All sample records';
- setMeter('#completedMeter',pct(completed));
+
 }
 function renderAnalytics(){const allRows=allEmbryos();renderStatCards(allRows);const testTypeCountEl=$('#testTypeCount');if(testTypeCountEl)testTypeCountEl.textContent=new Set(allRows.map(testNameOf).filter(Boolean)).size;renderVolumeChart(allRows);renderTestChart(allRows);renderOutcomeChart(allRows);renderClientChart(allRows);renderRegionChart(allRows);renderPlatformChart(allRows);renderQualitySection(allRows)}
 async function storeImages(caseId,embryo,files){const form=new FormData();form.append('embryo_label',embryo||'');for(const file of files)form.append('files',file);const res=await fetch(`/api/cases/${encodeURIComponent(caseId)}/images`,{method:'POST',body:form});if(!res.ok)throw new Error('Upload failed')}
