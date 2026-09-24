@@ -18,16 +18,6 @@
 </head>
 <body>
   <div class="app-shell">
-    <div class="login-gate" id="loginGate">
-      <form class="login-card" id="loginForm">
-        <div class="brand"><span class="brand-mark">EM</span><span><span class="brand-title">EmbryoMatrix</span><small>PGT INTELLIGENCE</small></span></div>
-        <p class="login-sub">Sign in to continue</p>
-        <label>Username<input id="loginUsername" type="text" autocomplete="username" required></label>
-        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required></label>
-        <p class="login-error hidden" id="loginError"></p>
-        <button type="submit" class="primary">Sign in</button>
-      </form>
-    </div>
     <main>
       <div class="topbar">
         <div class="brand"><span class="brand-mark">EM</span><span><span class="brand-title">EmbryoMatrix</span><small>PGT INTELLIGENCE</small></span></div>
@@ -44,7 +34,6 @@
           <button type="button" id="sessionUsername" aria-haspopup="menu" aria-expanded="false"></button>
           <div class="session-menu hidden" id="sessionMenu" role="menu">
             <button type="button" role="menuitem" class="session-menu-item" data-view="activity"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity log</button>
-            <button type="button" role="menuitem" id="logoutBtn"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>Sign out</button>
           </div>
         </div>
       </div>
@@ -52,6 +41,10 @@
       <header>
         <button class="text-button hidden" id="headerBackBtn" data-view="overview">← Back</button>
         <button class="menu-button" aria-label="Toggle menu">☰</button>
+        <div class="prep-segments header-center-toggle hidden" id="registryViewToggle" role="tablist" aria-label="Row grouping">
+          <button type="button" class="prep-seg active" data-mode="patient" role="tab" aria-selected="true">Patient view</button>
+          <button type="button" class="prep-seg" data-mode="embryo" role="tab" aria-selected="false">Embryo view</button>
+        </div>
         <nav class="header-nav" aria-label="Workspace navigation">
           <button class="nav-item" data-view="import"><span>↥</span> <span class="nav-label">Import data</span></button>
           <button class="nav-item" id="newExperiment"><span>＋</span> <span class="nav-label">New test record</span></button>
@@ -84,21 +77,20 @@
           <div class="panel-title"><div><h2>Patient & embryo registry<span class="record-count-badge" id="registryCount"></span></h2></div><div class="registry-actions">
             <button class="toolbar-btn" id="sortToggle"><span>⇅</span> <span id="sortToggleLabel">Sheet order</span></button>
             <button class="toolbar-btn" id="freezeToggle" title="Click the pin on any column header to freeze it"><span>⇤</span> <span id="freezeToggleLabel">Freeze columns</span></button>
-            <div class="filters-wrap">
-              <button class="toolbar-btn" id="filtersToggle"><span>▽</span> Filters <b class="filters-badge" id="filtersBadge">0</b></button>
-              <div class="filters-panel hidden" id="filtersPanel">
-                <select id="samplesMonthFilter"><option value="">All months</option></select>
-                <select id="testFilter"><option value="">All tests</option></select>
-                <select id="clientFilter"><option value="">All clients</option></select>
-                <select id="embryologistFilter"><option value="">All embryologists</option></select>
-                <select id="regionFilter"><option value="">All regions</option></select>
-                <select id="resultFilter"><option value="">All results</option><option>Normal</option><option>Abnormal</option><option>Inconclusive</option><option>Pass</option><option>Fail</option></select>
-                <select id="storageFilter"><option value="">All storage</option></select>
-                <select id="transferFilter"><option value="">All transfer</option></select>
-                <select id="reportStatusFilter"><option value="">All report statuses</option><option>Pending</option><option>Completed</option></select>
-              </div>
-            </div>
-            <div class="export-wrap"><button class="secondary compact" id="downloadCsv">↓ Export data</button><div class="export-menu hidden" id="exportMenu"><button data-format="csv">CSV</button><button data-format="excel">Excel</button><button data-format="json">JSON</button><button data-format="pdf">PDF</button></div></div><button class="text-button" id="clearFilters">Clear filters</button></div></div>
+            <button class="toolbar-btn" id="filtersToggle"><span>▽</span> Filters <b class="filters-badge" id="filtersBadge">0</b></button>
+            <div class="export-wrap"><button class="secondary compact" id="downloadCsv">↓ Export data</button><div class="export-menu hidden" id="exportMenu"><button data-format="csv">CSV</button><button data-format="excel">Excel</button><button data-format="json">JSON</button><button data-format="pdf">PDF</button></div></div></div></div>
+          <div class="filters-inline hidden" id="filtersPanel">
+            <label class="filter-field"><span>Month</span><select id="samplesMonthFilter"><option value="">All months</option></select></label>
+            <label class="filter-field"><span>Test</span><select id="testFilter"><option value="">All tests</option></select></label>
+            <label class="filter-field"><span>Client</span><select id="clientFilter"><option value="">All clients</option></select></label>
+            <label class="filter-field"><span>Embryologist</span><select id="embryologistFilter"><option value="">All embryologists</option></select></label>
+            <label class="filter-field"><span>Region</span><select id="regionFilter"><option value="">All regions</option></select></label>
+            <label class="filter-field"><span>Result</span><select id="resultFilter"><option value="">All results</option><option>Normal</option><option>Abnormal</option><option>Inconclusive</option><option>Pass</option><option>Fail</option></select></label>
+            <label class="filter-field"><span>Storage</span><select id="storageFilter"><option value="">All storage</option></select></label>
+            <label class="filter-field"><span>Transfer</span><select id="transferFilter"><option value="">All transfer</option></select></label>
+            <label class="filter-field"><span>Report status</span><select id="reportStatusFilter"><option value="">All report statuses</option><option>Pending</option><option>Completed</option></select></label>
+            <button class="text-button filters-clear" id="clearFilters">Clear all</button>
+          </div>
           <div class="case-table" id="caseTable"></div>
         </section>
       </section>

@@ -1,10 +1,6 @@
 from typing import Any
 from pydantic import BaseModel
 
-class LoginIn(BaseModel):
-    username: str
-    password: str
-
 class LabCreate(BaseModel):
     code: str
     name: str

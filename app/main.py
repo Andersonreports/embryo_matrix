@@ -14,8 +14,7 @@ from sqlalchemy import func
 from .config import settings
 from .database import Base, engine, get_db, SessionLocal
 from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog
-from .schemas import LoginIn, LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue
-from .security import create_token, verify_token
+from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue
 from .sheet_sync import parse_sources, sync_sources
 
 Base.metadata.create_all(bind=engine)
@@ -47,12 +46,14 @@ UPLOADS.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOADS), name="uploads")
 
-# Two fixed accounts (admin, embryologist) from settings gate the app. Every /api
-# route except login/health requires a valid bearer token; the page shell
-# (/, /static, /uploads) stays reachable so the login screen itself can load
-# and so plain <img> tags against /uploads keep working without extra plumbing.
-# role -> unix time of that account's most recent authenticated request.
-# In-memory only: resets when the server restarts.
+# No login of its own: this app is embedded behind another gated application,
+# which authenticates the user and forwards their identity on every request via
+# the X-Auth-User / X-Auth-Role headers. Those headers must be set (and any
+# client-supplied copies stripped) by the trusted proxy in front of this
+# service — this app does not verify them itself, so it must never be reachable
+# except through that proxy.
+# role -> unix time of that role's most recent identified request. In-memory
+# only: resets when the server restarts.
 _last_seen: dict[str, float] = {}
 ACTIVE_WINDOW_SECONDS = 5 * 60
 
@@ -63,32 +64,25 @@ def log_activity(db: Session, action: str, detail: str = "", user: dict | None =
     db.add(ActivityLog(username=user.get("username") or "", role=user.get("role") or "", action=action, detail=detail))
     db.commit()
 
-_AUTH_EXEMPT_PATHS = {"/", "/api/login", "/api/health"}
-_AUTH_EXEMPT_PREFIXES = ("/static/", "/uploads/")
-
 @app.middleware("http")
-async def require_shared_password(request: Request, call_next):
+async def identify_user(request: Request, call_next):
     path = request.url.path
-    if path in _AUTH_EXEMPT_PATHS or path.startswith(_AUTH_EXEMPT_PREFIXES) or not path.startswith("/api/"):
-        response = await call_next(request)
-        # Make browsers revalidate the page shell so UI updates show without a hard refresh.
-        if path == "/" or path.startswith("/static/"):
-            response.headers["Cache-Control"] = "no-cache"
-        return response
     sync_key = request.headers.get("x-image-sync-key", "")
     if sync_key and path == "/api/images" and request.method == "GET":
         if settings.image_sync_token and secrets.compare_digest(sync_key.encode(), settings.image_sync_token.encode()):
             request.state.user = {"username": "Image sync", "role": "sync"}
             return await call_next(request)
         return JSONResponse({"detail": "Invalid image sync key"}, status_code=401)
-    auth = request.headers.get("authorization", "")
-    token = auth[7:] if auth.lower().startswith("bearer ") else ""
-    claims = verify_token(token) if token else None
-    if not claims:
-        return JSONResponse({"detail": "Not authenticated"}, status_code=401)
-    request.state.user = claims
-    _last_seen[claims.get("role") or ""] = time.time()
-    return await call_next(request)
+    username = request.headers.get("x-auth-user", "")
+    role = request.headers.get("x-auth-role", "")
+    request.state.user = {"username": username, "role": role} if username else {}
+    if username:
+        _last_seen[role or ""] = time.time()
+    response = await call_next(request)
+    # Make browsers revalidate the page shell so UI updates show without a hard refresh.
+    if path == "/" or path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 @app.get("/")
 def home():
@@ -98,28 +92,10 @@ def home():
 def health():
     return {"status": "ok", "application": settings.app_name}
 
-def _accounts():
-    return [
-        (settings.admin_username, settings.admin_password, settings.admin_name, "admin"),
-        (settings.embryologist_username, settings.embryologist_password, settings.embryologist_name, "embryologist"),
-    ]
-
-@app.post("/api/login")
-def login(data: LoginIn, db: Session = Depends(get_db)):
-    username = data.username.strip()
-    for user, pw, name, role in _accounts():
-        if user and pw and secrets.compare_digest(username.lower().encode(), user.lower().encode()) and secrets.compare_digest(data.password.encode(), pw.encode()):
-            display = name.strip() or user
-            token = create_token(0, role, None, username=display)
-            log_activity(db, "login", user={"username": display, "role": role})
-            return {"access_token": token, "token_type": "bearer", "username": display, "role": role}
-    raise HTTPException(401, "Incorrect username or password")
-
-@app.post("/api/logout")
-def logout(request: Request, db: Session = Depends(get_db)):
-    log_activity(db, "logout", request=request)
-    _last_seen.pop(request.state.user.get("role") or "", None)
-    return {"ok": True}
+@app.get("/api/whoami")
+def whoami(request: Request):
+    user = request.state.user or {}
+    return {"username": user.get("username") or "", "role": user.get("role") or ""}
 
 def _iso_utc(dt: datetime | None) -> str | None:
     return dt.replace(tzinfo=timezone.utc).isoformat() if dt else None
@@ -128,16 +104,19 @@ def _iso_utc(dt: datetime | None) -> str | None:
 def activity_log(limit: int = 1000, db: Session = Depends(get_db)):
     rows = db.query(ActivityLog).order_by(ActivityLog.at.desc(), ActivityLog.id.desc()).limit(max(1, min(limit, 5000))).all()
     now = time.time()
+    seen_pairs = (
+        db.query(ActivityLog.username, ActivityLog.role)
+        .filter(ActivityLog.username != "")
+        .distinct()
+        .all()
+    )
     users = []
-    for user, _pw, name, role in _accounts():
-        if not user:
-            continue
-        last_login = db.query(func.max(ActivityLog.at)).filter(ActivityLog.role == role, ActivityLog.action == "login").scalar()
+    for username, role in seen_pairs:
+        last_active = db.query(func.max(ActivityLog.at)).filter(ActivityLog.username == username, ActivityLog.role == role).scalar()
         seen = _last_seen.get(role)
         users.append({
-            "username": name.strip() or user, "role": role,
-            "lastLogin": _iso_utc(last_login),
-            "lastSeen": datetime.fromtimestamp(seen, timezone.utc).isoformat() if seen else None,
+            "username": username, "role": role,
+            "lastSeen": _iso_utc(last_active),
             "active": bool(seen and now - seen < ACTIVE_WINDOW_SECONDS),
         })
     events = [{"id": r.id, "at": _iso_utc(r.at), "username": r.username, "role": r.role, "action": r.action, "detail": r.detail} for r in rows]

@@ -3,8 +3,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "Embryo Matrix"
     database_url: str = "sqlite:///./embryomatrix.db"
-    secret_key: str = "change-me"
-    access_token_minutes: int = 60 * 24 * 14  # 14 days — a shared-password lab tool shouldn't force frequent re-logins
     # Pipe-separated Google Sheet IDs. Each must be shared as "Anyone with the
     # link – Viewer" so the export endpoint is readable without auth. Every tab
     # in the spreadsheet is fetched automatically, so new tabs (e.g. next
@@ -19,15 +17,6 @@ class Settings(BaseSettings):
     # server/domain. Leave blank to keep using the xlsx export.
     sheet_api_url: str = ""
     sheet_api_token: str = ""
-    # Two fixed logins (no user table yet). Set these in .env — an account whose
-    # username or password is blank cannot sign in. *_name is the display name
-    # shown in the header pill (falls back to the username).
-    admin_username: str = ""
-    admin_password: str = ""
-    admin_name: str = ""
-    embryologist_username: str = ""
-    embryologist_password: str = ""
-    embryologist_name: str = ""
     # Key for image_sync/sync-images.ps1 (runs on the lab's storage PC and
     # pulls new embryo images down). It can only list images. Blank = disabled.
     image_sync_token: str = ""
