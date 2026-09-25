@@ -81,6 +81,20 @@ class ProtocolDocument(Base):
     file_path: Mapped[str] = mapped_column(String(500))
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+class TrfSubmission(Base):
+    """A digital PGT test requisition form submitted by a clinic from the public /trf page.
+    The whole form is kept as JSON; the columns below are copies used for listing."""
+    __tablename__ = "trf_submissions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    ref: Mapped[str] = mapped_column(String(30), unique=True, index=True)
+    submitted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    status: Mapped[str] = mapped_column(String(20), default="New", index=True)
+    clinic: Mapped[str] = mapped_column(String(255), default="")
+    patient_name: Mapped[str] = mapped_column(String(255), default="")
+    data: Mapped[Any] = mapped_column(JSON)
+    status_by: Mapped[str] = mapped_column(String(120), default="")
+    status_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
 class ActivityLog(Base):
     """Who did what, when. Written server-side from the login token."""
     __tablename__ = "activity_log"

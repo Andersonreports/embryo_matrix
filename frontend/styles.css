@@ -748,3 +748,76 @@ header .registry-header-actions{margin-left:10px}
 .batch-qc .qc-pass{color:#0b5660}
 .batch-qc .qc-fail{color:#8a928d}
 .run-list-panel .muted{color:#8b968f;font-size:12px}
+
+/* Patient view: the Embryo / QC / Karyotype / Result header repeats above every embryo */
+.embryo-headrow th{padding-top:16px;border-top:1px solid var(--line)}
+.embryo-headrow:first-child th{padding-top:0;border-top:0}
+.embryo-table .embryo-row td{border-top:0;padding-top:10px}
+
+/* Re-biopsy table: same teal header as the Samples registry */
+#rebiopsyTableWrap .prep-table thead th,#rebiopsyTableWrap .prep-table thead th[data-frozen]{background:linear-gradient(135deg,#0a7180,#0f9b8e);color:#fff;font:700 11.5px "Inter";letter-spacing:.6px;border-bottom:2px solid #075e69}
+
+/* Re-biopsy page: table uses the full width and height of the window */
+#genericView:has(#rebiopsyTableWrap){padding:12px 14px 10px}
+.generic-card:has(#rebiopsyTableWrap){padding:12px 14px}
+
+/* Digital TRFs tab (lab side) */
+.trf-linkbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;margin:0 0 14px;border:1px solid #d5ebe7;border-radius:12px;background:#eef8f6}
+.trf-linkbar small{display:block;font:700 11px "Inter";letter-spacing:.6px;text-transform:uppercase;color:#5d7a73}
+.trf-linkbar a{font-weight:600;color:#0a6d78;word-break:break-all}
+.trf-status{display:inline-block;padding:2px 10px;border-radius:999px;font:700 11px "Inter";background:#eef2f0;color:#5c6b66}
+.trf-status.s-new{background:#e3f0ff;color:#1b5fb4}
+.trf-status.s-received{background:#dff3e6;color:#1f7a45}
+.trf-status.s-rejected{background:#fdecea;color:#b3261e}
+.trf-dialog{width:min(900px,96vw);max-height:92vh;padding:0;border:0;border-radius:14px;overflow:hidden}
+.trf-dialog::backdrop{background:rgba(16,30,26,.45)}
+.trf-dialog-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 16px;background:#fff;border-bottom:1px solid var(--line)}
+.trf-dialog-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.trf-dialog-doc{max-height:calc(92vh - 64px);overflow:auto;background:#e9ecef;padding:16px 0}
+.trf-dialog-doc .td-page{box-shadow:0 2px 10px rgba(0,0,0,.08);max-width:100%}
+
+/* Digital TRFs tab: New TRF (editable template) / Submitted list */
+.trf-tabbar{display:flex;justify-content:space-between;align-items:center;margin:0 0 14px}
+.trf-formbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;margin-bottom:12px;border:1px solid #d5ebe7;border-radius:12px;background:#eef8f6}
+.trf-formbar-note{font-size:12.5px;color:#4d615a}
+.trf-formbar-actions{display:flex;gap:8px}
+.trf-sheet{background:#e9ecef;border-radius:12px;padding:18px 12px;overflow-x:auto}
+.trf-sheet .td-page{box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.trf-error{background:#fdecea;color:#b3261e;border:1px solid #f5c2bd;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-weight:600;font-size:13px}
+.trf-error.hidden{display:none}
+
+/* Digital TRF form (TRFs tab → New TRF) */
+.trf-sheet{background:none;padding:0;overflow:visible}
+.tf-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;text-align:left}
+.tf-card{border:1px solid var(--line);border-radius:14px;background:#fff;padding:18px 20px}
+.tf-card:nth-of-type(n+5){grid-column:1 / -1}
+.tf-card>header{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+.tf-card h3{margin:0;font:700 16px "Inter";color:#0b5660}
+.tf-card header p{margin:2px 0 0;font-size:12.5px;color:#7b8a84}
+.tf-step{flex-shrink:0;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:linear-gradient(135deg,#0a7180,#20aaa6);color:#fff;font:800 13px "Inter"}
+.tf-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.tf-field{display:flex;flex-direction:column;gap:6px;min-width:0;font-weight:400}
+.tf-field>span{font:600 12.5px "Inter";color:#46554f}
+.tf-wide{grid-column:1 / -1}
+.tf-field input,.tf-field textarea{width:100%;font:500 14px "Inter";color:var(--ink);padding:10px 12px;border:1px solid #d6dfdb;border-radius:10px;background:#fff;box-shadow:none}
+.tf-field textarea{resize:vertical;min-height:70px}
+.tf-field input:focus,.tf-field textarea:focus,.tf-cell:focus{outline:none;border-color:#20aaa6;box-shadow:0 0 0 3px rgba(10,113,128,.12)}
+.tf-field input.invalid{border-color:#c0392b;background:#fff6f5}
+.tf-opts{display:flex;flex-wrap:wrap;gap:8px}
+.tf-opts-col{flex-direction:column}
+.tf-opt{display:inline-flex;align-items:center;gap:9px;padding:9px 12px;border:1px solid #dfe6e2;border-radius:10px;background:#fbfcfc;cursor:pointer;font:500 13.5px "Inter";color:#26352f}
+.tf-opt:has(input:checked){border-color:#20aaa6;background:#eef8f6;color:#0b5660}
+.tf-opt input{width:16px;height:16px;margin:0;accent-color:#0a7180}
+.tf-table-wrap{margin:14px 0 10px;border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+.tf-table{width:100%;min-width:760px;border-collapse:collapse}
+.tf-table th{background:linear-gradient(135deg,#0a7180,#0f9b8e);color:#fff;font:700 11.5px "Inter";letter-spacing:.3px;text-align:left;padding:10px 8px;white-space:nowrap}
+.tf-table td{padding:6px;border-top:1px solid #eef2f0}
+.tf-table td.tf-n{width:52px;text-align:center;color:#7b8a84;font-weight:700}
+.tf-table td.tf-x{width:36px;text-align:center}
+.tf-cell{width:100%;font:500 13px "Inter";padding:8px 9px;border:1px solid #dfe6e2;border-radius:8px;background:#fff}
+.tf-add{border:1px dashed #20aaa6;background:#f3faf9;color:#0a6d78;font:700 13px "Inter";padding:9px 16px;border-radius:10px;cursor:pointer}
+.tf-hint{margin:10px 0 14px;font-size:12.5px;color:#7b8a84}
+.tf-foot{grid-column:1 / -1;margin:0;font-size:12px;color:#7b8a84}
+@media(max-width:900px){.tf-form,.tf-grid{grid-template-columns:1fr}.tf-card{padding:16px}}
+.tf-card>header{position:static;padding:0;border:0;background:none;box-shadow:none;min-height:0;justify-content:flex-start}
+.tf-card>header::before,.tf-card>header::after{content:none}

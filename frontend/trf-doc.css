@@ -1,0 +1,59 @@
+/* Digital TRF document: the printed / PDF layout that mirrors the paper template. */
+.td-page{box-sizing:border-box;width:210mm;min-height:297mm;margin:0 auto 16px;padding:14mm 13mm;background:#fff;color:#222;font:12px/1.45 Arial,Helvetica,sans-serif}
+.td-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px}
+.td-head img{height:44px}
+.td-head>div{text-align:right}
+.td-kicker{color:#5cb85c;font-size:19px}
+.td-head h2{margin:2px 0 0;color:#5cb85c;font-weight:400;font-size:22px}
+.td-note-strong{margin:4px 0 10px;color:#4cae4c;font-weight:700}
+.td-refbox{display:grid;grid-template-columns:1fr 1fr;gap:12px;border:1px solid #9fd39f;padding:8px 12px;margin-bottom:12px}
+.td-ref{text-align:right;font-size:12px}
+.td-ref span{display:block;color:#666;font-size:11px}
+.td-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.td-grid-tight{gap:24px;margin:8px 0}
+.td-section{border:1px solid #9fd39f;border-radius:0 18px 0 18px;margin-bottom:12px;overflow:hidden;break-inside:avoid}
+.td-section h3{margin:0;padding:6px 12px;background:#f2f2f2;color:#4cae4c;font-size:15px}
+.td-body{padding:8px 12px}
+.td-line{display:flex;gap:6px;align-items:baseline;margin:4px 0}
+.td-label{flex-shrink:0;color:#333}
+.td-value{flex:1;min-height:16px;border-bottom:1px solid #b9dcb9;padding:0 2px;font-weight:600;word-break:break-word}
+.td-row{display:flex;flex-wrap:wrap;gap:4px 16px;margin:6px 0}
+.td-check{display:inline-flex;align-items:center;gap:6px;margin-right:12px}
+.td-box{display:inline-grid;place-items:center;width:12px;height:12px;border:1px solid #6cbf6c;font-size:10px;line-height:1;color:#2e7d32}
+.td-box.on{background:#e8f5e9;font-weight:700}
+.td-para{margin:0;min-height:34px;white-space:pre-wrap;font-weight:600}
+.td-sign{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin:18px 0 10px}
+.td-sign span,.td-signline{display:inline-block;width:60%;border-bottom:1px solid #999;height:14px;vertical-align:bottom}
+.td-small{font-size:11.5px;margin:8px 0}
+.td-tiny{font-size:9.5px;color:#555;margin:6px 0}
+.td-meta{width:100%;border-collapse:collapse;margin:8px 0 14px}
+.td-meta td{border:1px solid #333;padding:6px 10px;width:50%}
+.td-embryos{width:100%;border-collapse:collapse;margin-bottom:10px}
+.td-embryos th{background:#f2f2f2;color:#4cae4c;font-size:12px;padding:8px 6px;border:1px solid #aaa}
+.td-embryos td{border:1px solid #aaa;height:26px;padding:4px 6px;text-align:center;font-weight:600}
+.td-embryos td:last-child{text-align:left}
+body.td-print{margin:0;background:#e9ecef}
+@media print{
+ body.td-print{background:#fff}
+ .td-page{margin:0;padding:10mm 11mm;min-height:auto;page-break-after:always}
+ .td-page:last-child{page-break-after:auto}
+ @page{size:A4;margin:0}
+}
+
+/* Editable template (TRFs tab): fields are typed straight into the paper layout */
+.td-req{color:#c0392b}
+.td-input{flex:1;min-width:0;border:0;border-bottom:1px solid #9fcf9f;background:#fbfefb;padding:3px 4px;font:600 12.5px Arial,Helvetica,sans-serif;color:#1d2b26;border-radius:3px 3px 0 0}
+.td-input:focus{outline:none;border-bottom:2px solid #0a7180;background:#eef8f6}
+.td-input.invalid,.td-cell.invalid{border-bottom-color:#c0392b;background:#fdecea}
+.td-area{display:block;width:100%;resize:vertical;min-height:52px;border:1px solid #cfe6cf;border-radius:4px}
+.td-check input{width:14px;height:14px;margin:0;accent-color:#4cae4c}
+label.td-check{cursor:pointer}
+.td-embryos .td-cell{width:100%;border:0;background:transparent;padding:4px;font:600 12px Arial,Helvetica,sans-serif;text-align:center}
+.td-embryos .td-cell:focus{outline:2px solid #0a7180;background:#eef8f6}
+.td-embryos td:has(.td-cell){padding:0}
+.td-embryos td.td-n{width:42px;color:#666}
+.td-embryos td.td-x{width:32px;padding:0}
+.td-remove{border:0;background:transparent;color:#999;font-size:18px;cursor:pointer;width:100%;height:30px}
+.td-remove:hover{color:#c0392b;background:#fdecea}
+.td-add{border:1px dashed #6cbf6c;background:#f6fbf6;color:#2e7d32;font:600 12.5px Arial,Helvetica,sans-serif;padding:7px 14px;border-radius:6px;cursor:pointer;margin-bottom:6px}
+.td-ref i{color:#888;font-size:11px}

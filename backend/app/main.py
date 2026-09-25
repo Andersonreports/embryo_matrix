@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from .config import settings
 from .database import Base, engine, get_db, SessionLocal
-from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog
+from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn
 from .sheet_sync import parse_sources, sync_sources
 from . import cell_edits
@@ -465,6 +465,120 @@ def delete_protocol(protocol_id: int, request: Request, db: Session = Depends(ge
     db.delete(doc); db.commit()
     log_activity(db, "protocol_delete", detail, request=request)
     return {"ok": True}
+
+# --- Digital TRF: the PGT test requisition form, filled in on the app's TRFs tab ---
+# Like the rest of this app it has no login of its own and relies on the gated proxy in
+# front of it; TRFs hold Aadhaar numbers, so that must be in place before go-live.
+
+TRF_TESTS = {
+    "PGT-A": "Preimplantation Genetic Testing - Aneuploidies (PGT-A)",
+    "EMBRYO_SURE": "Embryo Sure - PGT-A (CNV with SNP)",
+    "PGT-SR": "Preimplantation Genetic Testing - Structural Rearrangements (PGT-SR)",
+    "PGT-HLA": "Preimplantation Genetic Testing - HLA C typing",
+}
+TRF_TEXT_FIELDS = (
+    "biopsyDate", "referringDoctor", "hospital", "address", "phone", "email",
+    "patientName", "patientDob", "uhid", "aadhaar", "husbandName", "husbandDob", "patientEmail",
+    "collectionDate", "collectionTime", "biopsyDay", "donorAge", "testIndication", "clinicalHistory",
+    "maternalKaryotype", "paternalKaryotype", "ivfLabContact", "rebiopsy", "embryologistName", "embryologistEmail",
+)
+TRF_EMBRYO_FIELDS = ("label", "grade", "cells", "day", "intact", "comments")
+TRF_STATUSES = ("New", "Received", "Rejected")
+_trf_recent: dict[str, list[float]] = {}  # client IP -> recent submit times, for a simple rate limit
+
+def _require_lab_user(request: Request):
+    user = request.state.user or {}
+    if user.get("role") == "sync":  # the lab-PC file sync key never reads TRFs
+        raise HTTPException(403, "Not allowed")
+    return user
+
+def _clean_trf(raw: dict) -> dict:
+    s = lambda v, n=2000: str(v or "").strip()[:n]
+    data = {k: s(raw.get(k)) for k in TRF_TEXT_FIELDS}
+    data["aadhaar"] = "".join(ch for ch in data["aadhaar"] if ch.isdigit())
+    data["tests"] = [t for t in (raw.get("tests") or []) if t in TRF_TESTS]
+    data["gametes"] = [g for g in (raw.get("gametes") or []) if g in ("Self", "Donor Sperm", "Donor Oocyte")]
+    data["dryRun"] = bool(raw.get("dryRun"))
+    embryos = []
+    for e in (raw.get("embryos") or [])[:60]:
+        row = {k: s((e or {}).get(k), 500) for k in TRF_EMBRYO_FIELDS}
+        if any(row.values()):
+            embryos.append(row)
+    data["embryos"] = embryos
+    return data
+
+def _trf_summary(t: TrfSubmission) -> dict:
+    d = t.data or {}
+    return {
+        "id": t.id, "ref": t.ref, "submittedAt": _iso_utc(t.submitted_at), "status": t.status,
+        "clinic": t.clinic, "patient": t.patient_name, "doctor": d.get("referringDoctor", ""),
+        "tests": d.get("tests", []), "biopsyDate": d.get("biopsyDate", ""), "embryos": len(d.get("embryos", [])),
+        "statusBy": t.status_by, "statusAt": _iso_utc(t.status_at),
+    }
+
+@app.post("/api/trf")
+async def submit_trf(request: Request, db: Session = Depends(get_db)):
+    body = await request.body()
+    if len(body) > 200_000:
+        raise HTTPException(413, "Form is too large")
+    ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "")).split(",")[0].strip()
+    now = time.time()
+    recent = [t for t in _trf_recent.get(ip, []) if now - t < 3600]
+    if len(recent) >= 30:
+        raise HTTPException(429, "Too many submissions from this network. Please try again later.")
+    try:
+        raw = json.loads(body or b"{}")
+    except ValueError:
+        raise HTTPException(400, "Invalid form data")
+    data = _clean_trf(raw if isinstance(raw, dict) else {})
+    missing = [label for key, label in (("hospital", "Hospital / IVF centre"), ("referringDoctor", "Referring doctor"),
+               ("phone", "Phone"), ("patientName", "Patient name"), ("biopsyDate", "Date of biopsy")) if not data[key]]
+    if not data["tests"]:
+        missing.append("Test requested")
+    if not data["embryos"]:
+        missing.append("At least one embryo in the biopsy worksheet")
+    if data["aadhaar"] and len(data["aadhaar"]) != 12:
+        raise HTTPException(422, "Aadhaar number must be 12 digits")
+    if missing:
+        raise HTTPException(422, "Please fill in: " + ", ".join(missing))
+    ref = ""
+    for _ in range(10):
+        ref = f"TRF-{datetime.utcnow():%y%m%d}-{secrets.token_hex(2).upper()}"
+        if not db.query(TrfSubmission.id).filter(TrfSubmission.ref == ref).first():
+            break
+    t = TrfSubmission(ref=ref, clinic=data["hospital"][:255], patient_name=data["patientName"][:255], data=data)
+    db.add(t); db.commit(); db.refresh(t)
+    _trf_recent[ip] = recent + [now]
+    log_activity(db, "trf_submit", f"{t.ref} · {t.patient_name} · {t.clinic}", request=request)
+    return {"ref": t.ref, "submittedAt": _iso_utc(t.submitted_at)}
+
+@app.get("/api/trf")
+def list_trfs(request: Request, db: Session = Depends(get_db)):
+    _require_lab_user(request)
+    rows = db.query(TrfSubmission).order_by(TrfSubmission.submitted_at.desc()).all()
+    return [_trf_summary(t) for t in rows]
+
+@app.get("/api/trf/{trf_id}")
+def get_trf(trf_id: int, request: Request, db: Session = Depends(get_db)):
+    _require_lab_user(request)
+    t = db.get(TrfSubmission, trf_id)
+    if not t:
+        raise HTTPException(404, "Not found")
+    return {**_trf_summary(t), "data": t.data}
+
+@app.patch("/api/trf/{trf_id}")
+def update_trf_status(trf_id: int, payload: KVValue, request: Request, db: Session = Depends(get_db)):
+    user = _require_lab_user(request)
+    t = db.get(TrfSubmission, trf_id)
+    if not t:
+        raise HTTPException(404, "Not found")
+    status = str((payload.value or {}).get("status", "")) if isinstance(payload.value, dict) else ""
+    if status not in TRF_STATUSES:
+        raise HTTPException(400, "Unknown status")
+    t.status, t.status_by, t.status_at = status, user.get("username") or "", datetime.utcnow()
+    db.commit()
+    log_activity(db, "trf_status", f"{t.ref} · {t.patient_name} → {status}", request=request)
+    return _trf_summary(t)
 
 # --- Live Google Sheets sync: pulls case/sample rows into the same store the UI reads ---
 

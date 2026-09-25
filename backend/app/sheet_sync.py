@@ -18,6 +18,9 @@ SYNC_STATUS_KEY = "embryomatrix-sheet-sync-status"
 DNA_UNPURIFIED_FIELD = "dna conc unpurified"
 DNA_PURIFIED_FIELD = "dna conc purified"
 DNA_OLD_FIELD = "dna conc"  # single combined column used before the split
+# Sequencing batch run(s) a sample was processed in, from the "Run ID" line above each
+# run's table in the batch record sheet ("106A", or "101A, 106A" for a re-biopsy).
+RUN_ID_FIELD = "run id"
 
 
 def _normalize_header(h, i: int) -> str:
@@ -164,10 +167,20 @@ def _extract_dna_records(rows: list[dict]) -> list[dict]:
     records = []
     last_patient = ""
     seen_header = False
+    run_id = ""
     for r in rows:
+        # A tab can hold several runs stacked one under another, each headed by a
+        # "Run ID | 106A" line; the value is the first filled cell after the label.
+        cells = [str(v).strip() for v in r.values()]
+        if "run id" in (c.lower() for c in cells):
+            i = next(i for i, c in enumerate(cells) if c.lower() == "run id")
+            run_id = next((c for c in cells[i + 1:] if c), "")
+            last_patient = ""
+            continue
+        if str(r.get(header["patient"], "")).strip().lower() == "patient name":
+            seen_header = True  # the table header, repeated for every run
+            continue
         if not seen_header:
-            if str(r.get(header["patient"], "")).strip().lower() == "patient name":
-                seen_header = True
             continue
         patient = str(r.get(header["patient"], "")).strip()
         if patient:
@@ -175,9 +188,9 @@ def _extract_dna_records(rows: list[dict]) -> list[dict]:
         embryo = str(r.get(header["embryo"], "")).strip()
         dna_conc = str(r.get(header["dna_conc"], "")).strip()
         purified = str(r.get(header["purified"], "")).strip() if header["purified"] else ""
-        if not last_patient or not embryo or not (dna_conc or purified):
+        if not last_patient or not embryo or not (dna_conc or purified or run_id):
             continue
-        records.append({"patient": last_patient, "embryo_tag": embryo.upper(), "dna_conc": dna_conc, "purified": purified})
+        records.append({"patient": last_patient, "embryo_tag": embryo.upper(), "dna_conc": dna_conc, "purified": purified, "run": run_id})
     return records
 
 
@@ -211,6 +224,9 @@ def _apply_dna_conc(by_key: dict, dna_records: list[dict]) -> None:
             for field_name, rec_key in ((DNA_UNPURIFIED_FIELD, "dna_conc"), (DNA_PURIFIED_FIELD, "purified")):
                 if joined(rec_key):
                     out[field_name] = joined(rec_key)
+            runs = sorted({m["run"] for m in matches if m.get("run")})
+            if runs:
+                out[RUN_ID_FIELD] = ", ".join(runs)
             by_key[key] = out
 
 
