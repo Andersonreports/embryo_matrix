@@ -530,9 +530,9 @@ dialog.image-lightbox img{display:block;max-width:92vw;max-height:92vh;border-ra
 .ac-total small{font:700 11px "Inter";letter-spacing:.6px;text-transform:uppercase;color:#5d7a73}
 .ac-total strong{font:700 16px "Inter";color:#0b5660;font-variant-numeric:tabular-nums}
 .ac-total span{font-size:12px;color:#7b8a84}
-.ac-head,.ac-row{display:grid;grid-template-columns:56px minmax(180px,1.3fr) minmax(120px,1fr) 90px;align-items:center;gap:16px;padding:0 20px}
+.ac-head,.ac-row{display:grid;grid-template-columns:56px minmax(180px,1.3fr) minmax(120px,1fr) 90px 28px;align-items:center;gap:16px;padding:0 20px}
 .ac-head{position:sticky;top:0;z-index:1;height:40px;background:#f8faf9;border-bottom:1px solid var(--line);font:700 11px "Inter";letter-spacing:.6px;text-transform:uppercase;color:#6b746e}
-.ac-head span:last-child,.ac-row .ac-count{text-align:right}
+.ac-head span:nth-child(4),.ac-row .ac-count{text-align:right}
 .ac-list{max-height:min(620px,calc(100vh - 260px));overflow-y:auto}
 .ac-row{min-height:46px;border-bottom:1px solid #f1f4f2;cursor:pointer;transition:background .18s ease}
 .ac-row:hover,.ac-row:focus-visible{background:#eef7f6;outline:none}
@@ -544,8 +544,30 @@ dialog.image-lightbox img{display:block;max-width:92vw;max-height:92vh;border-ra
 .ac-row.top .ac-bar span{background:linear-gradient(90deg,#0a7180,#20aaa6)}
 .ac-row:hover .ac-bar span{filter:brightness(1.06)}
 .ac-count{font:700 14px "Inter";color:#0b5660;font-variant-numeric:tabular-nums}
+.ac-scope{display:flex;flex-wrap:wrap;gap:6px;padding:10px 16px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:#fff}
+.ac-scope-n{margin-left:4px;font-weight:700;opacity:.7;font-variant-numeric:tabular-nums}
+.ac-name{display:flex;flex-direction:column;min-width:0;padding:6px 0}
+.ac-name-text{overflow:hidden;text-overflow:ellipsis}
+.ac-sub{font:500 11.5px "Inter";color:#7b8a84;margin-top:1px;overflow:hidden;text-overflow:ellipsis}
+.ac-sub.ac-tag-unlisted{color:#a1661a}
+.ac-row.is-zero .ac-name-text,.ac-row.is-zero .ac-count{color:#9aa6a0}
+.ac-toggle{width:26px;height:26px;border:0;border-radius:7px;background:transparent;color:#7b8a84;font-size:13px;cursor:pointer;transition:transform .18s ease,background .18s ease}
+.ac-toggle:hover{background:#dcf1ee;color:#0a6d78}
+.ac-item.open .ac-toggle{transform:rotate(180deg)}
+.ac-item.open .ac-row{background:#f4faf9}
+.ac-detail{padding:4px 20px 14px 92px;border-bottom:1px solid #f1f4f2;background:#f9fcfb}
+.ac-detail-note{margin:6px 0 0;font-size:12.5px;color:#7b8a84}
+.ac-branches{width:100%;border-collapse:collapse;font-size:12.5px}
+.ac-branches th{text-align:left;font:700 10.5px "Inter";letter-spacing:.6px;text-transform:uppercase;color:#6b746e;padding:8px 10px 6px;border-bottom:1px solid var(--line)}
+.ac-branches td{padding:7px 10px;border-bottom:1px solid #eef2f0;color:#33423c}
+.ac-branches th:last-child,.ac-branches td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:#0b5660}
+.ac-branches td.mono{font-variant-numeric:tabular-nums;color:#6b7a73}
+.ac-branches tr.is-zero td{color:#a3ada8}
+.ac-branches tr.is-zero td:last-child{color:#a3ada8;font-weight:500}
+.ac-branches tr.is-unknown td{font-style:italic;color:#7b8a84}
+@media(max-width:900px){.ac-detail{padding:4px 12px 12px}}
 .ac-foot{padding:10px 20px;font-size:12px;color:#7b8a84;border-top:1px solid var(--line);background:#fbfcfc}
-@media(max-width:900px){.ac-kpis{grid-template-columns:1fr 1fr}.ac-top3{grid-template-columns:1fr}.ac-head,.ac-row{grid-template-columns:44px minmax(0,1fr) 70px}.ac-head span:nth-child(3),.ac-row .ac-bar{display:none}}
+@media(max-width:900px){.ac-kpis{grid-template-columns:1fr 1fr}.ac-top3{grid-template-columns:1fr}.ac-head,.ac-row{grid-template-columns:44px minmax(0,1fr) 70px 28px}.ac-head span:nth-child(3),.ac-row .ac-bar{display:none}}
 
 .ac-kpis{display:none!important}
 .ac-top3{display:none!important}
@@ -662,3 +684,17 @@ header .registry-header-actions{margin-left:10px}
 @media(max-width:1560px) and (min-width:721px){.topbar{gap:14px;flex-wrap:nowrap}.topnav{gap:2px;flex-wrap:nowrap;min-width:0}.topnav .nav-item{padding:8px 11px;font-size:14px;gap:8px}.topnav .nav-item span{font-size:16px;width:16px}.topbar .import-data-btn{padding:8px 12px;font-size:14px}}
 @media(max-width:1200px) and (min-width:721px){.topbar .import-data-btn .nav-label{display:none!important}.topnav .nav-item b{display:none!important}}
 .registry-header-actions .toolbar-btn,.registry-header-actions .export-wrap>button{white-space:nowrap;flex-shrink:0}
+
+/* Re-biopsy page toolbar: same controls as the Samples registry header */
+.rb-toolbar{align-items:center}
+.rb-actions{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-left:auto;min-width:0}
+@media(max-width:1100px){.rb-actions{flex-wrap:wrap}}
+.rb-actions .search-wrap{flex:0 1 260px;min-width:180px;height:32px;padding:0 10px}
+.rb-actions .search-wrap input{font-size:12px}
+.rb-actions .toolbar-btn,.rb-actions .export-wrap>button{white-space:nowrap;flex-shrink:0}
+.rb-filters{margin:0 0 16px}
+@media(max-width:700px){.rb-actions{margin-left:0;width:100%}.rb-actions .search-wrap{flex:1 1 100%;max-width:none}}
+
+/* Overview: count charts by samples or embryos */
+.overview-unit-bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin:0 0 14px}
+.overview-unit-label{font:700 11px "Inter";letter-spacing:.6px;text-transform:uppercase;color:#6b7a73}
