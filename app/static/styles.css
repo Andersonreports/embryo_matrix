@@ -683,7 +683,7 @@ header .header-center-toggle{position:static;transform:none;margin-left:auto;fle
 header .registry-header-actions{margin-left:10px}
 /* Search bar: no inner focus ring; the pill itself shows focus. */
 .search-wrap input,.search-wrap input:focus,.search-wrap input:focus-visible{border:0!important;box-shadow:none!important;outline:none!important;background:transparent!important}
-.search-wrap:focus-within{border-color:#9cc9c4!important;box-shadow:0 0 0 3px rgba(10,113,128,.10)}
+.search-wrap:focus-within{border-color:#9cc9c4!important;box-shadow:inset 0 0 0 2px rgba(10,113,128,.10)}
 /* Medium screens: tighter top bar so brand, tabs, Import data and account fit on one row. */
 @media(max-width:1560px) and (min-width:721px){.topbar{gap:14px;flex-wrap:nowrap}.topnav{gap:2px;flex-wrap:nowrap;min-width:0}.topnav .nav-item{padding:8px 11px;font-size:14px;gap:8px}.topnav .nav-item span{font-size:16px;width:16px}.topbar .import-data-btn{padding:8px 12px;font-size:14px}}
 @media(max-width:1200px) and (min-width:721px){.topbar .import-data-btn .nav-label{display:none!important}.topnav .nav-item b{display:none!important}}
