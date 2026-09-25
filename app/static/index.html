@@ -45,6 +45,10 @@
         <div class="generic-header-left hidden" id="genericHeaderLeft"><h2 id="genericHeaderTitle"></h2></div>
         <div class="search-wrap registry-header-search hidden" id="registrySearchWrap"><span>⌕</span><input id="patientSearch" placeholder="Search patient, case ID, test, client…"></div>
         <div class="search-wrap registry-header-search hidden" id="rebiopsyHeaderSearch"><span>⌕</span><input id="rebiopsySearch" placeholder="Search patient, sample ID, client, embryologist…"></div>
+        <div class="prep-segments header-center-toggle hidden" id="rebiopsyViewToggle" role="tablist" aria-label="Row grouping">
+          <button type="button" class="prep-seg active" data-mode="patient" role="tab" aria-selected="true">Patient view</button>
+          <button type="button" class="prep-seg" data-mode="embryo" role="tab" aria-selected="false">Embryo view</button>
+        </div>
         <div class="registry-header-actions hidden" id="rebiopsyHeaderActions">
           <button class="toolbar-btn" id="rebiopsyFreezeToggle"><span>⇤</span> <span id="rebiopsyFreezeLabel">Freeze columns</span></button>
           <button class="toolbar-btn" id="rebiopsyFiltersToggle"><span>▽</span> Filters <b class="filters-badge" id="rebiopsyFiltersBadge">0</b></button>

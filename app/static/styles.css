@@ -561,9 +561,9 @@ dialog.image-lightbox img{display:block;max-width:92vw;max-height:92vh;border-ra
 .ac-item.open .ac-row{background:#f4faf9}
 .ac-detail{padding:4px 20px 14px 92px;border-bottom:1px solid #f1f4f2;background:#f9fcfb}
 .ac-detail-note{margin:6px 0 0;font-size:12.5px;color:#7b8a84}
-.ac-branches{width:100%;border-collapse:collapse;font-size:12.5px}
-.ac-branches th{text-align:left;font:700 10.5px "Inter";letter-spacing:.6px;text-transform:uppercase;color:#6b746e;padding:8px 10px 6px;border-bottom:1px solid var(--line)}
-.ac-branches td{padding:7px 10px;border-bottom:1px solid #eef2f0;color:#33423c}
+.ac-branches{width:auto;max-width:480px;border-collapse:collapse;font-size:12.5px}
+.ac-branches th{text-align:left;font:700 10.5px "Inter";letter-spacing:.6px;text-transform:uppercase;color:#6b746e;padding:8px 16px 6px 0;border-bottom:1px solid var(--line)}
+.ac-branches td{padding:7px 16px 7px 0;border-bottom:1px solid #eef2f0;color:#33423c}
 .ac-branches th:last-child,.ac-branches td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:#0b5660}
 .ac-branches td.mono{font-variant-numeric:tabular-nums;color:#6b7a73}
 .ac-branches tr.is-zero td{color:#a3ada8}
