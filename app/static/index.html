@@ -25,7 +25,7 @@
           <button class="nav-item nav-color-teal active" data-view="overview"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg></span> Overview</button>
           <button class="nav-item nav-color-blue" data-view="samples"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/></svg></span> Samples <b id="caseCount">0</b></button>
           <button class="nav-item nav-color-teal hidden" data-view="reportprep"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 17H8"/><path d="m13.5 12.5 1.5 1.5 3-3"/></svg></span> Report prep <b id="reportPrepNavCount">0</b></button>
-          <button class="nav-item nav-color-red" data-view="rebiopsy"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></span> Re-biopsy <b id="rebiopsyNavCount">0</b></button>
+          <button class="nav-item nav-color-red" data-view="rebiopsy"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></span> Re-biopsy <b id="rebiopsyNavCount">0</b></button>
           <button class="nav-item nav-color-amber" data-view="tests"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7 6.82 21.18a2.83 2.83 0 0 1-3.99-.01a2.83 2.83 0 0 1 0-4L17 3"/><path d="m16 2 6 6"/><path d="M12 16H4"/></svg></span> Tests <b id="testTypeCount">0</b></button>
           <button class="nav-item nav-color-violet" data-view="images"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span> Image vault</button>
           <button class="nav-item nav-color-green" data-view="protocols"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span> Protocols</button>
@@ -39,16 +39,21 @@
         </div>
       </div>
 
-      <header>
-        <button class="text-button hidden" id="headerBackBtn" data-view="overview">← Back</button>
+      <header id="mainHeader" class="hidden">
         <button class="menu-button" aria-label="Toggle menu">☰</button>
         <div class="registry-header-left hidden" id="registryHeaderLeft"><h2>Patient &amp; embryo registry<span class="record-count-badge" id="registryCount"></span></h2></div>
+        <div class="generic-header-left hidden" id="genericHeaderLeft"><h2 id="genericHeaderTitle"></h2></div>
+        <div class="search-wrap registry-header-search hidden" id="registrySearchWrap"><span>⌕</span><input id="patientSearch" placeholder="Search patient, case ID, test, client…"></div>
+        <div class="search-wrap registry-header-search hidden" id="rebiopsyHeaderSearch"><span>⌕</span><input id="rebiopsySearch" placeholder="Search patient, sample ID, client, embryologist…"></div>
+        <div class="registry-header-actions hidden" id="rebiopsyHeaderActions">
+          <button class="toolbar-btn" id="rebiopsyFreezeToggle"><span>⇤</span> <span id="rebiopsyFreezeLabel">Freeze columns</span></button>
+          <button class="toolbar-btn" id="rebiopsyFiltersToggle"><span>▽</span> Filters <b class="filters-badge" id="rebiopsyFiltersBadge">0</b></button>
+        </div>
         <div class="prep-segments header-center-toggle hidden" id="registryViewToggle" role="tablist" aria-label="Row grouping">
           <button type="button" class="prep-seg active" data-mode="patient" role="tab" aria-selected="true">Patient view</button>
           <button type="button" class="prep-seg" data-mode="embryo" role="tab" aria-selected="false">Embryo view</button>
         </div>
         <div class="registry-header-actions hidden" id="registryHeaderActions">
-          <div class="search-wrap"><span>⌕</span><input id="patientSearch" placeholder="Search patient, case ID, test, client…"></div>
           <button class="toolbar-btn" id="sortToggle"><span>⇅</span> <span id="sortToggleLabel">Sheet order</span></button>
           <button class="toolbar-btn" id="freezeToggle" title="Click the pin on any column header to freeze it"><span>⇤</span> <span id="freezeToggleLabel">Freeze columns</span></button>
           <button class="toolbar-btn" id="filtersToggle"><span>▽</span> Filters <b class="filters-badge" id="filtersBadge">0</b></button>
