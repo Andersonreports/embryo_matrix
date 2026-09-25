@@ -1,4 +1,4 @@
-"""Rebuild app/static/clients.js from the master client list.
+"""Rebuild frontend/clients.js from the master client list.
 
     python tools/client_directory/build.py ["client name.xlsx"]
 
@@ -184,7 +184,7 @@ def emit():
     out = (tpl.replace('/*BRANCHES*/[]', data)
               .replace('/*ALIASES*/[]', '[\n' + al + '\n]')
               .replace('/*NOT_LISTED*/[]', json.dumps(NOT_LISTED)))
-    open(ROOT / 'app' / 'static' / 'clients.js', 'w', encoding='utf-8', newline='\n').write(out)
+    open(ROOT / 'frontend' / 'clients.js', 'w', encoding='utf-8', newline='\n').write(out)
 
 emit()
-print(f"{len(rows)} client codes in {len({r['brand'] for r in rows})} clients -> app/static/clients.js")
+print(f"{len(rows)} client codes in {len({r['brand'] for r in rows})} clients -> frontend/clients.js")

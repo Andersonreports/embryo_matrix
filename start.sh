@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/backend"
 
 if [ ! -f ".venv/bin/python" ]; then
     echo "Setting up virtual environment..."

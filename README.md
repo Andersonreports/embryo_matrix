@@ -3,9 +3,9 @@
 This is a clean source-code starter package for IT handover and deployment planning.
 
 ## Architecture
-- Backend: FastAPI + SQLAlchemy
+- `backend/` — FastAPI + SQLAlchemy app (`backend/app/`), `requirements.txt`, `.env`, and the local SQLite database
+- `frontend/` — the HTML/JS/CSS app, served as static files by the backend (no separate build step or server)
 - Database: PostgreSQL in production (SQLite works for local demo)
-- Frontend: simple responsive HTML/JS starter served by FastAPI
 - Authentication: none of its own — this app is designed to run as a module
   behind another gated application. That parent app authenticates the user
   and forwards their identity to this service via `X-Auth-User` / `X-Auth-Role`
@@ -26,9 +26,9 @@ Before production use, IT must perform security review, validation, backup testi
 
 ## Quick local run
 1. Install Python 3.11+
-2. Copy `.env.example` to `.env`
-3. `pip install -r requirements.txt`
-4. `uvicorn app.main:app --reload` (Windows: `start.bat`, Linux/macOS: `./start.sh`)
+2. In `backend/`, copy `.env.example` to `.env`
+3. `pip install -r backend/requirements.txt`
+4. From `backend/`: `uvicorn app.main:app --reload` — or just run `./start.sh` (Linux/macOS) / `start.bat` (Windows) from the project root, which does all of the above
 5. Open http://127.0.0.1:8001
 
 ## Embedding behind a gated app

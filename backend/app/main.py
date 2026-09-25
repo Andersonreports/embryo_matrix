@@ -15,8 +15,9 @@ from sqlalchemy import func
 from .config import settings
 from .database import Base, engine, get_db, SessionLocal
 from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog
-from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue
+from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn
 from .sheet_sync import parse_sources, sync_sources
+from . import cell_edits
 
 Base.metadata.create_all(bind=engine)
 
@@ -41,7 +42,7 @@ _seed_activity_from_upload_log()
 app = FastAPI(title=settings.app_name)
 # The case store is ~11 MB of JSON; compressing it cuts page-load time sharply over the tunnel.
 app.add_middleware(GZipMiddleware, minimum_size=1024)
-STATIC = Path(__file__).parent / "static"
+STATIC = Path(__file__).parent.parent.parent / "frontend"
 UPLOADS = Path(__file__).parent / "uploads"
 UPLOADS.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
@@ -297,6 +298,34 @@ def log_legacy_result_delete(payload: KVValue, request: Request, db: Session = D
     data = payload.value if isinstance(payload.value, dict) else {}
     log_activity(db, "result_delete", f"{data.get('fileName') or 'Earlier upload'} · results removed from {int(data.get('count', 0))} embryo(s)", request=request)
     return {"ok": True}
+
+# --- Manual cell edits: kept in their own .xlsx (see cell_edits.py), not the database ---
+
+@app.get("/api/cell-edits")
+def get_cell_edits():
+    return cell_edits.list_edits()
+
+@app.post("/api/cell-edits")
+def post_cell_edit(payload: CellEditIn, request: Request, db: Session = Depends(get_db)):
+    user = request.state.user or {}
+    try:
+        entry = cell_edits.save_edit(
+            sample_id=payload.sampleId, embryo=payload.embryo, column=payload.column,
+            value=payload.value, user=user.get("username") or "Unknown",
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    where = f"{entry['sampleId']}" + (f" embryo {entry['embryo']}" if entry["embryo"] else "")
+    log_activity(db, "cell_edit", f"{where} · {entry['column']}: '{entry['oldValue']}' → '{entry['value']}'", request=request)
+    return entry
+
+@app.delete("/api/cell-edits")
+def remove_cell_edit(sampleId: str, column: str, embryo: str = "", request: Request = None, db: Session = Depends(get_db)):
+    ok = cell_edits.delete_edit(sampleId, embryo, column)
+    if ok:
+        where = f"{sampleId}" + (f" embryo {embryo}" if embryo else "")
+        log_activity(db, "cell_edit_revert", f"{where} · {column} reverted to sheet value", request=request)
+    return {"ok": ok}
 
 def _require_admin(request: Request):
     if (request.state.user or {}).get("role") != "admin":

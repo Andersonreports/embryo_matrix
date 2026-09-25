@@ -4,7 +4,8 @@ __pycache__/
 .venv/
 venv/
 *.pyc
-app/uploads/
+backend/app/uploads/
+backend/app/data/
 image_sync/sync-config.json
 image_sync/sync-state.json
 image_sync/sync.log

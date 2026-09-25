@@ -25,3 +25,9 @@ class TestCreate(BaseModel):
 
 class KVValue(BaseModel):
     value: Any
+
+class CellEditIn(BaseModel):
+    sampleId: str
+    embryo: str = ""
+    column: str
+    value: str = ""
