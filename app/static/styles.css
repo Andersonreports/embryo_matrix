@@ -437,7 +437,7 @@ dialog.image-lightbox img{display:block;max-width:92vw;max-height:92vh;border-ra
 .prep-table .num{text-align:right;font-variant-numeric:tabular-nums}
 .prep-table td.muted{color:#8b968f;font-variant-numeric:tabular-nums}
 .prep-table td.strong{font-weight:600;color:var(--ink)}
-.prep-table td.mono{font:500 12px "DM Mono",monospace;color:#4d5a54}
+.prep-table td.mono{font:500 13px "Inter",system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:.2px;color:#3f4b45}
 .prep-table td.clip{max-width:220px;overflow:hidden;text-overflow:ellipsis}
 .prep-table td small{color:#9aa6a0}
 .prep-table tbody tr{cursor:pointer;transition:background .15s ease}
