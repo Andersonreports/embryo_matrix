@@ -1,4 +1,5 @@
 import asyncio
+import json
 import secrets
 import shutil
 import time
@@ -68,11 +69,14 @@ def log_activity(db: Session, action: str, detail: str = "", user: dict | None =
 async def identify_user(request: Request, call_next):
     path = request.url.path
     sync_key = request.headers.get("x-image-sync-key", "")
-    if sync_key and path == "/api/images" and request.method == "GET":
+    # Same key covers every "pull files down to the lab PC" endpoint, not just images —
+    # it only ever grants read/list access, never write, so widening its scope is safe.
+    SYNC_PATHS = {"/api/images", "/api/protocols", "/api/result-files"}
+    if sync_key and path in SYNC_PATHS and request.method == "GET":
         if settings.image_sync_token and secrets.compare_digest(sync_key.encode(), settings.image_sync_token.encode()):
-            request.state.user = {"username": "Image sync", "role": "sync"}
+            request.state.user = {"username": "File sync", "role": "sync"}
             return await call_next(request)
-        return JSONResponse({"detail": "Invalid image sync key"}, status_code=401)
+        return JSONResponse({"detail": "Invalid sync key"}, status_code=401)
     username = request.headers.get("x-auth-user", "")
     role = request.headers.get("x-auth-role", "")
     request.state.user = {"username": username, "role": role} if username else {}
@@ -217,26 +221,61 @@ def _save_result_files(db: Session, row, files):
     db.commit()
 
 @app.post("/api/result-files")
-def add_result_file(payload: KVValue, request: Request, db: Session = Depends(get_db)):
+def add_result_file(
+    request: Request,
+    id: str = Form(""),
+    fileName: str = Form(""),
+    run: str = Form(""),
+    at: str = Form(""),
+    samples: str = Form("[]"),
+    sampleNames: str = Form("[]"),
+    matched: int = Form(0),
+    file: UploadFile | None = File(None),
+    db: Session = Depends(get_db),
+):
     """Register an uploaded result file and the samples it filled in, so a later
-    upload for the same samples can be refused until this one is deleted."""
+    upload for the same samples can be refused until this one is deleted. The
+    original spreadsheet itself is saved too (like images/protocols), so it can
+    be synced out to the lab PC instead of only keeping the values we parsed
+    from it."""
     user = request.state.user
-    data = payload.value if isinstance(payload.value, dict) else {}
     row, files = _result_files(db)
+    stored_name = None
+    if file is not None and file.filename:
+        ext = Path(file.filename).suffix
+        stored_name = f"{uuid.uuid4().hex}{ext}"
+        with (UPLOADS / stored_name).open("wb") as out:
+            shutil.copyfileobj(file.file, out)
     entry = {
-        "id": str(data.get("id") or uuid.uuid4().hex),
-        "fileName": str(data.get("fileName") or ""),
-        "run": str(data.get("run") or ""),
-        "at": data.get("at"),
-        "samples": [str(k) for k in data.get("samples", [])],
-        "sampleNames": [str(k) for k in data.get("sampleNames", [])],
-        "matched": int(data.get("matched", 0)),
+        "id": id or uuid.uuid4().hex,
+        "fileName": fileName,
+        "run": run,
+        "at": at,
+        "samples": json.loads(samples) if samples else [],
+        "sampleNames": json.loads(sampleNames) if sampleNames else [],
+        "matched": matched,
         "by": user.get("username") or "",
         "role": user.get("role") or "",
+        "filePath": stored_name,
     }
     files.append(entry)
     _save_result_files(db, row, files)
     return {"value": files}
+
+@app.get("/api/result-files")
+def list_result_files_for_sync(since: str = "", db: Session = Depends(get_db)):
+    """For the lab PC sync script: every uploaded result file that actually has a
+    stored original (older entries made before file storage was added have none)."""
+    _, files = _result_files(db)
+    files = [f for f in files if f.get("filePath")]
+    if since:
+        files = [f for f in files if str(f.get("at") or "") > since]
+    files.sort(key=lambda f: str(f.get("at") or ""))
+    return [{
+        "id": f["id"], "fileName": f.get("fileName"), "run": f.get("run"),
+        "at": f.get("at"), "matched": f.get("matched"),
+        "url": f"/uploads/{f['filePath']}",
+    } for f in files]
 
 @app.delete("/api/result-files/{file_id}")
 def delete_result_file(file_id: str, request: Request, db: Session = Depends(get_db)):
@@ -244,6 +283,10 @@ def delete_result_file(file_id: str, request: Request, db: Session = Depends(get
     gone = next((f for f in files if f.get("id") == file_id), None)
     files = [f for f in files if f.get("id") != file_id]
     _save_result_files(db, row, files)
+    if gone and gone.get("filePath"):
+        path = UPLOADS / gone["filePath"]
+        if path.exists():
+            path.unlink()
     label = (gone or {}).get("fileName") or file_id
     log_activity(db, "result_delete", f"{label} · results removed from {len((gone or {}).get('samples', []))} embryo(s)", request=request)
     return {"value": files}
@@ -371,8 +414,11 @@ def upload_protocol(
     }
 
 @app.get("/api/protocols")
-def list_protocols(db: Session = Depends(get_db)):
-    rows = db.query(ProtocolDocument).order_by(ProtocolDocument.uploaded_at.desc()).all()
+def list_protocols(since_id: int = 0, db: Session = Depends(get_db)):
+    q = db.query(ProtocolDocument)
+    if since_id:
+        q = q.filter(ProtocolDocument.id > since_id)
+    rows = q.order_by(ProtocolDocument.uploaded_at.desc()).all()
     return [{
         "id": r.id, "title": r.title, "filename": r.filename,
         "url": f"/uploads/{r.file_path}", "uploadedAt": r.uploaded_at.isoformat(),
