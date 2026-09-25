@@ -423,6 +423,8 @@ dialog.image-lightbox img{display:block;max-width:92vw;max-height:92vh;border-ra
 .import-view .upload-log-table col.c-time{width:9%}
 
 .stats{grid-template-columns:repeat(5,1fr)}
+.stats.stats-3col{grid-template-columns:repeat(3,1fr);margin-bottom:20px}
+@media(max-width:900px){.stats.stats-3col{grid-template-columns:1fr}}
 .stats article.stat-card.tone-violet{--tone:#6b4fc4;--tone-2:#9a7fe6;--tone-soft:#ece6fb}
 .stat-card-link{cursor:pointer}
 .stat-card-link:focus-visible{outline:2px solid var(--tone);outline-offset:2px}
@@ -717,21 +719,32 @@ header .registry-header-actions{margin-left:10px}
 .embryo-kv th{font:600 11.5px "Inter";letter-spacing:0;text-transform:none;color:#6b7a73;background:#f7faf9;border-bottom:1px solid #eef2f0}
 .embryo-kv td{color:#26352f;font-variant-numeric:tabular-nums}
 #homeStats{margin-bottom:16px}
-.run-list-panel{padding:0}
-.run-list-panel .panel-title{padding:20px 24px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.run-list-panel{background:transparent;border:0;box-shadow:none}
+.run-list-panel .panel-title{padding:0 0 16px}
 .run-list-panel .panel-title h2{font:500 19px "Lora";margin:0 0 4px}
 .run-list-panel .panel-title p{font-size:12px;color:var(--muted);margin:0}
 #runSearchWrap{max-width:280px}
-.run-list-head{display:grid;grid-template-columns:1.7fr .7fr .8fr .9fr 1fr .8fr .8fr .9fr;gap:8px;padding:10px 24px;background:#f8faf7;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font:700 10.5px "Inter";letter-spacing:.5px;text-transform:uppercase;color:#7a857e}
-.run-row{display:grid;grid-template-columns:1.7fr .7fr .8fr .9fr 1fr .8fr .8fr .9fr;gap:8px;align-items:center;padding:14px 24px;border-bottom:1px solid #edf0eb;cursor:pointer;font-size:13px;color:#3d4b43}
-.run-row:last-child{border-bottom:0}
-.run-row:hover{background:#f7faf6}
-.run-row-name{display:flex;flex-direction:column;gap:2px;min-width:0}
-.run-row-name strong{font-size:13.5px}
-.run-row-name small{color:#8b968f;font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.run-euploid{color:#286847;font-weight:700}
-.run-aneuploid{color:#a04f3d;font-weight:700}
-.run-pass{color:#0b5660;font-weight:700}
-.run-fail{color:#8a928d;font-weight:700}
+.batch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+.batch-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:18px;box-shadow:var(--shadow);cursor:pointer;display:flex;flex-direction:column;gap:12px}
+.batch-card:hover{border-color:#bcd6d2;box-shadow:0 4px 14px rgba(20,42,29,.08)}
+.batch-card:focus-visible{outline:2px solid #0a7180;outline-offset:2px}
+.batch-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.batch-run{display:block;font:500 16px "Lora"}
+.batch-file{display:block;color:#8b968f;font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px;margin-top:2px}
+.batch-date{flex-shrink:0;font-size:10.5px;color:#8b968f;background:#f2f5f1;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.batch-samples{font-size:12px;color:#5c665f}
+.batch-samples strong{font:700 18px "Inter";color:#20302a;margin-right:4px}
+.batch-bar{display:flex;height:7px;border-radius:5px;overflow:hidden;background:#eef2ee}
+.batch-bar span{height:100%}
+.batch-bar .seg-euploid{background:#3a8a63}
+.batch-bar .seg-aneuploid{background:#c0604a}
+.batch-bar .seg-mosaic{background:#d9a94a}
+.batch-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:#4d5852}
+.batch-legend .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.batch-legend .dot.euploid{background:#3a8a63}
+.batch-legend .dot.aneuploid{background:#c0604a}
+.batch-legend .dot.mosaic{background:#d9a94a}
+.batch-qc{display:flex;gap:14px;font-size:11px;font-weight:700;padding-top:10px;border-top:1px solid #edf0eb}
+.batch-qc .qc-pass{color:#0b5660}
+.batch-qc .qc-fail{color:#8a928d}
 .run-list-panel .muted{color:#8b968f;font-size:12px}
-@media(max-width:900px){.run-list-head{display:none}.run-row{grid-template-columns:1fr 1fr 1fr;row-gap:6px}}
