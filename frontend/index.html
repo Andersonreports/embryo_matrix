@@ -68,14 +68,18 @@
 
       <section class="content" id="homeView">
         <div class="stats" id="homeStats">
-          <article><div><small>TOTAL BATCHES</small><strong id="homeBatchesStat">0</strong><p>Result files uploaded to date</p></div><span class="stat-icon blue">📦</span></article>
+          <article><div><small>TOTAL BATCHES</small><strong id="homeBatchesStat">0</strong><p id="homeBatchesSub">Sequencing runs in the batch record</p></div><span class="stat-icon blue">📦</span></article>
           <article><div><small>TOTAL EMBRYOS</small><strong id="homeEmbryosStat">0</strong><p>Across every sample</p></div><span class="stat-icon green">🧬</span></article>
           <article><div><small>ONGOING</small><strong id="homeOngoingStat">0</strong><p>Samples still in progress</p></div><span class="stat-icon amber">⏳</span></article>
           <article><div><small>COMPLETED</small><strong id="homeCompletedStat">0</strong><p>Report sent to client</p></div><span class="stat-icon violet">✔</span></article>
         </div>
         <section class="panel run-list-panel">
-          <div class="panel-title"><div><h2>Batches</h2><p>Every sequencing run's result file, most recent first. Click one for its sample-wise breakdown.</p></div><div class="search-wrap" id="runSearchWrap"><span>⌕</span><input id="runSearch" placeholder="Search run number or file name…"></div></div>
-          <div id="runList" class="batch-grid"><div class="chart-empty">Loading…</div></div>
+          <div class="panel-title"><div><h2>Batches</h2><p>Run-wise, month by month. Each live-sheet sample is placed by its Run ID (sequencing sheet) and WGA batch (WGA sheet); earlier months come from the monthly run reports. Click a run for its samples.</p></div><div class="search-wrap" id="runSearchWrap"><span>⌕</span><input id="runSearch" placeholder="Search run, platform or patient…"></div></div>
+          <div id="runList"><div class="chart-empty">Loading…</div></div>
+        </section>
+        <section class="panel run-list-panel hidden" id="embIncPanel">
+          <div class="panel-title"><div><h2>Embryologist-wise inconclusive rate</h2><p><span id="embIncPeriod"></span> · highest inconclusive % first</p></div></div>
+          <div class="prep-table-wrap emb-inc-wrap" id="embIncTable"></div>
         </section>
       </section>
 

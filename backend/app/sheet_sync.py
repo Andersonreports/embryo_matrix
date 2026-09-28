@@ -14,6 +14,10 @@ from .models import KVStore
 IMPORTED_CASES_KEY = "embryomatrix-imported-cases"
 IMPORT_HISTORY_KEY = "embryomatrix-import-history"
 SYNC_STATUS_KEY = "embryomatrix-sheet-sync-status"
+# Run blocks from the Sequencing Batch Record sheet - what the Home page lists as batches.
+SEQ_RUNS_KEY = "embryomatrix-sequencing-runs"
+# WGA batch blocks from the WGA batch record sheet, shown alongside the runs.
+WGA_BATCHES_KEY = "embryomatrix-wga-batches"
 # DNA readings from the WGA batch sheets, per embryo tag ("AS1: 18.8, AS2: 25").
 DNA_UNPURIFIED_FIELD = "dna conc unpurified"
 DNA_PURIFIED_FIELD = "dna conc purified"
@@ -194,6 +198,102 @@ def _extract_dna_records(rows: list[dict]) -> list[dict]:
     return records
 
 
+# Block-header label -> stored field. The first entry starts a new block.
+_RUN_META_LABELS = {"run id": "runId", "run date": "runDate", "seq type": "seqType",
+                    "seq platform": "platform", "instrument id": "instrument", "operator": "operator"}
+_WGA_META_LABELS = {"wga batch no": "runId", "processing date": "runDate",
+                    "instrument name": "platform", "instrument id": "instrument"}
+# Sample-table column label (lowercased, as typed in the sheet) -> stored field.
+_RUN_SAMPLE_COLUMNS = {"s. no.": "sno", "biopsy date": "biopsy", "received date": "received",
+                       "sample type": "sampleType", "patient name": "patient", "embryo tag": "embryo",
+                       "volume": "volume", "pool number": "pool", "index id": "index",
+                       "barcode / index": "index", "i7": "i7", "i5": "i5", "remarks": "remarks"}
+
+
+def _round_num(v: str) -> str:
+    try:
+        f = float(v)
+    except ValueError:
+        return v
+    return str(int(f)) if f.is_integer() else f"{f:.2f}".rstrip("0").rstrip(".")
+
+
+def _extract_batch_blocks(rows: list[dict], meta_labels: dict[str, str]) -> list[dict]:
+    """Splits a batch-record tab into its blocks. Each block opens with a BATCH
+    IDENTIFICATION section (e.g. "Run ID | 106A" / "WGA Batch No | 4", then date,
+    platform/instrument lines) followed by its sample table. A tab without the
+    block's opening label returns []."""
+    id_label = next(iter(meta_labels))
+    def first_filled(r):
+        return [str(v).strip() for v in r.values() if str(v).strip()]
+    if not any((cells := first_filled(r)) and cells[0].lower() == id_label for r in rows):
+        return []
+    runs, cur, cols, last_cols = [], None, None, None
+    carried, in_samples = {}, False
+    for r in rows:
+        cells = first_filled(r)
+        if not cells:
+            continue
+        label = cells[0].lower()
+        if label in meta_labels:
+            if label == id_label:
+                cur = {"runId": cells[1] if len(cells) > 1 else "", "samples": []}
+                runs.append(cur)
+                cols, carried, in_samples = None, {}, False
+            elif cur is not None:
+                cur[meta_labels[label]] = cells[1] if len(cells) > 1 else ""
+            continue
+        if cur is None:
+            continue
+        labels = {str(v).strip().lower(): k for k, v in r.items() if str(v).strip()}
+        if "patient name" in labels and "embryo tag" in labels:
+            cols = {field: labels[lbl] for lbl, field in _RUN_SAMPLE_COLUMNS.items() if lbl in labels}
+            dna = next((k for lbl, k in labels.items() if lbl.startswith("dna conc")), None)
+            purified = next((k for lbl, k in labels.items() if "purified" in lbl and "conc" in lbl), None)
+            if dna:
+                cols["dnaConc"] = dna
+            if purified:
+                cols["purified"] = purified
+            last_cols = cols
+            continue
+        if label in ("sample details", "sample processing details"):
+            in_samples = True
+            continue
+        if label == "sno":
+            cols, in_samples = None, False  # the library-pooling table under each run's samples
+            continue
+        if not cols and in_samples and last_cols:
+            cols = last_cols  # this block's sample table has no header row of its own
+        if not cols:
+            continue
+        s = {field: str(r.get(key, "")).strip() for field, key in cols.items()}
+        # Some runs type the sample name "SAMIKSHAGUPTA-SD-1" in Patient Name and leave Embryo Tag empty.
+        if not s.get("embryo") and "-" in s.get("patient", ""):
+            s["patient"], s["embryo"] = (p.strip() for p in s["patient"].split("-", 1))
+        # Numbered rows only - the reagent tables below reuse these columns.
+        if not s.get("sno", "").isdigit() or not (s.get("embryo") or s.get("patient")):
+            continue
+        # Patient name and dates are only typed on a patient's first embryo row.
+        if s.get("patient"):
+            carried = {f: s.get(f, "") for f in ("patient", "received", "biopsy")}
+        for f, v in carried.items():
+            if f in cols or f == "patient":
+                s[f] = s.get(f) or v
+        for f in ("dnaConc", "purified", "volume"):
+            if s.get(f):
+                s[f] = _round_num(s[f])
+        cur["samples"].append(s)
+    return [run for run in runs if run["runId"]]
+
+
+def _extract_sequencing_runs(rows: list[dict]) -> list[dict]:
+    return _extract_batch_blocks(rows, _RUN_META_LABELS)
+
+
+def _extract_wga_batches(rows: list[dict]) -> list[dict]:
+    return _extract_batch_blocks(rows, _WGA_META_LABELS)
+
+
 def _apply_dna_conc(by_key: dict, dna_records: list[dict]) -> None:
     """Merges DNA concentration readings (identified only by patient name + a
     per-embryo tag, e.g. 'KK2') onto the coarser per-specimen tracker rows
@@ -247,6 +347,8 @@ def sync_sources(db: Session, sheet_ids: list[str]) -> dict:
     errors = []
     tab_labels = []
     dna_records = []
+    seq_runs = []
+    wga_batches = []
     imported_at = datetime.now(timezone.utc).isoformat()
 
     for sheet_id in sheet_ids:
@@ -258,6 +360,8 @@ def sync_sources(db: Session, sheet_ids: list[str]) -> dict:
         for label, rows in tabs:
             tab_labels.append(label)
             dna_records.extend(_extract_dna_records(rows))
+            seq_runs.extend({**run, "tab": label} for run in _extract_sequencing_runs(rows))
+            wga_batches.extend({**b, "tab": label} for b in _extract_wga_batches(rows))
             for r in rows:
                 # A cell that just repeats its own column heading (e.g. "Transfer
                 # Details" typed under the Transfer Details column) isn't data.
@@ -341,6 +445,15 @@ def sync_sources(db: Session, sheet_ids: list[str]) -> dict:
         history_row.value = history[:100]
     else:
         db.add(KVStore(key=IMPORT_HISTORY_KEY, value=history[:100]))
+
+    # Keep the last good list if a batch-record workbook failed to fetch this round.
+    for store_key, blocks in ((SEQ_RUNS_KEY, seq_runs), (WGA_BATCHES_KEY, wga_batches)):
+        if blocks or not errors:
+            row = db.get(KVStore, store_key)
+            if row:
+                row.value = blocks
+            else:
+                db.add(KVStore(key=store_key, value=blocks))
 
     status = {
         "lastSyncedAt": imported_at, "added": added, "updated": updated, "skipped": skipped,
