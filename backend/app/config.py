@@ -1,8 +1,14 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# backend/ — anchor the DB and .env here so they resolve the same whatever
+# directory the server is launched from.
+BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 class Settings(BaseSettings):
     app_name: str = "Embryo Matrix"
-    database_url: str = "sqlite:///./embryomatrix.db"
+    database_url: str = f"sqlite:///{(BACKEND_DIR / 'embryomatrix.db').as_posix()}"
     # Pipe-separated Google Sheet IDs. Each must be shared as "Anyone with the
     # link – Viewer" so the export endpoint is readable without auth. Every tab
     # in the spreadsheet is fetched automatically, so new tabs (e.g. next
@@ -20,6 +26,6 @@ class Settings(BaseSettings):
     # Key for image_sync/sync-images.ps1 (runs on the lab's storage PC and
     # pulls new embryo images down). It can only list images. Blank = disabled.
     image_sync_token: str = ""
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", extra="ignore")
 
 settings = Settings()
