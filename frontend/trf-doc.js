@@ -28,29 +28,49 @@ function trfPagesHtml(d,meta={},opts={}){
  const box=(group,value,label,on,radio=false)=>edit
   ?`<label class="td-check"><input type="${radio?'radio':'checkbox'}" ${radio?`name="trf-${group}"`:''} data-g="${group}" value="${esc(value)}"${on?' checked':''}>${esc(label)}</label>`
   :`<span class="td-check"><span class="td-box${on?' on':''}">${on?'✓':''}</span>${esc(label)}</span>`;
+ // A blank filled in *inline*, mid-sentence (Form G's fill-in-the-blank legal wording).
+ const blank=(key,ch=16)=>edit
+  ?`<input class="td-input td-inline" data-f="${key}" style="width:${ch}ch" value="${esc(d[key])}">`
+  :`<span class="td-blank">${d[key]?esc(d[key]):''}</span>`;
+ // Mirrors a value entered elsewhere on the form (e.g. patientName from Patient Information); never its own input.
+ const mirror=(key,type)=>`<span class="td-blank">${d[key]?(type==='date'?fmtDate(d[key]):esc(d[key])):''}</span>`;
  const section=(title,body)=>`<section class="td-section"><h3>${title}</h3><div class="td-body">${body}</div></section>`;
- const head=title=>`<header class="td-head"><img src="/static/anderson-logo.png" alt="Anderson Diagnostics &amp; Labs"><div><div class="td-kicker">Preimplantation Genetic Testing</div><h2>${title}</h2></div></header>`;
- const refBox=`<div class="td-refbox"><div>${line('Date of Biopsy:','biopsyDate','date')}</div><div class="td-ref">${meta.ref?`TRF ref: <b>${esc(meta.ref)}</b>`:(edit?'<i>Reference number is given on submit</i>':'')}${meta.submittedAt?`<span>Submitted ${esc(new Date(meta.submittedAt).toLocaleString())}</span>`:''}</div></div>`;
- const page1=`<div class="td-page">${head('Test Requisition Form')}<p class="td-note-strong">ALL Sections of this form must be completed.</p>${refBox}
+ // Groups sections into one continuous outlined panel, like the paper form's single bordered column.
+ const panel=(...sections)=>`<div class="td-panel">${sections.join('')}</div>`;
+ const curves=`<div class="td-curve-top"></div><div class="td-curve-bottom"></div>`;
+ const footer=n=>`<div class="td-footer"><p class="td-services">PGT-A, PGT-M &amp; PGT-SR | Clinical Exome Sequencing | Microarray | Male Infertility | Recurrent Pregnancy Loss | Carrier Screening | Amniotic Fluid Testing | POC Analysis | NIPS<br>Fertility Genetics | Genetic Counseling | Oncogenetics | Neurogenetics | Infectious Genetics | New Born Screening</p><span class="td-pagenum">Pg.${n} of 3</span></div>`;
+ const logoRow=`<div class="td-logorow"><img src="/static/anderson-logo.png" alt="Anderson Diagnostics &amp; Labs"><div class="td-kicker">Preimplantation Genetic Testing</div></div>`;
+ const titleRow=(title,noteHtml,boxHtml)=>`<div class="td-titlerow"><div><h2 class="td-title">${title}</h2>${noteHtml||''}</div><div class="td-titlebox">${boxHtml||''}</div></div>`;
+ const refInfo=meta.ref?`TRF ref: <b>${esc(meta.ref)}</b>`:(edit?'<i>Reference number is given on submit</i>':'');
+ const refBox=`<div class="td-refbox"><div>${line('Date of Biopsy:','biopsyDate','date')}</div>${(refInfo||meta.submittedAt)?`<div class="td-ref">${refInfo}${meta.submittedAt?`<span>Submitted ${esc(new Date(meta.submittedAt).toLocaleString())}</span>`:''}</div>`:''}</div>`;
+ const barcodeBox=`<div class="td-barcode"><i>Affix barcode label here</i></div>`;
+ const page1=`<div class="td-page">${curves}${logoRow}
+  ${titleRow('Test Requisition Form','<p class="td-note-strong">ALL Sections of this form must be completed.</p>',refBox+barcodeBox)}
   <div class="td-grid">
-   <div>${section('Referring details',line('Referring Doctor:','referringDoctor')+line('Name of Hospital / IVF Centre:','hospital','text',edit?' list="trfClinicList" autocomplete="off"':'')+line('Address:','address')+line('Phone:','phone','tel')+line('Email:','email','email'))}
-    ${section('Test requested'+(edit?' <b class="td-req">*</b>':''),Object.entries(TRF_TEST_LABELS).map(([k,l])=>`<div>${box('tests',k,l,tests.includes(k))}</div>`).join(''))}
-    ${section('Specimen details',line('Specimen Collection Date:','collectionDate','date')+line('Specimen Collection Time:','collectionTime','time')+`<div class="td-row">${['Day 3','Day 5','Day 6'].map(x=>box('biopsyDay',x,x+' Biopsy',d.biopsyDay===x,true)).join('')}</div><div class="td-row"><span class="td-label">IVF Cycle — Gametes:</span>${['Self','Donor Sperm','Donor Oocyte'].map(x=>box('gametes',x,x,gametes.includes(x))).join('')}</div>`+line('If Donor is used: Age of Donor:','donorAge'))}</div>
-   <div>${section('Patient Information',line('Patient Name:','patientName')+line('Date of Birth:','patientDob','date')+line('UHID:','uhid')+line('Aadhaar Card No:','aadhaar','text',edit?' inputmode="numeric" maxlength="14" placeholder="12 digits"':'')+line("Husband's Name:",'husbandName')+line('Date of Birth:','husbandDob','date')+line('Email:','patientEmail','email'))}
-    ${section('Test Indication',para('testIndication'))}
-    ${section('Patient Clinical History',para('clinicalHistory'))}
-    ${section('Karyotyping Details',line('Maternal Karyotype:','maternalKaryotype')+line('Paternal Karyotype:','paternalKaryotype'))}</div>
+   ${panel(
+     section('Referring details',line('Referring Doctor:','referringDoctor')+line('Name of Hospital /IVF Centre:','hospital','text',edit?' list="trfClinicList" autocomplete="off"':'')+line('Address:','address')+line('Phone:','phone','tel')+line('Email:','email','email')),
+     section('Test requested'+(edit?' <b class="td-req">*</b>':''),Object.entries(TRF_TEST_LABELS).map(([k,l])=>`<div>${box('tests',k,l,tests.includes(k))}</div>`).join('')),
+     section('Specimen details',line('Specimen Collection Date:','collectionDate','date')+line('Specimen Collection Time:','collectionTime','time')+`<div class="td-row">${['Day 3','Day 5','Day 6'].map(x=>box('biopsyDay',x,x+' Biopsy',d.biopsyDay===x,true)).join('')}</div><p class="td-label td-sublabel">IVF Cycle details:</p><div class="td-row"><span class="td-label">Gametes:</span>${['Self','Donor Sperm','Donor Oocyte'].map(x=>box('gametes',x,x,gametes.includes(x))).join('')}</div>`+line('If Donor is used: Age of Donor;','donorAge'))
+   )}
+   ${panel(
+     section('Patient Information',line('Patient Name:','patientName')+line('Date of Birth:','patientDob','date')+line('UHID:','uhid')+line('Aadhaar Card No:','aadhaar','text',edit?' inputmode="numeric" maxlength="14" placeholder="12 digits"':'')+line("Husband's Name:",'husbandName')+line('Date of Birth:','husbandDob','date')+line('Email:','patientEmail','email')),
+     section('Test Indication',para('testIndication')),
+     section('Patient Clinical History',para('clinicalHistory')),
+     section('Karyotyping Details',line('Maternal Karyotype:','maternalKaryotype')+line('Paternal Karyotype:','paternalKaryotype'))
+   )}
   </div>
   <div class="td-sign"><div>Patient Signature: <span></span></div><div>Clinician Signature: <span></span><br>Clinician Seal:</div></div>
   <p class="td-small">Storage and Transport: Store and ship refrigerated at -20ºC</p>
-  <p class="td-tiny">CONFIDENTIAL WHEN COMPLETED. The personal health information is collected for the purpose of clinical laboratory testing only. Specimen processing at Central processing Lab at 150 PH Road, No. 150, Poonamallee High Road, (Opp to Dasaprakash Hotel) Chennai – 600 084.</p></div>`;
+  <p class="td-tiny">CONFIDENTIAL WHEN COMPLETED. The personal health information is collected for the purpose of clinical laboratory testing only. Specimen processing at Central processing Lab at 150 PH Road, No. 150, Poonamallee High Road, (Opp to Dasaprakash Hotel) Chennai – 600 084.</p>
+  ${footer(1)}</div>`;
  const cellIn=(k,v,type='text')=>`<input class="td-cell" data-e="${k}" type="${type}" value="${esc(v)}">`;
  const cellSel=(k,v,choices)=>`<select class="td-cell" data-e="${k}"><option value=""></option>${choices.map(c=>`<option${v===c?' selected':''}>${c}</option>`).join('')}</select>`;
  const embryoRow=(e,i)=>edit
   ?`<tr><td class="td-n">${i+1}</td><td>${cellIn('label',e.label)}</td><td>${cellIn('grade',e.grade)}</td><td>${cellIn('cells',e.cells)}</td><td>${cellSel('day',e.day,['Day 5','Day 6'])}</td><td>${cellSel('intact',e.intact,['Yes','No'])}</td><td>${cellIn('comments',e.comments)}</td><td class="td-x"><button type="button" class="td-remove" aria-label="Remove this embryo">×</button></td></tr>`
   :`<tr><td>${embryos.length?i+1:''}</td><td>${esc(e.label)}</td><td>${esc(e.grade)}</td><td>${esc(e.cells)}</td><td>${esc(e.day)}</td><td>${esc(e.intact)}</td><td>${esc(e.comments)}</td></tr>`;
  const rows=embryos.length?embryos:(edit?[{},{},{}]:[{}]);
- const page2=`<div class="td-page">${head('Biopsy worksheet')}
+ const page2=`<div class="td-page">${curves}${logoRow}
+  ${titleRow('Biopsy worksheet','',barcodeBox)}
   <table class="td-meta"><tr><td><div class="td-line"><span class="td-label">Patient name:</span><span class="td-value td-mirror">${esc(d.patientName)||'&nbsp;'}</span></div></td><td><div class="td-line"><span class="td-label">Date of Biopsy:</span><span class="td-value td-mirror-date">${d.biopsyDate?fmtDate(d.biopsyDate):'&nbsp;'}</span></div></td></tr><tr><td>${line('IVF Lab contact No.:','ivfLabContact','tel')}</td><td><span class="td-label">Re-biopsy included in this case:</span> ${box('rebiopsy','Yes','Yes',d.rebiopsy==='Yes',true)}${box('rebiopsy','No','No',d.rebiopsy==='No',true)}</td></tr></table>
   <table class="td-embryos"><thead><tr><th>Sl No.</th><th>Embryo label${edit?' <b class="td-req">*</b>':''}</th><th>Embryo Grade</th><th>No. of cells biopsied</th><th>Day 5/ Day 6</th><th>Intact cells observed (Yes/No)</th><th>Comments</th>${edit?'<th></th>':''}</tr></thead><tbody class="td-embryo-rows">${rows.map(embryoRow).join('')}</tbody></table>
   ${edit?'<button type="button" class="td-add">＋ Add embryo row</button>':''}
@@ -58,8 +78,27 @@ function trfPagesHtml(d,meta={},opts={}){
   <p>${box('dryRun','yes','Embryo Biopsy dry run',!!d.dryRun)}</p>
   <div class="td-grid td-grid-tight"><div>${line('Embryologist Name:','embryologistName')}</div><div>Embryologist Signature: <span class="td-signline"></span></div></div>
   ${line('Embryologist email address:','embryologistEmail','email')}
-  <p class="td-small">Contact Anderson Diagnostics and Labs with any questions at enquiries@andersondiagnostics.com</p></div>`;
- return page1+page2;
+  <p class="td-small">Contact Anderson Diagnostics and Labs with any questions at enquiries@andersondiagnostics.com</p>
+  ${footer(2)}</div>`;
+ const relationInline=edit
+  ?`${box('consentRelation','Wife','Wife',d.consentRelation==='Wife',true)}${box('consentRelation','Daughter','Daughter',d.consentRelation==='Daughter',true)}`
+  :`<b>${d.consentRelation?esc(d.consentRelation.toLowerCase()):'wife/daughter'}</b>`;
+ const page3=`<div class="td-page">${curves}
+  <div class="td-formg-title"><h2>FORM G – FORM OF CONSENT</h2><p>[See Rule 10]</p></div>
+  <p class="td-legal">I, ${mirror('patientName')}, ${relationInline} of ${blank('consentGuardianName',22)}. Age ${blank('consentAge',4)} years residing at ${blank('patientAddress',42)}, hereby state that I have been explained fully the probable side effects and after effects of the pre-natal diagnostic procedures. I wish to undergo the pre-natal diagnostic procedures in my interest to find out the possibility of any abnormality (i.e. deformity or disorder) in the child I am carrying.</p>
+  <p class="td-legal">I undertake not to terminate the pregnancy if the pre-natal procedure and any pre-natal tests conducted show the absence of deformity or disorders. I understand that the sex of the fetus will not be disclosed to me.</p>
+  <p class="td-legal">I understand that breach of this undertaking will make me liable to penalty as prescribed in the Pre-natal Diagnostic Techniques (Regulation and Prevention of Misuse) Act, 1994 (57 of 1994).</p>
+  <div class="td-grid td-grid-tight"><div>Patient Signature: <span class="td-signline"></span></div><div>${line('Date:','consentDate','date')}</div></div>
+  ${line('Place:','consentPlace')}
+  <p class="td-legal">I have explained the contents of the above consent to the patient and her companion (Name ${blank('companionName',18)} Address ${blank('companionAddress',24)} Relationship with patient ${blank('companionRelation',14)}) in a language she/they understand.</p>
+  <p class="td-legal-label">Name, Signature and/Registration number of Gynaecologist</p>
+  <div class="td-grid td-grid-tight">${line('Name:','gynaecologistName')}${line('Registration No.:','gynaecologistRegNo')}</div>
+  ${line('Date:','explanationDate','date')}
+  <p class="td-legal-label">Name, Address and Registration number of Genetic Clinic</p>
+  <div class="td-grid td-grid-tight">${line('Name:','geneticClinicName')}${line('Registration No.:','geneticClinicRegNo')}</div>
+  ${line('Address:','geneticClinicAddress')}
+  ${footer(3)}</div>`;
+ return page1+page2+page3;
 }
 // Reads an editable template back into the same data shape the server stores.
 function trfCollect(root){const d={};
@@ -92,6 +131,23 @@ function trfFormHtml(d={}){
   <button type="button" class="td-add tf-add">＋ Add embryo</button>
   <p class="tf-hint">Label negative controls NC1, NC2, etc. If sending several, say in Comments which embryos each NC belongs to.</p>
   <div class="tf-grid">${opt('dryRun','yes','Embryo Biopsy dry run',!!d.dryRun)}<span></span>${f('embryologistName','Embryologist Name')}${f('embryologistEmail','Embryologist email address','email')}</div>`,'One row per embryo biopsied.')}
+ ${card(7,'Consent (Form G)',`<div class="tf-grid">
+  <div class="tf-field"><span>Patient is</span><div class="tf-opts">${opt('consentRelation','Wife','Wife',d.consentRelation==='Wife',true)}${opt('consentRelation','Daughter','Daughter',d.consentRelation==='Daughter',true)}</div></div>
+  ${f('consentGuardianName','Name of husband / father')}
+  ${f('consentAge','Age (years)','text',' inputmode="numeric"')}
+  ${f('consentDate','Date of consent','date')}
+  ${f('consentPlace','Place')}
+  <label class="tf-field tf-wide"><span>Residing address</span><textarea data-f="patientAddress" rows="2">${esc(d.patientAddress)}</textarea></label>
+  ${f('companionName',"Companion's name")}
+  ${f('companionRelation',"Companion's relationship to patient")}
+  <label class="tf-field tf-wide"><span>Companion's address</span><textarea data-f="companionAddress" rows="2">${esc(d.companionAddress)}</textarea></label>
+  ${f('gynaecologistName',"Gynaecologist's name")}
+  ${f('gynaecologistRegNo',"Gynaecologist's registration no.")}
+  ${f('explanationDate','Date explained to patient','date')}
+  ${f('geneticClinicName','Genetic clinic name')}
+  ${f('geneticClinicRegNo','Genetic clinic registration no.')}
+  <label class="tf-field tf-wide"><span>Genetic clinic address</span><textarea data-f="geneticClinicAddress" rows="2">${esc(d.geneticClinicAddress)}</textarea></label>
+ </div>`,'Statutory PNDT Act consent (Form G). Signatures are still signed on the printed copy.')}
  <p class="tf-foot">Storage and transport: store and ship refrigerated at -20ºC. CONFIDENTIAL WHEN COMPLETED — the personal health information is collected for clinical laboratory testing only.</p>
  </div>`}
 // Wires the digital form: add / remove embryo rows (always keeping one).

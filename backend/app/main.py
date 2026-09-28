@@ -481,6 +481,10 @@ TRF_TEXT_FIELDS = (
     "patientName", "patientDob", "uhid", "aadhaar", "husbandName", "husbandDob", "patientEmail",
     "collectionDate", "collectionTime", "biopsyDay", "donorAge", "testIndication", "clinicalHistory",
     "maternalKaryotype", "paternalKaryotype", "ivfLabContact", "rebiopsy", "embryologistName", "embryologistEmail",
+    # Form G (PNDT Act consent)
+    "consentRelation", "consentGuardianName", "consentAge", "patientAddress", "consentDate", "consentPlace",
+    "companionName", "companionAddress", "companionRelation", "gynaecologistName", "gynaecologistRegNo",
+    "explanationDate", "geneticClinicName", "geneticClinicAddress", "geneticClinicRegNo",
 )
 TRF_EMBRYO_FIELDS = ("label", "grade", "cells", "day", "intact", "comments")
 TRF_STATUSES = ("New", "Received", "Rejected")
