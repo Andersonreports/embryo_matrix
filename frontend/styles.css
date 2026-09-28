@@ -886,3 +886,78 @@ header .registry-header-actions{margin-left:10px}
 .run-subset-inline{color:#8b968f;font-size:11px}
 .run-card-pending{border-style:dashed;border-color:#d9c79a}
 .rc-pending{color:#8a5a12}
+#homeStats [data-run-filter]{cursor:pointer;transition:border-color .15s,box-shadow .15s}
+#homeStats [data-run-filter]:hover{border-color:#bcd6d2}
+#homeStats [data-run-filter]:focus-visible{outline:2px solid #0a7180;outline-offset:2px}
+#homeStats .stat-active{border-color:#0a7180;box-shadow:0 0 0 2px rgba(10,113,128,.18),var(--shadow)}
+.run-filter-note{font:500 12px "Inter";color:#0a7180;margin-left:8px}
+.home-toolbar{display:flex;justify-content:flex-end;margin:-12px 0 16px}
+.home-toolbar .search-wrap{flex:0 1 360px}
+/* Home uses the full window width */
+#homeView.content{max-width:none;padding:24px 20px 40px}
+#homeView #homeStats{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:700px){#homeView #homeStats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:901px){#allQualityChart .emb-row{grid-template-columns:56px minmax(150px,1.1fr) minmax(120px,1.2fr) repeat(4,72px) 96px 92px 84px}}
+#allQualityChart .emb-num .inc-pct{min-width:0;padding:2px 7px;font-size:12px}
+.home-toolbar{justify-content:space-between;align-items:center;gap:16px;margin:-8px 0 18px}
+.home-title{margin:0;font:500 24px "Lora";color:#20302a}
+/* Home stat cards: icon pinned top-right, larger */
+#homeStats article{justify-content:space-between;align-items:flex-start;padding:20px 22px}
+#homeStats article>div{min-width:0}
+#homeStats .stat-icon{width:52px;height:52px;border-radius:14px;font-size:26px;flex-shrink:0;margin-left:auto}
+
+/* Run page: single header line, tidy table */
+.run-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.run-head .run-back-btn{margin:0}
+.run-title{margin:0;font:500 26px "Lora";color:#20302a}
+.run-page .summary-strip.summary-cards{margin:0 0 18px}
+.run-live-table{width:100%;border-collapse:collapse}
+.run-live-table th{text-align:left;white-space:nowrap;padding:12px 14px;vertical-align:middle}
+.run-live-table td{vertical-align:middle!important;padding:12px 14px!important;white-space:nowrap}
+.run-live-table td:nth-child(1),.run-live-table th:nth-child(1),.run-live-table td:nth-child(4),.run-live-table th:nth-child(4){text-align:center;width:1%}
+.run-live-table td:nth-child(2){white-space:normal;min-width:170px;max-width:240px}
+.run-live-table td.clip{max-width:220px}
+.run-live-table td.run-results{white-space:nowrap;min-width:0}
+.run-live-table td.run-results .result-pill{margin:2px 4px 2px 0}
+.run-live-table tbody tr+tr td{border-top:1px solid #eef1ee}
+#genericHeaderTitle .run-back-btn{margin:0;font-size:14px}
+/* Run page: full width, tight top spacing */
+#genericView:has(.run-page){padding:14px 20px 40px}
+#genericView .run-page{padding:0;max-width:none}
+#genericView .run-page .run-head{margin-bottom:14px}
+#genericHeaderTitle .run-head{display:inline-flex;align-items:center;gap:14px;margin:0}
+#genericHeaderTitle .run-title{font:500 24px "Lora";color:#20302a}
+#genericView:has(.run-page){padding-top:12px}
+.run-live-table th,.run-live-table td{padding:11px 10px!important}
+.run-live-table td.clip{max-width:190px}
+.run-live-table th,.run-live-table td{text-align:center!important}
+.run-live-table td.run-results{text-align:center!important}
+#genericHeaderTitle .case-test-badge{font:700 13px "Inter"}
+
+/* Run page stat cards (match Home) */
+.run-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:13px;margin:0 0 18px}
+@media(max-width:1100px){.run-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:600px){.run-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.run-stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;box-shadow:var(--shadow);padding:18px 20px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;min-width:0}
+.run-stat small{display:block;font-size:12px;letter-spacing:1px;color:#858e88;font-weight:700;text-transform:uppercase}
+.run-stat strong{display:block;font:500 28px "Lora";margin:6px 0 0;color:#20302a}
+.run-stat-icon{width:48px;height:48px;border-radius:13px;display:grid;place-items:center;flex-shrink:0}
+.run-stat-icon svg{width:24px;height:24px}
+.run-stat.tone-teal .run-stat-icon{background:#dcf1ee;color:#0a7180}
+.run-stat.tone-blue .run-stat-icon{background:var(--blue);color:#4e718b}
+.run-stat.tone-green .run-stat-icon{background:var(--mint);color:#2c684d}
+.run-stat.tone-red .run-stat-icon{background:#f5e3de;color:#a04f3d}
+.run-stat.tone-amber .run-stat-icon{background:var(--amber);color:#9b6c37}
+.run-stat.tone-grey .run-stat-icon{background:#eef1ef;color:#6b7a73}
+.run-stat.is-zero strong{color:#b0b9b4}
+/* Run page: no white header strip above the stat cards */
+body:has(#genericView:not(.hidden) .run-page) main>header{background:transparent;border-bottom:0;backdrop-filter:none;height:auto;padding:14px 20px 0}
+body:has(#genericView:not(.hidden) .run-page) #genericView{padding-top:12px}
+/* Run page header row: equal-height items, vertically centred, spaced from the cards */
+#genericHeaderTitle{margin:0;display:flex;align-items:center}
+#genericHeaderTitle .run-head{display:flex;align-items:center;gap:14px;height:40px}
+#genericHeaderTitle .run-back-btn{height:38px;padding:0 16px 0 12px;box-sizing:border-box;line-height:1}
+#genericHeaderTitle .run-title{font:500 26px/1 "Lora";display:flex;align-items:center;height:38px}
+#genericHeaderTitle .case-test-badge{display:inline-flex;align-items:center;height:30px;padding:0 14px;border-radius:999px;line-height:1}
+body:has(#genericView:not(.hidden) .run-page) main>header{padding:18px 20px 0}
+body:has(#genericView:not(.hidden) .run-page) #genericView{padding-top:18px}
