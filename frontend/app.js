@@ -314,7 +314,7 @@ function setupAllClientsView(){
  search.oninput=draw;monthSel.onchange=load;load();
 }
 // All regions page: ranked table of monthly sample counts per region.
-function regionsMarkup(){return `<article class="rg-card rg-wide"><div class="rg-head rg-list-head"><select id="regionSortOrder" class="chart-filter" aria-label="Sort regions by sample volume"><option value="desc">Highest first</option><option value="asc">Lowest first</option></select></div><div id="allRegionChart"></div></article>`}
+function regionsMarkup(){return `<article class="rg-card rg-wide"><div id="allRegionChart"></div></article>`}
 function setupRegionsView(){
  const sortSel=$('#regionSortOrder'),render=()=>renderRegionMonthTable('#allRegionChart',allEmbryos(),sortSel.value||'desc');
  sortSel.onchange=render;render();
@@ -583,7 +583,10 @@ function matchRunSample(idx,s){const k=nameKey(s.patient),tag=cleanId(s.embryo);
  // Sheet names carry suffixes the tracker doesn't ("RAGINI GANNOJU-RPT"), so fall back to containment.
  let pool=idx.get(k)||[];if(!pool.length&&k.length>=4)idx.forEach((list,key)=>{if(key.length>=4&&(key.includes(k)||k.includes(key)))pool=pool.concat(list)});
  const hits=pool.filter(x=>x.tag===tag);if(hits.length<2)return hits[0]||null;
- return hits.find(x=>s.received&&field(x.row,['date sample received'])===s.received)||hits.find(x=>qcVerdict(x.data))||hits[hits.length-1]}
+ // A re-sequenced embryo can have one tracker row per run. Only trust a confirmed
+ // received-date match - never guess by "whichever row already has a result", which
+ // leaks an older run's stored result onto a newer, still-pending run.
+ return hits.find(x=>s.received&&field(x.row,['date sample received'])===s.received)||null}
 function runResultFiles(run){const id=`RUN${String(run.runId).toUpperCase()}`;return resultFilesCache.filter(f=>runNumberOf(f.fileName)===id||String(f.run||'').toUpperCase()===id)}
 // Only results merged from an uploaded result file count - not the tracker's own "PGT result" text.
 const runResult=m=>m&&m.row._embryoResults?.[m.tag]?m.data:null;
@@ -612,19 +615,40 @@ function homeCards(){const K=BATCH_KIND[homeBatchKind],live=homeBatchKind==='wga
    res:fileRes?{euploid:b.euploid,aneuploid:b.aneuploid,mosaic:b.mosaic,inconclusive:b.inconclusive}:h?{euploid:h.euploid,aneuploid:h.aneuploid,mosaic:h.mosaic,inconclusive:h.inconclusive}:null,
    tests:h?.tests||b.tests,qc:fileRes?{pass:b.pass,fail:b.fail}:h&&h.qcPass!=null?{pass:h.qcPass,fail:h.qcFail}:null,linked:r.kind==='wga'?r.linked:null,wga:r.kind==='seq'?[...r.linked].sort((x,y)=>(parseInt(x)||0)-(parseInt(y)||0)):null,search:r.items.map(x=>x.s.patient).join(' ')}});
  if(homeBatchKind==='seq')wgaView.forEach(w=>{const items=w.items.filter(x=>!x.linked.length);if(!items.length)return;const pr={...w,items,b:runBreakdown(items),linked:[]},tm=tabMonth(w.tab),dk=dmyKey(w.runDate);
-  cards.push({live:pr,pending:true,title:`BATCH ${w.runId}`,platform:'Awaiting sequencing · no Run ID yet',date:w.runDate,sortKey:`${tm}-00|${String(w.runId).padStart(4,'0')}`,month:tm,patients:pr.b.patients,samples:items.length,res:null,tests:pr.b.tests,qc:null,linked:[],search:items.map(x=>x.s.patient).join(' ')})});
+  cards.push({live:pr,pending:true,title:`BATCH ${w.runId}`,platform:'Awaiting sequencing · no Run ID yet',sequencer:w.platform||'',received:items.find(x=>x.s.received)?.s.received||'',date:w.runDate,sortKey:`${tm}-00|${String(w.runId).padStart(4,'0')}`,month:tm,patients:pr.b.patients,samples:items.length,res:null,tests:pr.b.tests,qc:null,linked:[],search:items.map(x=>x.s.patient).join(' ')})});
  hist.filter(h=>!liveIds.has(runIdNorm(h.runId))).forEach(h=>cards.push({title:`RUN ${h.runId}`,platform:h.platform,date:h.date,sortKey:`${dmyKey(h.date)}|0000`,month:dmyKey(h.date).slice(0,7),patients:h.patients??null,samples:h.samples,res:{euploid:h.euploid,aneuploid:h.aneuploid,mosaic:h.mosaic,inconclusive:h.inconclusive},tests:h.tests||null,qc:h.qcPass!=null?{pass:h.qcPass,fail:h.qcFail}:null,search:''}));
  return cards.sort((a,b)=>b.sortKey.localeCompare(a.sortKey))}
+// Home: the run-search bar spans the same width as the Samples-through-Protocols nav range.
+function alignHomeSearch(){const wrap=$('#runSearchWrap'),toolbar=document.querySelector('.home-toolbar'),from=document.querySelector('.nav-item[data-view="samples"]'),to=document.querySelector('.nav-item[data-view="protocols"]');if(!wrap||!toolbar||!from||!to)return;const tRect=toolbar.getBoundingClientRect(),fRect=from.getBoundingClientRect(),eRect=to.getBoundingClientRect();wrap.classList.add('search-aligned');wrap.style.left=`${fRect.left-tRect.left}px`;wrap.style.width=`${eRect.right-fRect.left}px`}
+window.addEventListener('resize',()=>{if(!$('#homeView')?.classList.contains('hidden')){alignHomeSearch();capStatusColumns()}});
+// Cards vary in height (a completed card's QC row, a pending card's shorter meta line, ...),
+// so a fixed CSS max-height either clips a 4th card mid-way or leaves a gap. Measure the
+// real bottom edge of the 3rd card instead and cap there - exactly 3 whole cards, no sliver.
+function capStatusColumns(){document.querySelectorAll('.status-col-body').forEach(body=>{const cards=[...body.children];if(cards.length<=3){body.style.maxHeight='';body.style.overflowY='';return}const top=body.getBoundingClientRect().top,bottom=cards[2].getBoundingClientRect().bottom;body.style.maxHeight=`${Math.ceil(bottom-top)}px`;body.style.overflowY='auto'})}
+const RUN_STATUS_DEFS=[['sequencing','Sequencing','#2f6b98','#e1ecf7','Awaiting sequencing run'],['reporting','Reporting','#c07a1d','#fbeed8','Sequenced · result file pending'],['completed','Completed','#1f8a52','#dff3e7','Result file uploaded']];
+const runStatusOf=c=>c.pending?'sequencing':c.res?'completed':'reporting';
 let homeRunFilter='all';
 function syncRunFilterUi(){document.querySelectorAll('#homeStats [data-run-filter]').forEach(el=>{const on=el.dataset.runFilter===homeRunFilter;el.classList.toggle('stat-active',on);el.setAttribute('aria-pressed',String(on))});const t=$('#runFilterNote');if(t)t.textContent=homeRunFilter==='ongoing'?'Showing ongoing runs only':homeRunFilter==='completed'?'Showing completed runs only':''}
 document.querySelectorAll('#homeStats [data-run-filter]').forEach(el=>{const go=()=>{homeRunFilter=el.dataset.runFilter===homeRunFilter?'all':el.dataset.runFilter;syncRunFilterUi();renderRunList()};el.addEventListener('click',go);el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}})});
 function renderRunList(){const list=$('#runList');if(!list)return;const q=($('#runSearch')?.value||'').trim().toLowerCase(),all=homeCards(),cards=all.filter(c=>(homeRunFilter==='all'||(homeRunFilter==='ongoing'?!c.res:!!c.res))&&(!q||`${c.title} ${c.platform||''} ${c.date||''} ${c.search}`.toLowerCase().includes(q)));if(!cards.length){list.innerHTML=`<div class="chart-empty">${all.length?'No batches match.':BATCH_KIND[homeBatchKind].empty}</div>`;return}
  const num=v=>v==null?'—':v.toLocaleString(),stat=(label,n,cls='')=>`<div class="rc-stat ${cls}"><strong>${num(n)}</strong><small>${label}</small></div>`,sum=(list,f)=>{const v=list.map(f).filter(x=>x!=null);return v.length?v.reduce((a,b)=>a+b,0):null};
- const card=(c,i)=>{const r=c.res,pct=n=>c.samples&&n?n/c.samples*100:0,t=k=>c.tests?c.tests[k]||0:null;return `<article class="batch-card run-card${c.live?'':' run-card-static'}${c.pending?' run-card-pending':''}" data-i="${i}"${c.live?' tabindex="0" role="button"':''}><div class="batch-card-top"><div><strong class="batch-run">${escapeHtml(c.title)}</strong><small class="batch-file">${escapeHtml(c.platform||'—')}</small></div><span class="batch-date">${escapeHtml(c.date||'No date')}</span></div><div class="rc-counts">${stat('Patients',c.patients)}${stat('Samples',c.samples,'rc-main')}</div><div class="rc-section"><div class="rc-label">Results${r?'':' <span>· awaiting result file</span>'}</div><div class="batch-bar"><span class="seg-euploid" style="width:${pct(r?.euploid)}%"></span><span class="seg-aneuploid" style="width:${pct(r?.aneuploid)}%"></span><span class="seg-mosaic" style="width:${pct(r?.mosaic)}%"></span><span class="seg-inconclusive" style="width:${pct(r?.inconclusive)}%"></span></div><div class="rc-grid">${stat('Euploid',r?.euploid,'euploid')}${stat('Aneuploid',r?.aneuploid,'aneuploid')}${stat('Mosaic',r?.mosaic,'mosaic')}${stat('Inconclusive',r?.inconclusive,'inconclusive')}</div>${c.qc?`<div class="rc-qc"><span class="qc-pass">${num(c.qc.pass)} QC Pass</span><span class="qc-fail">${num(c.qc.fail)} QC Fail</span></div>`:''}</div><div class="rc-section"><div class="rc-label">Tests</div><div class="rc-grid">${stat('PGT A',t('PGT A'))}${stat('PGT A+M',t('PGT A+M'))}${stat('POC',t('POC'))}${stat('PGT SR',t('PGT SR'))}</div></div>${c.live?'':'<div class="rc-foot">From the monthly run report · no sample list</div>'}</article>`};
+ const card=(c,i)=>{const r=c.res,t=k=>c.tests?c.tests[k]||0:null;
+  // A batch still awaiting its sequencing run has no result to show yet - swap the
+  // Results section for the sequencer/received-date info that's actually known now.
+  const middle=c.pending?(c.sequencer||c.received?`<div class="rc-counts rc-meta-fill">${c.sequencer?stat('Sequencer',escapeHtml(c.sequencer)):''}${c.received?stat('Received',escapeHtml(c.received)):''}</div>`:''):`<div class="rc-section"><div class="rc-label">Results${r?'':' <span>· awaiting result file</span>'}</div><div class="rc-grid">${stat('Euploid',r?.euploid,'euploid')}${stat('Aneuploid',r?.aneuploid,'aneuploid')}${stat('Mosaic',r?.mosaic,'mosaic')}${stat('Inconclusive',r?.inconclusive,'inconclusive')}</div></div>`;
+  const topStats=c.qc?`<div class="rc-counts rc-counts-4">${stat('Patients',c.patients)}${stat('Embryos',c.samples,'rc-main')}${stat('QC Pass',c.qc.pass,'qc-pass-stat')}${stat('QC Fail',c.qc.fail,'qc-fail-stat')}</div>`:`<div class="rc-counts">${stat('Patients',c.patients)}${stat('Embryos',c.samples,'rc-main')}</div>`;
+  return `<article class="batch-card run-card${c.live?'':' run-card-static'}${c.pending?' run-card-pending':''}" data-i="${i}"${c.live?' tabindex="0" role="button"':''}><div class="batch-card-top"><div><strong class="batch-run">${escapeHtml(c.title)}</strong><small class="batch-file">${escapeHtml(c.platform||'—')}</small></div><span class="batch-date">${escapeHtml(c.date||'No date')}</span></div>${topStats}${middle}<div class="rc-section"><div class="rc-label">Tests</div><div class="rc-grid">${stat('PGT A',t('PGT A'))}${stat('PGT A+M',t('PGT A+M'))}${stat('POC',t('POC'))}${stat('PGT SR',t('PGT SR'))}</div></div>${c.live?'':'<div class="rc-foot">From the monthly run report · no sample list</div>'}</article>`};
  const months=[...new Set(cards.map(c=>c.month||''))];let i=0;
- list.innerHTML=months.map(m=>{const mc=cards.filter(c=>(c.month||'')===m),res=mc.filter(c=>c.res),tst=mc.filter(c=>c.tests),chip=(label,v)=>`<span><b>${num(v)}</b>${label}</span>`;
-  return `<div class="run-month"><div class="run-month-head"><h3>${escapeHtml(m?monthLabel(m):'Undated')}</h3></div><div class="batch-grid">${mc.map(c=>card(c,i++)).join('')}</div></div>`}).join('');
- const order=months.flatMap(m=>cards.filter(c=>(c.month||'')===m));
+ // Only columns that can actually hold a card under the active filter render -
+ // a status a filter rules out entirely (e.g. Completed while "Ongoing" is picked)
+ // would otherwise show as a permanently empty lane.
+ const bucketsOf=mc=>RUN_STATUS_DEFS.map(([key,label,color,soft,desc])=>({key,label,color,soft,desc,items:mc.filter(c=>runStatusOf(c)===key)})).filter(b=>b.items.length);
+ const col=b=>`<div class="status-col"><div class="status-col-head"><span class="status-label" style="color:${b.color};background:${b.soft}">${b.label}</span><span class="status-count">${b.items.length}</span></div><p class="status-col-desc">${b.desc}</p><div class="status-col-body">${b.items.map(c=>card(c,i++)).join('')}</div></div>`;
+ list.innerHTML=months.map(m=>{const mc=cards.filter(c=>(c.month||'')===m),buckets=bucketsOf(mc);
+  return `<div class="run-month"><div class="run-month-head"><h3>${escapeHtml(m?monthLabel(m):'Undated')}</h3></div><div class="status-board cols-${buckets.length}">${buckets.map(col).join('')}</div></div>`}).join('');
+ const order=months.flatMap(m=>bucketsOf(cards.filter(c=>(c.month||'')===m)).flatMap(b=>b.items));
+ capStatusColumns();
+ alignHomeSearch();
  list.querySelectorAll('.batch-card').forEach(el=>{const c=order[+el.dataset.i];if(!c.live)return;el.onclick=()=>openRun(c.live);el.onkeydown=e=>{if(e.key==='Enter')openRun(c.live)}})}
 function renderEmbInc(){const el=$('#embIncTable');if(!el)return;const rows=embInc?.rows||[];if(!rows.length){$('#embIncPanel')?.classList.add('hidden');return}$('#embIncPanel')?.classList.remove('hidden');
  const keys=Object.keys(rows[0].months||{}).sort(),pctv=r=>r.total?r.inconclusive/r.total*100:0,tone=v=>v>=10?'high':v>=5?'mid':v>0?'low':'zero',sorted=[...rows].sort((a,b)=>pctv(b)-pctv(a)||b.total-a.total);
@@ -704,6 +728,7 @@ function showView(view){
  $('#registryHeaderActions')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#embryologistSortOrder')?.classList.toggle('hidden',view!=='embryologists');
  $('#clientsToolbar')?.classList.toggle('hidden',view!=='clients');
+ $('#regionSortHeader')?.classList.toggle('hidden',view!=='regions');
  if(view==='home'){ $('#homeView').classList.remove('hidden');$('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');$('#genericView').classList.add('hidden');return }
  $('#homeView').classList.add('hidden');
  if(view==='overview'){ $('#overviewView').classList.remove('hidden');$('#samplesView').classList.add('hidden');$('#genericView').classList.add('hidden');return }

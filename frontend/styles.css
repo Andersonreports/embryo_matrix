@@ -536,6 +536,7 @@ dialog.image-lightbox img{display:block;max-width:92vw;max-height:92vh;border-ra
 .ac-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--line);background:#fbfcfc}
 .ac-toolbar.hidden{display:none}
 header .ac-toolbar-header{position:static;transform:none;margin-left:auto;flex-shrink:1;min-width:0;flex-wrap:nowrap;padding:0;border:0;background:transparent}
+.header-filter-right{margin-left:auto}
 header .ac-toolbar-header .ac-search{flex:1 1 140px;min-width:90px}
 header .ac-toolbar-header .ac-total{padding:6px 12px;flex-shrink:0}
 header .ac-toolbar-header #acSort{flex-shrink:0}
@@ -689,8 +690,8 @@ button.rgt-num:hover{background:#e6f3ee;color:#0a7180}
 /* Header layout fixes */
 /* The registry title/toolbar set display:flex, which beat .hidden and showed them on every page. */
 .registry-header-left.hidden,.registry-header-actions.hidden{display:none!important}
-/* Top bar: Import data + account sit in the right corner. */
-.topbar .import-data-btn{margin-left:auto}
+/* Top bar: account sits in the right corner. */
+.topbar .session-info{margin-left:auto}
 /* Registry row: view switch and toolbar grouped at the right, in the flow, so they never overlap. */
 header .header-center-toggle{position:static;transform:none;margin:0 auto;flex-shrink:0}
 header .registry-header-actions{margin-left:10px}
@@ -698,9 +699,9 @@ header .registry-header-actions{margin-left:10px}
 .search-wrap input,.search-wrap input:focus,.search-wrap input:focus-visible{border:0!important;box-shadow:none!important;outline:none!important;background:transparent!important}
 .search-wrap:focus-within{border-color:#9cc9c4!important;box-shadow:inset 0 0 0 2px rgba(10,113,128,.10)}
 .search-wrap input:autofill,.search-wrap input:-webkit-autofill,.search-wrap input:-webkit-autofill:hover,.search-wrap input:-webkit-autofill:focus{-webkit-text-fill-color:var(--ink)!important;caret-color:var(--ink);-webkit-box-shadow:0 0 0 1000px transparent inset!important;box-shadow:0 0 0 1000px transparent inset!important;background:transparent!important;transition:background-color 9999s ease-in-out 0s}
-/* Medium screens: tighter top bar so brand, tabs, Import data and account fit on one row. */
-@media(max-width:1560px) and (min-width:721px){.topbar{gap:14px;flex-wrap:nowrap}.topnav{gap:2px;flex-wrap:nowrap;min-width:0}.topnav .nav-item{padding:8px 11px;font-size:15px;gap:8px}.topnav .nav-item span{font-size:16px;width:16px}.topbar .import-data-btn{padding:8px 12px;font-size:14px}}
-@media(max-width:1200px) and (min-width:721px){.topbar .import-data-btn .nav-label{display:none!important}.topnav .nav-item b{display:none!important}}
+/* Medium screens: tighter top bar so brand, tabs and account fit on one row. */
+@media(max-width:1560px) and (min-width:721px){.topbar{gap:14px;flex-wrap:nowrap}.topnav{gap:2px;flex-wrap:nowrap;min-width:0}.topnav .nav-item{padding:8px 11px;font-size:15px;gap:8px}.topnav .nav-item span{font-size:16px;width:16px}}
+@media(max-width:1200px) and (min-width:721px){.topnav .nav-item b{display:none!important}}
 .registry-header-actions .toolbar-btn,.registry-header-actions .export-wrap>button{white-space:nowrap;flex-shrink:0}
 
 /* Re-biopsy page toolbar: same controls as the Samples registry header */
@@ -735,15 +736,10 @@ header .registry-header-actions{margin-left:10px}
 .batch-card:focus-visible{outline:2px solid #0a7180;outline-offset:2px}
 .batch-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .batch-run{display:block;font:500 16px "Lora"}
-.batch-file{display:block;color:#8b968f;font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px;margin-top:2px}
+.batch-file{display:block;color:#4d5852;font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px;margin-top:2px}
 .batch-date{flex-shrink:0;font-size:10.5px;color:#8b968f;background:#f2f5f1;padding:3px 9px;border-radius:999px;white-space:nowrap}
 .batch-samples{font-size:12px;color:#5c665f}
 .batch-samples strong{font:700 18px "Inter";color:#20302a;margin-right:4px}
-.batch-bar{display:flex;height:7px;border-radius:5px;overflow:hidden;background:#eef2ee}
-.batch-bar span{height:100%}
-.batch-bar .seg-euploid{background:#3a8a63}
-.batch-bar .seg-aneuploid{background:#c0604a}
-.batch-bar .seg-mosaic{background:#d9a94a}
 .batch-legend{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:#4d5852}
 .batch-legend .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .batch-legend .dot.euploid{background:#3a8a63}
@@ -828,9 +824,14 @@ header .registry-header-actions{margin-left:10px}
 .tf-card>header::before,.tf-card>header::after{content:none}
 
 /* Home: run cards (one per Sequencing Batch Record run) */
-.run-card{gap:14px}
+.run-card{gap:14px;min-height:344px}
+.rc-counts.rc-meta-fill{flex:1;align-content:center}
+.batch-run{font-weight:600!important}
 .rc-counts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rc-counts.rc-counts-4{grid-template-columns:repeat(4,1fr)}
 .rc-counts .rc-stat{background:#f6f8f6;border-radius:9px;padding:9px 12px}
+.rc-counts .rc-stat.qc-pass-stat{background:#e2efe5}.rc-counts .rc-stat.qc-pass-stat strong{color:#286847}
+.rc-counts .rc-stat.qc-fail-stat{background:#f5e3de}.rc-counts .rc-stat.qc-fail-stat strong{color:#a04f3d}
 .rc-counts .rc-stat strong{font:700 20px "Inter"}
 .rc-stat{display:flex;flex-direction:column;gap:1px;min-width:0}
 .rc-stat strong{font:700 14px "Inter";color:#20302a;font-variant-numeric:tabular-nums}
@@ -839,9 +840,12 @@ header .registry-header-actions{margin-left:10px}
 .rc-section{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid #edf0eb}
 .rc-label{font:700 10.5px "Inter";letter-spacing:.6px;text-transform:uppercase;color:#8b968f}
 .rc-label span{text-transform:none;letter-spacing:0;font-weight:500}
-.rc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.rc-stat.euploid strong{color:#2f7a55}.rc-stat.aneuploid strong{color:#b0503b}.rc-stat.mosaic strong{color:#b98522}.rc-stat.inconclusive strong{color:#6f7a74}
-.batch-bar .seg-inconclusive{background:#a9b3ae}
+.rc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.rc-grid .rc-stat{background:#f6f8f6;border-radius:8px;padding:7px 8px}
+.rc-stat.euploid{background:#e2efe5}.rc-stat.euploid strong{color:#286847}
+.rc-stat.aneuploid{background:#f5e3de}.rc-stat.aneuploid strong{color:#a04f3d}
+.rc-stat.mosaic{background:#f4ead5}.rc-stat.mosaic strong{color:#94652d}
+.rc-stat.inconclusive{background:#eef1ee}.rc-stat.inconclusive strong{color:#6f7a74}
 .batch-kind-toggle{margin-top:12px;display:inline-flex}
 .rc-linked{font-size:11px;color:#5c665f;margin-top:-4px}
 .rc-linked b{color:#0b5660;font-weight:600}
@@ -849,15 +853,35 @@ header .registry-header-actions{margin-left:10px}
 /* Home: month groups of run cards */
 .run-month{display:flex;flex-direction:column;gap:12px}
 .run-month+.run-month{margin-top:26px}
-.run-month-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;padding-bottom:8px;border-bottom:1px solid var(--line)}
-.run-month-head h3{margin:0;font:500 18px "Lora";color:#20302a}
+.run-month-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.run-month-head h3{margin:0;font:600 17px "Lora";color:#0b5660;background:linear-gradient(120deg,#dcf1ee,#eef6f5);padding:5px 16px;border-radius:999px;display:inline-block}
 .run-month-chips{display:flex;flex-wrap:wrap;gap:6px}
 .run-month-chips span{font-size:11px;color:#5c665f;background:#f2f5f1;border-radius:999px;padding:3px 9px;white-space:nowrap}
 .run-month-chips b{color:#20302a;margin-right:4px;font-variant-numeric:tabular-nums}
+
+/* Home: each month's runs segregated into Sequencing / Reporting / Completed lanes.
+   Only non-empty lanes render (see renderRunList). With all 3 present they split the
+   full row evenly (no dead space); with just 1 present it's capped so a single lane
+   doesn't stretch edge-to-edge. */
+.status-board{display:grid;gap:16px;align-items:start}
+.status-board.cols-1{grid-template-columns:minmax(280px,420px)}
+.status-board.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.status-board.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.status-col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.status-col-head{display:flex;align-items:center;gap:8px}
+.status-label{font:700 13px "Inter";letter-spacing:.2px;padding:4px 12px;border-radius:999px}
+.status-count{margin-left:auto;background:#eef1ee;color:#5c665f;border-radius:999px;padding:1px 8px;font:700 11px "Inter";font-variant-numeric:tabular-nums}
+.status-col-desc{margin:-4px 0 0;font-size:11px;color:#8b968f}
+/* Capped to exactly 3 cards tall by JS (capStatusColumns) when a lane holds more than
+   that, so a busy month scrolls internally instead of turning into one long page scroll. */
+.status-col-body{display:flex;flex-direction:column;gap:14px;padding-right:6px;scrollbar-width:thin;scrollbar-color:#8aa393 #eef2ee}
+.status-col-body::-webkit-scrollbar{width:8px}
+.status-col-body::-webkit-scrollbar-track{background:#eef2ee;border-radius:8px}
+.status-col-body::-webkit-scrollbar-thumb{background:#8aa393;border-radius:8px}
+.status-col-body::-webkit-scrollbar-thumb:hover{background:#6f9080}
+@media(max-width:700px){.status-board.cols-1,.status-board.cols-2,.status-board.cols-3{grid-template-columns:1fr}}
 .run-card-static{cursor:default}
 .run-card-static:hover{border-color:var(--line);box-shadow:var(--shadow)}
-.rc-qc{display:flex;gap:14px;font-size:11px;font-weight:700}
-.rc-qc .qc-pass{color:#0b5660}.rc-qc .qc-fail{color:#8a928d}
 .rc-foot{font-size:10.5px;color:#9aa6a0;margin-top:-4px}
 /* Embryologist-wise inconclusive table */
 .emb-inc-wrap{max-height:none}
@@ -904,12 +928,16 @@ header .registry-header-actions{margin-left:10px}
 @media(max-width:700px){#homeView #homeStats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:901px){#allQualityChart .emb-row{grid-template-columns:56px minmax(150px,1.1fr) minmax(120px,1.2fr) repeat(4,72px) 96px 92px 84px}}
 #allQualityChart .emb-num .inc-pct{min-width:0;padding:2px 7px;font-size:12px}
-.home-toolbar{justify-content:space-between;align-items:center;gap:16px;margin:-8px 0 18px}
-.home-title{margin:0;font:500 24px "Lora";color:#20302a}
+.home-toolbar{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;margin:-8px 0 18px;position:relative}
+.home-title{margin:0;font:500 32px "Lora";color:#20302a}
+.home-toolbar .search-wrap{justify-self:center}
+.home-toolbar .search-wrap.search-aligned{position:absolute;top:50%;transform:translateY(-50%)}
+.home-toolbar .import-data-btn{justify-self:end;font-size:14px;padding:9px 16px}
 /* Home stat cards: icon pinned top-right, larger */
 #homeStats article{justify-content:space-between;align-items:flex-start;padding:20px 22px}
 #homeStats article>div{min-width:0}
 #homeStats .stat-icon{width:52px;height:52px;border-radius:14px;font-size:26px;flex-shrink:0;margin-left:auto}
+#homeStats strong{font-size:34px}
 
 /* Run page: single header line, tidy table */
 .run-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px}
@@ -937,6 +965,8 @@ header .registry-header-actions{margin-left:10px}
 .run-live-table td.clip{max-width:190px}
 .run-live-table th,.run-live-table td{text-align:center!important}
 .run-live-table td.run-results{text-align:center!important}
+.run-live-table td{font-size:14px!important}
+.run-live-table th{font-weight:700!important;color:#0a7180!important}
 #genericHeaderTitle .case-test-badge{font:700 13px "Inter"}
 
 /* Run page stat cards (match Home) */
