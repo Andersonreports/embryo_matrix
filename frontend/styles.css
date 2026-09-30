@@ -1167,3 +1167,4 @@ html,body{max-width:100%;overflow-x:hidden}
 .trf-type-pick select:hover{border-color:#9db8b3!important}
 .trf-type-pick select:focus,.trf-type-pick select:focus-visible{border-color:#0a8a86!important;box-shadow:none!important}
 .trf-type-pick{gap:10px}
+.rc-noresult .rc-label{margin:0}.rc-noresult .rc-label span{text-transform:none;letter-spacing:0;font-weight:500}
