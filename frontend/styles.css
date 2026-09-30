@@ -1158,3 +1158,6 @@ html,body{max-width:100%;overflow-x:hidden}
 .trf-type-pick{display:inline-flex;align-items:center;gap:8px;font:600 13px "Inter";color:#4f6b68}
 .trf-type-pick select{font:600 13px "Inter";color:#0a6872;padding:8px 32px 8px 12px;border:1px solid #b9d3cf;border-radius:999px;background:#fff;cursor:pointer}
 .trf-tabbar{justify-content:flex-start!important}
+
+/* Bell + user sit together at the far right of the top bar */
+@media(min-width:721px){.topbar .qc-alerts{margin-left:auto}.topbar .session-info{margin-left:0}}
