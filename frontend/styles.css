@@ -1153,3 +1153,8 @@ html,body{max-width:100%;overflow-x:hidden}
 .vault-run-body{margin:0;padding:4px 20px 20px}
 
 .status-empty{padding:22px 14px;border:1px dashed #cdd8d2;border-radius:12px;color:#8b968f;font-size:13px;text-align:center}
+
+.trf-tabbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.trf-type-pick{display:inline-flex;align-items:center;gap:8px;font:600 13px "Inter";color:#4f6b68}
+.trf-type-pick select{font:600 13px "Inter";color:#0a6872;padding:8px 32px 8px 12px;border:1px solid #b9d3cf;border-radius:999px;background:#fff;cursor:pointer}
+.trf-tabbar{justify-content:flex-start!important}

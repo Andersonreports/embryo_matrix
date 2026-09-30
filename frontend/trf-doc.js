@@ -111,7 +111,7 @@ function trfPagesHtml(d,meta={},opts={}){
 function trfCollect(root){const d={};
  root.querySelectorAll('[data-f]').forEach(el=>d[el.dataset.f]=el.value.trim());
  const checked=g=>[...root.querySelectorAll(`[data-g="${g}"]:checked`)].map(x=>x.value);
- d.formType=checked('formType')[0]||'PGT-A';d.tests=checked('tests');d.gametes=checked('gametes');d.biopsyDay=checked('biopsyDay')[0]||'';d.rebiopsy=checked('rebiopsy')[0]||'';d.dryRun=checked('dryRun').length>0;
+ d.formType=d.formType==='PGT-M'?'PGT-M':'PGT-A';d.tests=checked('tests');d.gametes=checked('gametes');d.biopsyDay=checked('biopsyDay')[0]||'';d.rebiopsy=checked('rebiopsy')[0]||'';d.dryRun=checked('dryRun').length>0;
  d.embryos=[...root.querySelectorAll('.td-embryo-rows tr')].map(tr=>Object.fromEntries([...tr.querySelectorAll('[data-e]')].map(x=>[x.dataset.e,x.value.trim()]))).filter(e=>Object.values(e).some(Boolean));
  return d}
 // The digital form: the template's sections and fields as a normal web form (labels above
@@ -128,7 +128,7 @@ function trfFormHtml(d={}){
  const opt=(group,value,label,on,radio=false)=>`<label class="tf-opt"><input type="${radio?'radio':'checkbox'}"${radio?` name="tf-${group}"`:''} data-g="${group}" value="${esc(value)}"${on?' checked':''}><span>${esc(label)}</span></label>`;
  const card=(n,title,body,note='')=>`<section class="tf-card"><header><span class="tf-step">${n}</span><div><h3>${title}</h3>${note?`<p>${note}</p>`:''}</div></header>${body}</section>`;
  return `<div class="tf-form" data-type="${type}">
- ${card('•','Form type',`<div class="tf-opts">${opt('formType','PGT-A','PGT-A / PGT-SR / Embryo Sure',!isM,true)}${opt('formType','PGT-M','PGT-M (mutation testing)',isM,true)}</div>`,'Pick the requisition form that matches the sample. Switching keeps what you have typed.')}
+ <input type="hidden" data-f="formType" value="${type}">
  ${card(1,'Referring details',`<div class="tf-grid">${f('hospital','Name of Hospital / IVF Centre','text',' list="trfClinicList" autocomplete="off" placeholder="Start typing to pick from the client list"')}${f('referringDoctor','Referring Doctor')}${f('phone','Phone','tel',' inputmode="tel"')}${f('email','Email','email')}<label class="tf-field tf-wide"><span>Address</span><textarea data-f="address" rows="2">${esc(d.address)}</textarea></label></div>`)}
  ${card(2,'Patient information',`<div class="tf-grid">${f('patientName','Patient Name')}${f('patientDob','Date of Birth','date')}${f('uhid','UHID')}${f('aadhaar','Aadhaar Card No','text',' inputmode="numeric" maxlength="14" placeholder="12 digits"')}${f('husbandName',"Husband's Name")}${f('husbandDob',"Husband's Date of Birth",'date')}${f('patientEmail','Patient Email','email')}</div>`)}
  ${card(3,'Test requested <b class="td-req">*</b>',`<div class="tf-opts tf-opts-col">${Object.entries(trfLabelsFor(type)).map(([k,l])=>opt('tests',k,l,tests.includes(k))).join('')}</div>`,'Tick every test needed.')}

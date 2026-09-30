@@ -490,7 +490,7 @@ function setupReportPrepView(){
 // Digital TRFs tab: "New TRF" is the requisition form laid out like the paper template,
 // typed into directly (the draft stays on this device until submitted); "Submitted" lists
 // every TRF sent, to review, print or mark received.
-function trfsMarkup(){return `<div class="trf-tabbar"><div class="prep-segments" id="trfModeSeg" role="tablist" aria-label="TRF view"><button type="button" class="prep-seg active" data-mode="new">New TRF</button><button type="button" class="prep-seg" data-mode="list">Submitted <span class="ac-scope-n" id="trfListCount">0</span></button></div></div>
+function trfsMarkup(){return `<div class="trf-tabbar"><div class="prep-segments" id="trfModeSeg" role="tablist" aria-label="TRF view"><button type="button" class="prep-seg active" data-mode="new">New TRF</button><button type="button" class="prep-seg" data-mode="list">Submitted <span class="ac-scope-n" id="trfListCount">0</span></button></div><label class="trf-type-pick" id="trfTypePick"><span>Form</span><select id="trfFormType" aria-label="TRF form type"><option value="PGT-A">PGT-A / PGT-SR / Embryo Sure</option><option value="PGT-M">PGT-M (mutation testing)</option></select></label></div>
 <div id="trfNewPane"><div class="trf-formbar"><span class="trf-formbar-note">Fields marked <b class="td-req">*</b> are required. Signatures and clinician seal are signed on the printed copy.</span><div class="trf-formbar-actions"><button type="button" class="secondary compact" id="trfPreview">Preview</button><button type="button" class="secondary compact" id="trfClear">Clear form</button><button type="button" class="primary compact" id="trfSubmit">Submit TRF</button></div></div><div class="trf-error hidden" id="trfError" role="alert"></div><div class="trf-sheet" id="trfSheet"></div><datalist id="trfClinicList"></datalist></div>
 <div id="trfListPane" class="hidden"><div class="prep-toolbar"><div class="prep-segments" id="trfStatusSeg" role="tablist" aria-label="Filter TRFs by status"></div><div class="search-wrap"><span>⌕</span><input id="trfSearch" type="search" placeholder="Search patient, clinic, doctor, reference…" aria-label="Search TRFs"></div></div><div class="prep-table-wrap" id="trfTableWrap"><div class="chart-empty">Loading…</div></div></div>`}
 async function setupTrfsView(){
@@ -500,11 +500,12 @@ async function setupTrfsView(){
  const saveDraft=()=>{try{localStorage.setItem(DRAFT,JSON.stringify(trfCollect(sheet)))}catch{}};
  const renderForm=d=>{sheet.innerHTML=trfFormHtml(d||{});trfWire(sheet,saveDraft)};
  // Switching between the PGT-A and PGT-M requisition forms rebuilds the form around what is already typed.
- sheet.addEventListener('change',e=>{const el=e.target;if(el.dataset?.g!=='formType')return;const d=trfCollect(sheet);d.formType=el.value;d.tests=[];renderForm(d);saveDraft()});
+ const typeSel=$('#trfFormType'),syncType=d=>{typeSel.value=d.formType==='PGT-M'?'PGT-M':'PGT-A'};
+ typeSel.onchange=()=>{const d=trfCollect(sheet);d.formType=typeSel.value;d.tests=[];renderForm(d);saveDraft()};
  let draft={};try{draft=JSON.parse(localStorage.getItem(DRAFT)||'{}')||{}}catch{}
- renderForm(draft);
+ renderForm(draft);syncType(draft);
  const showError=msg=>{const el=$('#trfError');el.textContent=msg;el.classList.toggle('hidden',!msg);if(msg)el.scrollIntoView({block:'center',behavior:'smooth'})};
- $('#trfClear').onclick=()=>{if(!confirm('Clear everything typed into this TRF?'))return;try{localStorage.removeItem(DRAFT)}catch{}renderForm({});showError('')};
+ $('#trfClear').onclick=()=>{if(!confirm('Clear everything typed into this TRF?'))return;try{localStorage.removeItem(DRAFT)}catch{}renderForm({});syncType({});showError('')};
  $('#trfPreview').onclick=()=>openTrfDialog({data:trfCollect(sheet),ref:'',patient:'',status:'Draft',submittedAt:''});
  $('#trfSubmit').onclick=async()=>{const d=trfCollect(sheet),p=trfProblems(d);
   sheet.querySelectorAll('.invalid').forEach(x=>x.classList.remove('invalid'));
@@ -514,7 +515,7 @@ async function setupTrfsView(){
   try{const r=await fetch('/api/trf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}),body=await r.json().catch(()=>({}));
    if(!r.ok)throw new Error(typeof body.detail==='string'?body.detail:'The TRF could not be submitted. Please try again.');
    try{localStorage.removeItem(DRAFT)}catch{}
-   renderForm({});toast(`TRF ${body.ref} submitted`);
+   renderForm({});syncType({});toast(`TRF ${body.ref} submitted`);
    if(confirm(`TRF submitted. Reference: ${body.ref}\n\nPrint it now to sign and send with the sample?`))printTrf(d,{ref:body.ref,submittedAt:body.submittedAt});
    await load()}
   catch(err){showError(err.message)}finally{btn.disabled=false;btn.textContent='Submit TRF'}};
@@ -528,7 +529,7 @@ async function setupTrfsView(){
   if(!list.length){wrap.innerHTML=`<div class="chart-empty">${rows.length?'No TRFs match.':'No TRFs submitted yet.'}</div>`;return}
   wrap.innerHTML=`<table class="prep-table"><thead><tr><th>Reference</th><th>Submitted</th><th>Patient</th><th>Clinic</th><th>Referring doctor</th><th>Tests</th><th>Biopsy date</th><th class="num">Embryos</th><th>Status</th></tr></thead><tbody>${list.map(r=>`<tr data-id="${r.id}" tabindex="0"><td class="mono">${escapeHtml(r.ref)}</td><td class="muted">${escapeHtml(fmt(r.submittedAt))}</td><td class="strong">${escapeHtml(r.patient)}</td><td class="clip" title="${escapeHtml(r.clinic)}">${escapeHtml(r.clinic)}</td><td>${escapeHtml(r.doctor)}</td><td>${escapeHtml(testNames(r.tests))}</td><td class="muted">${escapeHtml(r.biopsyDate||'—')}</td><td class="num">${r.embryos}</td><td><span class="trf-status s-${r.status.toLowerCase()}">${escapeHtml(r.status)}</span></td></tr>`).join('')}</tbody></table>`};
  const load=async()=>{try{const res=await fetch('/api/trf');if(!res.ok)throw 0;rows=await res.json();const n=rows.filter(r=>r.status==='New').length,nav=$('#trfNavCount');if(nav)nav.textContent=n;$('#trfListCount').textContent=rows.length;draw()}catch{wrap.innerHTML='<div class="chart-empty">Submitted TRFs could not be loaded. Try again.</div>'}};
- $('#trfModeSeg').onclick=e=>{const b=e.target.closest('[data-mode]');if(!b)return;$('#trfModeSeg').querySelectorAll('.prep-seg').forEach(x=>x.classList.toggle('active',x===b));$('#trfNewPane').classList.toggle('hidden',b.dataset.mode!=='new');$('#trfListPane').classList.toggle('hidden',b.dataset.mode!=='list')};
+ $('#trfModeSeg').onclick=e=>{const b=e.target.closest('[data-mode]');if(!b)return;$('#trfModeSeg').querySelectorAll('.prep-seg').forEach(x=>x.classList.toggle('active',x===b));$('#trfNewPane').classList.toggle('hidden',b.dataset.mode!=='new');$('#trfListPane').classList.toggle('hidden',b.dataset.mode!=='list');$('#trfTypePick').classList.toggle('hidden',b.dataset.mode!=='new')};
  seg.onclick=e=>{const b=e.target.closest('[data-status]');if(b){status=b.dataset.status;draw()}};
  search.oninput=draw;
  const open=async id=>{const res=await fetch(`/api/trf/${id}`);if(!res.ok){toast('This TRF could not be opened');return}openTrfDialog(await res.json(),async s=>{const r=await fetch(`/api/trf/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:{status:s}})});if(r.ok){toast(`TRF marked ${s}`);await load()}else toast('Status could not be changed')})};
