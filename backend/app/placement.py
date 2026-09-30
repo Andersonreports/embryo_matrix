@@ -70,12 +70,17 @@ class Placement:
             row = db.get(KVStore, key)
             return (row.value if row else None) or []
         self.runs = kv("embryomatrix-sequencing-runs")
+        self.rfiles = [f for f in kv("embryomatrix-result-files") if isinstance(f, dict)]
         self.manual = dict(db.query(CaseRunAssignment.case_code, CaseRunAssignment.run_id).all())
         # case id -> (patient, tags, received)
         self.cases: dict[str, dict] = {}
+        received_by_key: dict[str, str] = {}
         for r in kv("embryomatrix-imported-cases"):
             if r.get("_stale"):
                 continue
+            rec0 = _field(r, ["date sample received"])
+            for t0 in _expand_tags(_field(r, ["embryo name", "embryo id", "embryo"])):
+                received_by_key[f"{_clean(_field(r, ['patient name', 'patient']))}|{t0}|{_clean(_field(r, ['sample id']))}"] = rec0
             cid = _field(r, ["case id"]) or _field(r, ["sample id"])
             if not cid:
                 continue
@@ -84,6 +89,28 @@ class Placement:
             rec = _field(r, ["date sample received"])
             if rec:
                 c["received"].add(rec)
+        # A result file carries the run number for every embryo in it, for ALL months (the
+        # Sequencing Batch Record only lists runs from Sept 2026), and its samples are PGS-NGS
+        # tracker rows - so the file's month is the received date of one of those rows.
+        self.rf_by_embryo: dict[tuple, str] = {}
+        self.rf_folder: dict[str, str] = {}
+        for f in self.rfiles:
+            label = _run_key(f.get("run"))
+            if not label:
+                continue
+            month = None
+            for k in f.get("samples") or []:
+                d = _parse_date(received_by_key.get(k))
+                if d:
+                    month = f"{d.year}/{d.month:02d} - {MONTHS[d.month - 1]}"
+                    break
+            if not month:
+                continue
+            folder = f"{month}/RUN_{safe(label)}"
+            self.rf_folder.setdefault(label, folder)
+            for k in f.get("samples") or []:
+                pat, tag = (k.split("|") + ["", ""])[:2]
+                self.rf_by_embryo[(pat, tag)] = folder
         # (name key, tag) -> [run dicts]
         self.by_sample: dict[tuple, list] = {}
         for run in self.runs:
@@ -117,6 +144,8 @@ class Placement:
         return None
 
     def run_folder(self, run_id, run=None) -> str | None:
+        if run is None and _run_key(run_id) in self.rf_folder:
+            return self.rf_folder[_run_key(run_id)]
         run = run or self.run_by_id(run_id)
         month = self.month_folder(run)
         if not month:
@@ -142,6 +171,12 @@ class Placement:
         """Folder (relative, '/'-separated) holding a case's images and TRF."""
         info = self.cases.get(case_code)
         patient = safe(info["patient"] if info and info["patient"] else case_code)
+        if info:
+            pc = _clean(info["patient"])
+            for t in sorted(info["tags"]):
+                folder = self.rf_by_embryo.get((pc, t))
+                if folder:
+                    return f"{folder}/{patient}"
         run = self.case_run(case_code)
         base = self.run_folder(None, run) if run else None
         if base:

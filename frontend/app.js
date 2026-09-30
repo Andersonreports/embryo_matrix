@@ -1038,14 +1038,28 @@ function resolveSampleIdentity(raw,knownTags){
 // under. A tag can belong to more than one patient across a run (e.g. two
 // patients both having a "VA1"), which is exactly why the patient name is
 // still checked before trusting a match.
+// The result file's Details tab is a copy of the PGS-NGS sheet rows for that run, so it shares many columns
+// with the tracker. A Details row is tied to ONE tracker row by comparing every shared column; it only counts
+// when a single tracker row clearly scores best (same sample ID or patient + embryo names, plus more columns).
+const TRACKER_MATCH_COLS=['sample id','patient name','embryo name','date sample received','box number','center name','test name','embryologist name','date of biopsy','date trf received','number of embryos','location'];
+const normCol=v=>String(v??'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+function makeTrackerIndex(rows){const bySid=new Map,byPat=new Map;rows.forEach(r=>{if(r._stale)return;const sid=cleanId(field(r,['sample id'])),pat=cleanId(field(r,['patient name','patient']));if(sid){if(!bySid.has(sid))bySid.set(sid,[]);bySid.get(sid).push(r)}if(pat){if(!byPat.has(pat))byPat.set(pat,[]);byPat.get(pat).push(r)}});return{bySid,byPat}}
+function matchTrackerRow(det,tix){const sid=cleanId(field(det,['sample id'])),pat=cleanId(field(det,['patient name']));
+ const cand=new Set([...(sid&&tix.bySid.get(sid)||[]),...(pat&&tix.byPat.get(pat)||[])]);if(!cand.size)return null;
+ const detEmb=normCol(field(det,['embryo name']));
+ const scored=[...cand].map(t=>{let score=0,conflict=0;for(const c of TRACKER_MATCH_COLS){const a=normCol(field(det,[c])),b=normCol(field(t,[c]));if(!a||!b)continue;if(a===b)score++;else conflict++}
+  const strong=(sid&&cleanId(field(t,['sample id']))===sid)||(pat&&cleanId(field(t,['patient name','patient']))===pat&&normCol(field(t,['embryo name']))===detEmb);return{t,score,conflict,strong}}).filter(x=>x.strong&&x.score>=2);
+ if(!scored.length)return null;scored.sort((a,b)=>b.score-a.score||a.conflict-b.conflict);
+ if(scored.length>1&&scored[0].score===scored[1].score&&scored[0].conflict===scored[1].conflict)return null;
+ return scored[0].t}
 function buildAndersonIndex(detailsRows){
   const idx=new Map();
-  for(const r of detailsRows){
+  for(const [di,r] of detailsRows.entries()){
     const sampleId=field(r,['sample id']),patient=field(r,['patient name']),embryoField=field(r,['embryo name']);
     if(!sampleId||!patient||!embryoField)continue;
     for(const tag of expandEmbryoTags(embryoField)){
       const list=idx.get(tag)||[];
-      list.push({patientClean:cleanId(patient),patient,sampleId});
+      list.push({patientClean:cleanId(patient),patient,sampleId,row:r,di});
       idx.set(tag,list);
     }
   }
@@ -1116,7 +1130,7 @@ function legacyResultFiles(rows){const log=uploadLogCache||[],groups=new Map;
 async function loadResultFiles(rows){const saved=(await kvGet('embryomatrix-result-files'))||[];resultFilesCache=[...legacyResultFiles(rows||(await kvGet('embryomatrix-imported-cases'))||[]),...saved].sort((a,b)=>String(b.at).localeCompare(String(a.at)));return resultFilesCache}
 // Read one result file: Summary rows matched to confirmed Anderson IDs via the Details tab,
 // with Inconclusive-tab details folded in. Returns results keyed patient|embryo tag|sample id.
-async function parseResultFile(f,trackerTags=new Map){
+async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
  let summaryRows=[],detailsRows=[],inconclusiveRows=[];
  const sheets=await gridsFromFile(f);
  for(const {name,rows} of sheets){
@@ -1132,50 +1146,46 @@ async function parseResultFile(f,trackerTags=new Map){
  const inconclusiveIndex=buildInconclusiveIndex(inconclusiveRows,andersonIndex);
  // byKey: rows confirmed through a Details-tab Anderson ID. byName: rows without one,
  // matched later against the tracker by patient name + embryo tag alone.
- const byKey=new Map,byName=new Map;
+ const byKey=new Map,byName=new Map,used=new Set,tix=makeTrackerIndex(trackerRows),unmatchedNames=[];
  resultRows.forEach(r=>{
   const id=resolveSampleIdentity(field(r,['sample name']),andersonIndex);
   if(!id.embryo)return;
   const inconclusiveDetails=inconclusiveIndex.get(`${cleanId(id.patient)}|${id.embryo}`);
   const row={...r,...inconclusiveDetails,_computedResult:computeEmbryoResult(r,!!inconclusiveDetails)};
   const match=resolveAndersonId(id.patient,id.embryo,andersonIndex);
-  if(match){byKey.set(`${match.patientClean}|${id.embryo}|${cleanId(match.sampleId)}`,row);return}
+  if(match){used.add(`${match.di}|${id.embryo}`);
+   // Tie the Details row to its tracker row through all shared columns, and key the result by that tracker row.
+   const tr=matchTrackerRow(match.row,tix),key=tr&&expandEmbryoTags(field(tr,['embryo name','embryo id','embryo'])).includes(id.embryo)?`${cleanId(field(tr,['patient name','patient']))}|${id.embryo}|${cleanId(field(tr,['sample id']))}`:`${match.patientClean}|${id.embryo}|${cleanId(match.sampleId)}`;
+   byKey.set(key,row);return}
   // No Details-tab entry: split the sample name using the embryo tags the tracker knows.
   const own=cleanId(id.patient)?id:resolveSampleIdentity(field(r,['sample name']),trackerTags);
   if(cleanId(own.patient)&&own.embryo)byName.set(`${cleanId(own.patient)}|${own.embryo}`,row);
  });
- return {file:f,byKey,byName,count:resultRows.length,unverified:0};
+ // Embryos the Details tab lists that have no result row in this file.
+ const missing=[];detailsRows.forEach((r,di)=>{const pt=field(r,['patient name']);expandEmbryoTags(field(r,['embryo name'])).forEach(tag=>{if(!used.has(`${di}|${tag}`))missing.push(`${pt} ${tag}`.trim())})});
+ return {file:f,byKey,byName,count:resultRows.length,unverified:0,unmatchedNames,missing,hasDetails:detailsRows.length>0};
 }
 function matchResultsByName(parsed,known){const byTag=new Map;for(const k of known){const [pat,tag]=k.split('|');if(!byTag.has(tag))byTag.set(tag,[]);byTag.get(tag).push({pat,key:k})}
- parsed.forEach(p=>p.byName.forEach((r,nk)=>{const [pat,tag]=nk.split('|'),hits=[...new Set((byTag.get(tag)||[]).filter(c=>c.pat&&(c.pat.includes(pat)||pat.includes(c.pat))).map(c=>c.key))];if(hits.length===1&&!p.byKey.has(hits[0]))p.byKey.set(hits[0],r);else p.unverified++}))}
-// Embryos listed for a run in the Sequencing Batch Record that no uploaded result file for that run covers yet.
-function runMissingResults(rn,seqRuns){const run=seqRuns.find(r=>runIdNorm(r.runId)===runIdNorm(rn));if(!run)return[];
- const have=new Set;resultFilesCache.filter(f=>runIdNorm(f.run||runNumberOf(f.fileName))===runIdNorm(rn)).forEach(f=>(f.samples||[]).forEach(k=>{const [pat,tag]=k.split('|');have.add(`${nameKey(pat)}|${tag}`)}));
- return (run.samples||[]).filter(x=>!have.has(`${nameKey(x.patient)}|${cleanId(x.embryo)}`)).map(x=>({label:`${x.patient} ${x.embryo}`.trim()}))}
+ parsed.forEach(p=>p.byName.forEach((r,nk)=>{const [pat,tag]=nk.split('|'),hits=[...new Set((byTag.get(tag)||[]).filter(c=>c.pat&&(c.pat.includes(pat)||pat.includes(c.pat))).map(c=>c.key))];if(hits.length===1&&!p.byKey.has(hits[0]))p.byKey.set(hits[0],r);else{p.unverified++;p.unmatchedNames.push(field(r,['sample name'])||nk)}}))}
 async function handleResultAttach(files){
  const status=$('#resultAttachStatus');
  status.textContent=`Reading ${files.length} file(s)…`;
  const allRows=(await kvGet('embryomatrix-imported-cases'))||[],known=new Set(allRows.flatMap(rowResultKeys));
  const trackerTags=new Map([...known].map(k=>[k.split('|')[1],true]));
  const parsed=[];
- for(const f of files){try{parsed.push(await parseResultFile(f,trackerTags))}catch(e){toast(`${f.name} could not be read`)}}
+ const trackerRows=allRows.filter(r=>!r._stale);
+ for(const f of files){try{parsed.push(await parseResultFile(f,trackerTags,trackerRows))}catch(e){toast(`${f.name} could not be read`)}}
  if(!parsed.some(p=>p.byKey.size||p.byName.size)){status.textContent='No result rows with a Sample Name and QC/Result value were found.';return}
  // Rows without an Anderson ID: take the tracker embryo whose patient name matches (loosely,
  // as the file often shortens it) and whose tag is the same. If that fits more than one
  // tracker sample (e.g. a re-biopsy with the same tag), the row is skipped rather than guessed.
  matchResultsByName(parsed,known);
 
- // The run number in each file name must exist in the Sequencing Batch Record, and every
- // patient + embryo in the file must belong to that run's sample list.
- const seqRuns=(await kvGet('embryomatrix-sequencing-runs'))||[],runProblems=[],notInRun=[];
- parsed.forEach(p=>{const rn=runNumberOf(p.file.name);if(!rn){runProblems.push(`${p.file.name}: no RUN number in the file name`);return}
-  const run=seqRuns.find(r=>runIdNorm(r.runId)===runIdNorm(rn));if(!run){runProblems.push(`${p.file.name}: ${rn} is not in the Sequencing Batch Record`);return}
-  const sheet=(run.samples||[]).map(x=>[nameKey(x.patient),cleanId(x.embryo)]),bad=[];
-  // A sample whose patient + embryo isn't listed for this run is left out (not merged) rather than blocking the whole file; it is listed after the upload so the name can be fixed and re-uploaded.
-  [...p.byKey].forEach(([k,r])=>{const [pat,tag]=k.split('|'),pk=nameKey(pat);if(!sheet.some(([n,t])=>t===tag&&n&&n===pk)){bad.push(`${field(r,['sample name'])||k}`);p.byKey.delete(k)}});
-  if(bad.length)notInRun.push({rn,file:p.file.name,names:bad})});
- const skippedHtml=notInRun.map(g=>`<span class="rf-blocked-line rf-missing"><b>${escapeHtml(g.rn)}</b>: ${g.names.length} sample(s) in the file are not listed for this run in the Sequencing Batch Record, so no result was added:<ul class="rf-missing-list">${g.names.map(n=>`<li>${escapeHtml(n)}</li>`).join('')}</ul><small>Fix the patient/embryo name in the sheet (or the file), then upload a file with just these samples.</small></span>`).join('');
- if(runProblems.length){status.innerHTML=`<span class="rf-blocked">Upload blocked: run number check failed.</span>${runProblems.map(t=>`<span class="rf-blocked-line">${escapeHtml(t)}</span>`).join('')}`;toast('Upload blocked: run number does not match the Sequencing Batch Record');return}
+ // Results are matched to the PGS-NGS (tracker) rows only; the Sequencing Batch Record is not consulted here.
+ // Anything that can't be tied to exactly one tracker row is left out and listed after the upload.
+ parsed.forEach(p=>{[...p.byKey].forEach(([k,r])=>{if(!known.has(k)){p.unmatchedNames.push(field(r,['sample name'])||k);p.byKey.delete(k)}})});
+ const listHtml=(title,names,hint)=>names.length?`<span class="rf-blocked-line rf-missing"><b>${escapeHtml(title)}</b>: ${names.length} item(s)<ul class="rf-missing-list">${names.map(n=>`<li>${escapeHtml(n)}</li>`).join('')}</ul><small>${escapeHtml(hint)}</small></span>`:'';
+ const skippedHtml=parsed.map(p=>listHtml(`${p.file.name} - not matched to a PGS-NGS sheet row, no result added`,p.unmatchedNames,'Make the patient / embryo name (or sample ID) the same in the PGS-NGS sheet and the result file, then upload a file with just these.')).join('');
  const unverified=parsed.reduce((n,p)=>n+p.unverified,0),skippedNote=unverified?` · ${unverified} row(s) skipped (no single matching patient + embryo in the tracker).`:'';
  await loadResultFiles(allRows);
  const owner=new Map;resultFilesCache.forEach(e=>e.samples.forEach(k=>owner.set(k,e)));
@@ -1201,8 +1211,8 @@ async function handleResultAttach(files){
  try{const r=await fetch('/api/upload-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:{files:entries.map(e=>e.file.name),matched:matchedRows,at:mergedAt}})});if(r.ok)uploadLogCache=(await r.json()).value||uploadLogCache}catch(err){}
  await setupCases();await loadResultFiles(updated);renderResultFiles();
  const embryos=entries.reduce((n,e)=>n+e.keys.length,0);
- const runsDone=[...new Set(entries.map(e=>runNumberOf(e.file.name)))],gaps=runsDone.map(rn=>({rn,missing:runMissingResults(rn,seqRuns)}));
- status.innerHTML=`${escapeHtml(`${entries.length} file(s) uploaded · results added for ${embryos} embryo(s) across ${matchedRows} sample row(s).`+skippedNote)}${skippedHtml}${gaps.map(g=>g.missing.length?`<span class="rf-blocked-line rf-missing"><b>${escapeHtml(g.rn)}</b>: ${g.missing.length} embryo(s) in the Sequencing Batch Record have no result yet.<ul class="rf-missing-list">${g.missing.map(m=>`<li>${escapeHtml(m.label)}</li>`).join('')}</ul><small>Upload a file containing just these (same RUN number) to add them.</small></span>`:`<span class="rf-blocked-line"><b>${escapeHtml(g.rn)}</b>: every embryo has a result.</span>`).join('')}`;
+ const missingHtml=parsed.filter(p=>p.hasDetails).map(p=>listHtml(`${p.file.name} - listed in the file's Details tab but no result row`,p.missing,'Upload a file with just these embryos (same run) to add their results.')).join('');
+ status.innerHTML=`${escapeHtml(`${entries.length} file(s) uploaded · results added for ${embryos} embryo(s) across ${matchedRows} sample row(s).`+skippedNote)}${skippedHtml}${missingHtml}`;
  toast(`Results added for ${embryos} embryo(s)`);
 }
 async function deleteResultFile(id){
