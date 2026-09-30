@@ -1151,3 +1151,5 @@ html,body{max-width:100%;overflow-x:hidden}
 .vault-run-month{font:600 13px "Inter";color:#0a6872}
 .vault-run-meta{margin-left:auto;font:500 13px "Inter";color:#6b766f}
 .vault-run-body{margin:0;padding:4px 20px 20px}
+
+.status-empty{padding:22px 14px;border:1px dashed #cdd8d2;border-radius:12px;color:#8b968f;font-size:13px;text-align:center}
