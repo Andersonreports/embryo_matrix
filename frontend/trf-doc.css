@@ -58,6 +58,12 @@ body.td-print{margin:0;background:#e9ecef}
  .td-page{margin:0;padding:10mm 11mm;min-height:auto;page-break-after:always}
  .td-page:last-child{page-break-after:auto}
  @page{size:A4;margin:0}
+ /* tighter type so each form page fits one A4 sheet */
+ .td-page{font-size:13px;line-height:1.35;padding:8mm 11mm;height:296mm;overflow:hidden}
+ .td-section h3{font-size:15px;padding:4px 12px}
+ .td-body{padding:5px 12px}
+ .td-line{margin:3px 0}
+ .td-check{margin-right:8px;white-space:nowrap}
 }
 
 /* Editable template (TRFs tab): fields are typed straight into the paper layout */

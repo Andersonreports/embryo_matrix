@@ -62,6 +62,19 @@ class KVStore(Base):
     value: Mapped[Any] = mapped_column(JSON)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class CaseRunAssignment(Base):
+    """Manually assigns a sequencing run to a case (loose case_code string, same
+    key CaseImage/TrfSubmission use - real case identity lives in the sheet-synced
+    data, not the mostly-unused PatientCase table above). This only drives file
+    organization - e.g. moving a case's TRF/images out of staging into a run
+    folder on the lab PC - it's separate from the sheet-derived run matching
+    used for reporting."""
+    __tablename__ = "case_run_assignments"
+    case_code: Mapped[str] = mapped_column(String(80), primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(30))
+    assigned_by: Mapped[str] = mapped_column(String(120), default="")
+    assigned_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class CaseImage(Base):
     __tablename__ = "case_images"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -94,6 +107,11 @@ class TrfSubmission(Base):
     data: Mapped[Any] = mapped_column(JSON)
     status_by: Mapped[str] = mapped_column(String(120), default="")
     status_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Set by a lab user manually linking this submission to a case (no reliable
+    # automatic match - patient_name is free text typed by the clinic).
+    case_code: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    pdf_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    pdf_file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 class ActivityLog(Base):
     """Who did what, when. Written server-side from the login token."""

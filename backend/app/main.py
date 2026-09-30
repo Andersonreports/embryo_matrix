@@ -1,25 +1,47 @@
 import asyncio
 import json
 import secrets
-import shutil
 import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File, Form
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from .config import settings
 from .database import Base, engine, get_db, SessionLocal
-from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission
+from .placement import Placement, safe as _safe_name
+from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn
 from .sheet_sync import parse_sources, sync_sources
-from . import cell_edits
+from . import cell_edits, storage, trf_pdf
+from sqlalchemy import inspect, text
+import mimetypes
 
 Base.metadata.create_all(bind=engine)
+
+def _migrate_added_columns():
+    """create_all only adds missing tables, not missing columns on tables that
+    already exist. trf_submissions predates case_code/pdf_filename/pdf_file_path
+    (added for the run/patient file-organization feature) - add them if missing."""
+    insp = inspect(engine)
+    if "trf_submissions" not in insp.get_table_names():
+        return
+    existing = {c["name"] for c in insp.get_columns("trf_submissions")}
+    add = {
+        "case_code": "VARCHAR(80)",
+        "pdf_filename": "VARCHAR(255)",
+        "pdf_file_path": "VARCHAR(500)",
+    }
+    with engine.begin() as conn:
+        for col, coltype in add.items():
+            if col not in existing:
+                conn.execute(text(f"ALTER TABLE trf_submissions ADD COLUMN {col} {coltype}"))
+
+_migrate_added_columns()
 
 def _seed_activity_from_upload_log():
     db = SessionLocal()
@@ -46,7 +68,21 @@ STATIC = Path(__file__).parent.parent.parent / "frontend"
 UPLOADS = Path(__file__).parent / "uploads"
 UPLOADS.mkdir(exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
-app.mount("/uploads", StaticFiles(directory=UPLOADS), name="uploads")
+
+@app.get("/uploads/{path:path}")
+def serve_upload(path: str):
+    """Files under uploads/ may be gzip-compressed at rest (storage.py) - this
+    decompresses transparently, so every consumer (browser UI, the lab-PC sync
+    script, an export download) gets plain original bytes over a normal GET,
+    with no client-side unzip step required. Old, pre-compression files (no
+    .gz) are served as-is."""
+    full = (UPLOADS / path).resolve()
+    if UPLOADS.resolve() not in full.parents or not full.is_file():
+        raise HTTPException(404, "Not found")
+    data = storage.read_decompressed(full)
+    guess_name = path[:-3] if path.endswith(".gz") else path
+    content_type = mimetypes.guess_type(guess_name)[0] or "application/octet-stream"
+    return Response(content=data, media_type=content_type)
 
 # No login of its own: this app is embedded behind another gated application,
 # which authenticates the user and forwards their identity on every request via
@@ -72,7 +108,7 @@ async def identify_user(request: Request, call_next):
     sync_key = request.headers.get("x-image-sync-key", "")
     # Same key covers every "pull files down to the lab PC" endpoint, not just images —
     # it only ever grants read/list access, never write, so widening its scope is safe.
-    SYNC_PATHS = {"/api/images", "/api/protocols", "/api/result-files"}
+    SYNC_PATHS = {"/api/images", "/api/protocols", "/api/result-files", "/api/trf-files", "/api/case-runs"}
     if sync_key and path in SYNC_PATHS and request.method == "GET":
         if settings.image_sync_token and secrets.compare_digest(sync_key.encode(), settings.image_sync_token.encode()):
             request.state.user = {"username": "File sync", "role": "sync"}
@@ -244,9 +280,7 @@ def add_result_file(
     stored_name = None
     if file is not None and file.filename:
         ext = Path(file.filename).suffix
-        stored_name = f"{uuid.uuid4().hex}{ext}"
-        with (UPLOADS / stored_name).open("wb") as out:
-            shutil.copyfileobj(file.file, out)
+        stored_name = storage.write_compressed(UPLOADS, f"{uuid.uuid4().hex}{ext}", file.file)
     entry = {
         "id": id or uuid.uuid4().hex,
         "fileName": fileName,
@@ -272,10 +306,12 @@ def list_result_files_for_sync(since: str = "", db: Session = Depends(get_db)):
     if since:
         files = [f for f in files if str(f.get("at") or "") > since]
     files.sort(key=lambda f: str(f.get("at") or ""))
+    pl = Placement(db)
     return [{
         "id": f["id"], "fileName": f.get("fileName"), "run": f.get("run"),
         "at": f.get("at"), "matched": f.get("matched"),
         "url": f"/uploads/{f['filePath']}",
+        "relPath": f"{pl.result_folder(f.get('run'))}/{_safe_name(f.get('fileName'), 'resultfile_' + str(f['id']))}",
     } for f in files]
 
 @app.delete("/api/result-files/{file_id}")
@@ -363,14 +399,13 @@ def upload_case_images(
     for f in files:
         ext = Path(f.filename or "").suffix
         stored_name = f"{uuid.uuid4().hex}{ext}"
-        with (UPLOADS / stored_name).open("wb") as out:
-            shutil.copyfileobj(f.file, out)
+        disk_name = storage.write_compressed(UPLOADS, stored_name, f.file)
         img = CaseImage(
             case_code=case_code,
             embryo_label=embryo_label or None,
             filename=f.filename or stored_name,
             content_type=f.content_type or "application/octet-stream",
-            file_path=stored_name,
+            file_path=disk_name,
         )
         db.add(img); db.commit(); db.refresh(img)
         saved.append({
@@ -388,10 +423,22 @@ def list_all_images(since_id: int = 0, db: Session = Depends(get_db)):
     if since_id:
         q = q.filter(CaseImage.id > since_id)
     rows = q.order_by(CaseImage.added_at.desc()).all()
+    # So the lab-PC sync script can place images under RUN_{run}\{case}\... once a
+    # run is assigned, instead of always under the unassigned/staging path.
+    case_codes = {r.case_code for r in rows}
+    run_by_case = dict(
+        db.query(CaseRunAssignment.case_code, CaseRunAssignment.run_id)
+        .filter(CaseRunAssignment.case_code.in_(case_codes)).all()
+    ) if case_codes else {}
+    pl = Placement(db)
+    def image_path(r):
+        prefix = f"{_safe_name(r.embryo_label)}_" if r.embryo_label and not r.embryo_label.lower().startswith("general") else ""
+        return f"{pl.case_folder(r.case_code)}/{prefix}{r.id}_{_safe_name(r.filename, f'image{r.id}')}"
     return [{
         "id": r.id, "caseId": r.case_code, "embryo": r.embryo_label,
         "filename": r.filename, "url": f"/uploads/{r.file_path}",
-        "addedAt": r.added_at.isoformat(),
+        "addedAt": r.added_at.isoformat(), "runId": run_by_case.get(r.case_code),
+        "relPath": image_path(r),
     } for r in rows]
 
 @app.get("/api/cases/{case_code}/images")
@@ -416,6 +463,32 @@ def delete_image(image_id: int, request: Request, db: Session = Depends(get_db))
     log_activity(db, "image_delete", detail, request=request)
     return {"ok": True}
 
+# --- Case run assignment: manually links a case to a sequencing run so the lab-PC
+# sync script can move that case's TRF/images out of staging into a run folder. ---
+
+@app.patch("/api/cases/{case_code}/run")
+def assign_case_run(case_code: str, payload: KVValue, request: Request, db: Session = Depends(get_db)):
+    run_id = str((payload.value or {}).get("runId", "")).strip() if isinstance(payload.value, dict) else ""
+    if not run_id:
+        raise HTTPException(400, "runId is required")
+    user = request.state.user or {}
+    row = db.get(CaseRunAssignment, case_code)
+    if row:
+        row.run_id = run_id
+        row.assigned_by = user.get("username") or ""
+    else:
+        db.add(CaseRunAssignment(case_code=case_code, run_id=run_id, assigned_by=user.get("username") or ""))
+    db.commit()
+    log_activity(db, "case_run_assign", f"{case_code} → RUN {run_id}", request=request)
+    return {"caseCode": case_code, "runId": run_id}
+
+@app.get("/api/case-runs")
+def list_case_runs(db: Session = Depends(get_db)):
+    """For the lab-PC sync script: every case's assigned run, so it can decide
+    which cases' staged files need to move into a run folder."""
+    rows = db.query(CaseRunAssignment).all()
+    return [{"caseCode": r.case_code, "runId": r.run_id, "assignedAt": r.assigned_at.isoformat()} for r in rows]
+
 # --- Protocol documents: lab-uploaded SOPs shown as separate cards in the Protocols tab ---
 
 @app.post("/api/protocols")
@@ -427,13 +500,12 @@ def upload_protocol(
 ):
     ext = Path(file.filename or "").suffix
     stored_name = f"{uuid.uuid4().hex}{ext}"
-    with (UPLOADS / stored_name).open("wb") as out:
-        shutil.copyfileobj(file.file, out)
+    disk_name = storage.write_compressed(UPLOADS, stored_name, file.file)
     doc = ProtocolDocument(
         title=title or Path(file.filename or stored_name).stem,
         filename=file.filename or stored_name,
         content_type=file.content_type or "application/octet-stream",
-        file_path=stored_name,
+        file_path=disk_name,
     )
     db.add(doc); db.commit(); db.refresh(doc)
     log_activity(db, "protocol_upload", f"{doc.title} ({doc.filename})", request=request)
@@ -475,12 +547,16 @@ TRF_TESTS = {
     "EMBRYO_SURE": "Embryo Sure - PGT-A (CNV with SNP)",
     "PGT-SR": "Preimplantation Genetic Testing - Structural Rearrangements (PGT-SR)",
     "PGT-HLA": "Preimplantation Genetic Testing - HLA C typing",
+    # PGT-M requisition form
+    "PGT-M": "Mutation only",
+    "PGT-A+M": "Aneuploidies + Mutation (PGT-A+M)",
+    "PGT-A+M+HLA": "Aneuploidies + Mutation + HLA matching (PGT-A+M + HLA)",
 }
 TRF_TEXT_FIELDS = (
     "biopsyDate", "referringDoctor", "hospital", "address", "phone", "email",
     "patientName", "patientDob", "uhid", "aadhaar", "husbandName", "husbandDob", "patientEmail",
     "collectionDate", "collectionTime", "biopsyDay", "donorAge", "testIndication", "clinicalHistory",
-    "maternalKaryotype", "paternalKaryotype", "ivfLabContact", "rebiopsy", "embryologistName", "embryologistEmail",
+    "maternalKaryotype", "paternalKaryotype", "biopsyTime", "maternalGenotype", "paternalGenotype", "ivfLabContact", "rebiopsy", "embryologistName", "embryologistEmail",
     # Form G (PNDT Act consent)
     "consentRelation", "consentGuardianName", "consentAge", "patientAddress", "consentDate", "consentPlace",
     "companionName", "companionAddress", "companionRelation", "gynaecologistName", "gynaecologistRegNo",
@@ -499,6 +575,7 @@ def _require_lab_user(request: Request):
 def _clean_trf(raw: dict) -> dict:
     s = lambda v, n=2000: str(v or "").strip()[:n]
     data = {k: s(raw.get(k)) for k in TRF_TEXT_FIELDS}
+    data["formType"] = "PGT-M" if raw.get("formType") == "PGT-M" else "PGT-A"
     data["aadhaar"] = "".join(ch for ch in data["aadhaar"] if ch.isdigit())
     data["tests"] = [t for t in (raw.get("tests") or []) if t in TRF_TESTS]
     data["gametes"] = [g for g in (raw.get("gametes") or []) if g in ("Self", "Donor Sperm", "Donor Oocyte")]
@@ -516,9 +593,25 @@ def _trf_summary(t: TrfSubmission) -> dict:
     return {
         "id": t.id, "ref": t.ref, "submittedAt": _iso_utc(t.submitted_at), "status": t.status,
         "clinic": t.clinic, "patient": t.patient_name, "doctor": d.get("referringDoctor", ""),
-        "tests": d.get("tests", []), "biopsyDate": d.get("biopsyDate", ""), "embryos": len(d.get("embryos", [])),
+        "tests": d.get("tests", []), "formType": d.get("formType", "PGT-A"), "biopsyDate": d.get("biopsyDate", ""), "embryos": len(d.get("embryos", [])),
         "statusBy": t.status_by, "statusAt": _iso_utc(t.status_at),
+        "caseCode": t.case_code, "pdfUrl": f"/uploads/{t.pdf_file_path}" if t.pdf_file_path else None,
     }
+
+def _generate_trf_pdf(db: Session, t: TrfSubmission):
+    """Best-effort: a PDF render failure shouldn't fail the submission itself -
+    the data is already saved either way."""
+    try:
+        # A short locale-style stamp, like the browser's toLocaleString() - the raw ISO
+        # timestamp is too long for the template's ref box and wraps/overlaps.
+        submitted = t.submitted_at.strftime("%d/%m/%Y, %I:%M:%S %p")
+        pdf_bytes = trf_pdf.render_trf_pdf(t.data or {}, {"ref": t.ref, "submittedAt": submitted})
+        stored_name = f"{uuid.uuid4().hex}.pdf"
+        disk_name = storage.write_compressed_bytes(UPLOADS, stored_name, pdf_bytes)
+        t.pdf_filename, t.pdf_file_path = f"{t.ref}.pdf", disk_name
+        db.commit()
+    except Exception as exc:
+        print(f"TRF PDF render failed for {t.ref}: {exc}")
 
 @app.post("/api/trf")
 async def submit_trf(request: Request, db: Session = Depends(get_db)):
@@ -552,6 +645,7 @@ async def submit_trf(request: Request, db: Session = Depends(get_db)):
             break
     t = TrfSubmission(ref=ref, clinic=data["hospital"][:255], patient_name=data["patientName"][:255], data=data)
     db.add(t); db.commit(); db.refresh(t)
+    _generate_trf_pdf(db, t)
     _trf_recent[ip] = recent + [now]
     log_activity(db, "trf_submit", f"{t.ref} · {t.patient_name} · {t.clinic}", request=request)
     return {"ref": t.ref, "submittedAt": _iso_utc(t.submitted_at)}
@@ -583,6 +677,46 @@ def update_trf_status(trf_id: int, payload: KVValue, request: Request, db: Sessi
     db.commit()
     log_activity(db, "trf_status", f"{t.ref} · {t.patient_name} → {status}", request=request)
     return _trf_summary(t)
+
+@app.patch("/api/trf/{trf_id}/case")
+def link_trf_case(trf_id: int, payload: KVValue, request: Request, db: Session = Depends(get_db)):
+    """Links a submitted TRF to a case, since the clinic-typed patient name has
+    no reliable automatic match - a lab user confirms it. This is what lets the
+    lab-PC sync script route the TRF's PDF into that case's folder."""
+    _require_lab_user(request)
+    t = db.get(TrfSubmission, trf_id)
+    if not t:
+        raise HTTPException(404, "Not found")
+    case_code = str((payload.value or {}).get("caseCode", "")).strip() if isinstance(payload.value, dict) else ""
+    t.case_code = case_code or None
+    db.commit()
+    log_activity(db, "trf_link_case", f"{t.ref} → case {case_code or '(unlinked)'}", request=request)
+    return _trf_summary(t)
+
+@app.get("/api/trf-files")
+def list_trf_files_for_sync(since_id: int = 0, db: Session = Depends(get_db)):
+    """For the lab-PC sync script: submitted TRFs that have a generated PDF,
+    plus enough to route it - the linked case (if any) and that case's
+    assigned run. No Aadhaar/DOB/address fields here, unlike /api/trf."""
+    q = db.query(TrfSubmission).filter(TrfSubmission.pdf_file_path.isnot(None))
+    if since_id:
+        q = q.filter(TrfSubmission.id > since_id)
+    rows = q.order_by(TrfSubmission.id).all()
+    case_codes = {r.case_code for r in rows if r.case_code}
+    run_by_case = dict(
+        db.query(CaseRunAssignment.case_code, CaseRunAssignment.run_id)
+        .filter(CaseRunAssignment.case_code.in_(case_codes)).all()
+    ) if case_codes else {}
+    pl = Placement(db)
+    def trf_path(r):
+        if r.case_code:
+            return f"{pl.case_folder(r.case_code)}/TRF.pdf"
+        return f"TRFS/{_safe_name(f'{r.ref}_{r.patient_name}')}.pdf"
+    return [{
+        "id": r.id, "ref": r.ref, "patient": r.patient_name, "caseCode": r.case_code,
+        "runId": run_by_case.get(r.case_code) if r.case_code else None,
+        "url": f"/uploads/{r.pdf_file_path}", "relPath": trf_path(r),
+    } for r in rows]
 
 # --- Live Google Sheets sync: pulls case/sample rows into the same store the UI reads ---
 

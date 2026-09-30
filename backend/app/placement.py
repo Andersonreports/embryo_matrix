@@ -1,0 +1,153 @@
+"""Where each uploaded file belongs in the lab PC's EmbryoMatrix folder:
+
+    <Year>\\<MM - Month>\\RUN_<id>\\<Patient>\\   embryo images + TRF.pdf of that patient
+    <Year>\\<MM - Month>\\RUN_<id>\\Results\\     the run's result spreadsheets
+
+A run's year/month comes from the received date of the first sample listed for it in
+the Sequencing Batch Record; a case's run comes from finding its patient + embryo in
+that record (exact name match), else the run assigned manually in the app.
+Anything that can't be placed goes to _Unassigned / TRFS / _ResultFiles.
+"""
+import re
+from datetime import datetime
+
+from sqlalchemy.orm import Session
+
+from .models import KVStore, CaseRunAssignment
+
+MONTHS = ["January", "February", "March", "April", "May", "June", "July",
+          "August", "September", "October", "November", "December"]
+
+
+def _clean(v) -> str:
+    return re.sub(r"[^A-Z0-9]", "", re.sub(r"_L\d+$", "", str(v or "").upper()))
+
+
+def _name_key(v) -> str:
+    return re.sub(r"[^A-Z]", "", str(v or "").upper())
+
+
+def _run_key(v) -> str:
+    return re.sub(r"[^A-Z0-9]", "", re.sub(r"^RUN", "", str(v or "").upper()))
+
+
+def _field(r: dict, names: list[str]) -> str:
+    for n in names:
+        for k, v in r.items():
+            if (k == n or n in k) and v:
+                return str(v).strip()
+    return ""
+
+
+def safe(name: str, fallback: str = "Unknown") -> str:
+    s = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", str(name or "")).strip().rstrip(".")
+    return s or fallback
+
+
+def _expand_tags(field: str) -> list[str]:
+    field = (field or "").strip()
+    m = re.match(r"^([A-Za-z]+)-?(\d+)((?:,\s*\d+)*)$", field)
+    if m:
+        prefix, first, rest = m.groups()
+        return [f"{prefix}{n}".upper() for n in [first] + [x.strip() for x in rest.split(",") if x.strip()]]
+    return [_clean(t) for t in field.split(",") if t.strip()]
+
+
+def _parse_date(s: str):
+    m = re.match(r"^\s*(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\s*$", str(s or ""))
+    if not m:
+        return None
+    d, mo, y = map(int, m.groups())
+    try:
+        return datetime(y, mo, d)
+    except ValueError:
+        return None
+
+
+class Placement:
+    def __init__(self, db: Session):
+        def kv(key):
+            row = db.get(KVStore, key)
+            return (row.value if row else None) or []
+        self.runs = kv("embryomatrix-sequencing-runs")
+        self.manual = dict(db.query(CaseRunAssignment.case_code, CaseRunAssignment.run_id).all())
+        # case id -> (patient, tags, received)
+        self.cases: dict[str, dict] = {}
+        for r in kv("embryomatrix-imported-cases"):
+            if r.get("_stale"):
+                continue
+            cid = _field(r, ["case id"]) or _field(r, ["sample id"])
+            if not cid:
+                continue
+            c = self.cases.setdefault(cid, {"patient": _field(r, ["patient name", "patient"]), "tags": set(), "received": set()})
+            c["tags"].update(_expand_tags(_field(r, ["embryo name", "embryo id", "embryo"])))
+            rec = _field(r, ["date sample received"])
+            if rec:
+                c["received"].add(rec)
+        # (name key, tag) -> [run dicts]
+        self.by_sample: dict[tuple, list] = {}
+        for run in self.runs:
+            for s in run.get("samples") or []:
+                self.by_sample.setdefault((_name_key(s.get("patient")), _clean(s.get("embryo"))), []).append((run, s))
+
+    def run_by_id(self, run_id):
+        k = _run_key(run_id)
+        return next((r for r in self.runs if _run_key(r.get("runId")) == k), None) if k else None
+
+    def month_folder(self, run) -> str | None:
+        """Year\\MM - Month from the first sample with a received date in the run.
+        The sheet's locale sometimes swaps day and month ("09-03-2026" in the September
+        tab), so a date is flipped when only the flipped reading agrees with the run's tab.
+        With no dated sample at all, the tab's own month is used."""
+        run = run or {}
+        tm = re.match(r"^\s*([A-Za-z]+)\s+(\d{4})\s*$", str(run.get("tab") or ""))
+        tab = None
+        if tm and tm.group(1).capitalize() in MONTHS:
+            tab = (int(tm.group(2)), MONTHS.index(tm.group(1).capitalize()) + 1)
+        for s in run.get("samples") or []:
+            d = _parse_date(s.get("received"))
+            if not d:
+                continue
+            y, mo = d.year, d.month
+            if tab and (y, mo) != tab and d.day <= 12 and (y, d.day) == tab:
+                mo = d.day
+            return f"{y}/{mo:02d} - {MONTHS[mo - 1]}"
+        if tab:
+            return f"{tab[0]}/{tab[1]:02d} - {MONTHS[tab[1] - 1]}"
+        return None
+
+    def run_folder(self, run_id, run=None) -> str | None:
+        run = run or self.run_by_id(run_id)
+        month = self.month_folder(run)
+        if not month:
+            return None
+        return f"{month}/RUN_{safe(str((run or {}).get('runId') or run_id))}"
+
+    def case_run(self, case_code):
+        info = self.cases.get(case_code)
+        if info:
+            hits = []
+            pk = _name_key(info["patient"])
+            for t in info["tags"]:
+                hits += self.by_sample.get((pk, t), [])
+            if hits:
+                # A re-sequenced embryo appears in several runs: prefer the one received on the row's date.
+                exact = [h for h in hits if h[1].get("received") in info["received"]]
+                return (exact or hits)[-1][0]
+        if case_code in self.manual:
+            return self.run_by_id(self.manual[case_code])
+        return None
+
+    def case_folder(self, case_code) -> str:
+        """Folder (relative, '/'-separated) holding a case's images and TRF."""
+        info = self.cases.get(case_code)
+        patient = safe(info["patient"] if info and info["patient"] else case_code)
+        run = self.case_run(case_code)
+        base = self.run_folder(None, run) if run else None
+        if base:
+            return f"{base}/{patient}"
+        return f"_Unassigned/{patient}" + (f" ({safe(case_code)})" if info and info["patient"] else "")
+
+    def result_folder(self, run_label) -> str:
+        base = self.run_folder(run_label) if run_label else None
+        return f"{base}/Results" if base else "_ResultFiles"

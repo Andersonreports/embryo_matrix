@@ -1,26 +1,43 @@
 # EmbryoMatrix file sync
 
-Automatically copies every embryo image, protocol document, and uploaded
-result spreadsheet from EmbryoMatrix onto this PC's local storage — a second,
-independent copy that lives off the server. You set it up once; after that it
-runs by itself in the background every few minutes, including after the PC
-restarts. Nobody needs to run anything day to day.
+Automatically copies every embryo image, digital TRF PDF, protocol document,
+and uploaded result spreadsheet from EmbryoMatrix onto this PC's local
+storage — a second, independent copy that lives off the server, organized by
+year, month, sequencing run and patient. You set it up once; after that it runs by itself in the
+background every few minutes, including after the PC restarts. Nobody needs
+to run anything day to day.
 
-Files are saved like this:
+Files are saved like this (the server decides every path):
 
 ```
-D:\EmbryoImages\
-  HYP0000004527\          <- case ID
-    DJ1\                  <- embryo
-      1_Screenshot.png
-    General _ patient\    <- images not linked to a specific embryo
+D:\EmbryoMatrix\
+  2026\
+    09 - September\                  <- month of the run's first sample "received" date
+      RUN_30\
+        TAMILSELVI\                  <- one folder per patient in the run
+          TS-1_12_embryo image.png    <- embryo images (embryo label first)
+          TRF.pdf
+        ARUL PRIYA S\
+          ...
+        Results\
+          Analysis_Run 30-PGS-Fastaseq-Manipal-28-09-2026.xlsx
+      RUN_33\
+        ...
+  _Unassigned\
+    Jane Doe (ADK0000006512)\        <- patient not found in any run of the Sequencing Batch Record
+  TRFS\
+    TRF-260101-AB12_Jane Doe.pdf      <- TRF not yet linked to a case
+  _ResultFiles\
+    Analysis_Legacy.xlsx              <- result file whose run isn't in the Sequencing Batch Record
   _Protocols\
     3_SOP-PGTA-v2.pdf
-  _ResultFiles\
-    RUN21_Analysis_Run21_PGT-MANIPAL.xlsx
 ```
 
-Local copies are never deleted, even if the original is removed in the tracker.
+A patient's run is found by matching their name and embryo tag in the Sequencing
+Batch Record (exact match); if that finds nothing, the run set with the RUN badge
+in the app is used. When a file's location changes (a patient gets matched to a run,
+a run's date is corrected) the local copy is **moved** to the new path on the next
+sync. Local copies are never deleted, even if the original is removed in the tracker.
 
 ## Requirements
 
@@ -32,8 +49,8 @@ Local copies are never deleted, even if the original is removed in the tracker.
 1. Copy this `image_sync` folder to the storage PC, e.g. `C:\EmbryoMatrixSync`.
 2. In that folder, copy `sync-config.example.json` to `sync-config.json` and fill it in:
    - `ServerUrl`: the tracker's address, e.g. `http://192.168.1.50:8001` or `https://tracker.yourcompany.com`
-   - `SyncKey`: the `IMAGE_SYNC_TOKEN` value from the tracker server's `.env`. Ask whoever runs the server for it. (Same key covers images, protocols, and result files — it only ever grants read/download access.)
-   - `Destination`: where to save everything, e.g. `D:\\EmbryoImages` (use double backslashes)
+   - `SyncKey`: the `IMAGE_SYNC_TOKEN` value from the tracker server's `.env`. Ask whoever runs the server for it. (Same key covers images, TRF PDFs, protocols, and result files — it only ever grants read/download access.)
+   - `Destination`: where to save everything, e.g. `D:\\EmbryoMatrix` (use double backslashes)
    - `IntervalMinutes`: how often to check for new files (5 is fine)
 3. Test it once. Open PowerShell in the folder and run:
    ```
@@ -47,12 +64,12 @@ Local copies are never deleted, even if the original is removed in the tracker.
 
 That's it. It now runs every few minutes in the background as a Windows scheduled task named **EmbryoMatrix Image Sync**, whether or not anyone is logged in.
 
-If you already had this set up for images only, just replace `sync-images.ps1` with the new version and leave everything else (config, scheduled task) as-is — the next scheduled run starts picking up protocols and result files automatically, with no reinstall needed.
+If you already had this set up, replace `sync-images.ps1` with the new version and leave everything else as-is. The next run downloads every image, TRF and result file again into the new Year\Month\Run\Patient layout (progress is tracked in `sync-state-placed.json`). Folders from the older layouts (`RUN_<id>\<case>`, `_Unassigned\<case>`, flat `<case>\<embryo>`) are not touched - delete them yourself once you have checked the new folders.
 
 ## Checking it's working
 
-- `sync.log` in the folder records every file saved and any errors.
-- `sync-state.json` / `sync-state-protocols.json` / `sync-state-resultfiles.json` each record how far that category has synced. Delete one to re-check its category from the start; files already saved locally are skipped, not re-downloaded.
+- `sync.log` in the folder records every file saved, every moved-into-a-run-folder case, and any errors.
+- `sync-state-placed.json` records where each image / TRF / result file was last put, which is how the script knows to move it when its path changes. `sync-state-protocols.json` records how far protocol documents have synced. Delete one to re-check from the start; files already at the right path are skipped, not re-downloaded.
 
 ## Turning it off
 

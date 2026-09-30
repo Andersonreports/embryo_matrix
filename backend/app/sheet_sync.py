@@ -339,8 +339,6 @@ def sync_sources(db: Session, sheet_ids: list[str]) -> dict:
     same imported-cases store the UI reads on load, keyed by patient+embryo identity
     so re-syncing updates existing records instead of duplicating them. Tabs are
     discovered automatically, so new ones (e.g. next month's) need no config change."""
-    store = db.get(KVStore, IMPORTED_CASES_KEY)
-    previous_by_key = {_record_key(r): r for r in (store.value if store else []) or []}
     fresh_rows: dict[str, dict] = {}
     fresh_order: list[str] = []
     added = updated = skipped = 0
@@ -351,12 +349,21 @@ def sync_sources(db: Session, sheet_ids: list[str]) -> dict:
     wga_batches = []
     imported_at = datetime.now(timezone.utc).isoformat()
 
+    fetched = []
     for sheet_id in sheet_ids:
         try:
-            tabs = fetch_workbook_tabs(sheet_id)
+            fetched.append(fetch_workbook_tabs(sheet_id))
         except Exception as e:
             errors.append(f"{sheet_id}: {e}")
-            continue
+
+    # Read the stored rows only AFTER the (slow) workbook fetches. A result-file merge
+    # saved by a user while we were fetching would otherwise be missing from our
+    # snapshot and get overwritten below, silently wiping that run's results.
+    db.expire_all()
+    store = db.get(KVStore, IMPORTED_CASES_KEY)
+    previous_by_key = {_record_key(r): r for r in (store.value if store else []) or []}
+
+    for tabs in fetched:
         for label, rows in tabs:
             tab_labels.append(label)
             dna_records.extend(_extract_dna_records(rows))
