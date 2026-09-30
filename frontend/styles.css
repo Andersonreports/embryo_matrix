@@ -884,7 +884,7 @@ header .registry-header-actions{margin-left:10px}
 .status-label{font:700 15px "Inter";letter-spacing:.2px;padding:5px 14px;white-space:nowrap;border-radius:999px}
 .status-count{margin-left:auto;background:#eef1ee;color:#5c665f;border-radius:999px;padding:1px 8px;font:700 11px "Inter";font-variant-numeric:tabular-nums}
 .status-col-desc{font-size:13px;font-weight:500;color:#6b766f;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* Capped to exactly 3 cards tall by JS (capStatusColumns) when a lane holds more than
+/* Capped to exactly 2 cards tall by JS (capStatusColumns) when a lane holds more than
    that, so a busy month scrolls internally instead of turning into one long page scroll. */
 .status-col-body{display:flex;flex-direction:column;gap:14px;padding-right:6px;scrollbar-width:thin;scrollbar-color:#8aa393 #eef2ee}
 .status-col-body::-webkit-scrollbar{width:8px}

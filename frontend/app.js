@@ -638,8 +638,8 @@ window.addEventListener('load',()=>alignHomeSearch());document.fonts?.ready.then
 window.addEventListener('resize',()=>{if(!$('#homeView')?.classList.contains('hidden')){alignHomeSearch();capStatusColumns()}});
 // Cards vary in height (a completed card's QC row, a pending card's shorter meta line, ...),
 // so a fixed CSS max-height either clips a 4th card mid-way or leaves a gap. Measure the
-// real bottom edge of the 3rd card instead and cap there - exactly 3 whole cards, no sliver.
-function capStatusColumns(){document.querySelectorAll('.status-col-body').forEach(body=>{const cards=[...body.children];if(cards.length<=3||body.closest('.cols-1')){body.style.maxHeight='';body.style.overflowY='';return}const top=body.getBoundingClientRect().top,bottom=cards[2].getBoundingClientRect().bottom;body.style.maxHeight=`${Math.ceil(bottom-top)}px`;body.style.overflowY='auto'})}
+// real bottom edge of the 3rd card instead and cap there - exactly 2 whole cards, no sliver.
+function capStatusColumns(){document.querySelectorAll('.status-col-body').forEach(body=>{const cards=[...body.children];if(cards.length<=2||body.closest('.cols-1')){body.style.maxHeight='';body.style.overflowY='';return}const top=body.getBoundingClientRect().top,bottom=cards[1].getBoundingClientRect().bottom;body.style.maxHeight=`${Math.ceil(bottom-top)}px`;body.style.overflowY='auto'})}
 const RUN_STATUS_DEFS=[['pending','WGA in progress','#6b766f','#eceeed','WGA date not filled for all samples'],['wga','WGA completed','#2f6b98','#e1ecf7','Proceeded for sequencing'],['seq','Sequencing completed','#c07a1d','#fbeed8','Sent for report preparation'],['released','Report released','#1f8a52','#dff3e7','NGS report and Attune upload filled']];
 // WGA date filled -> WGA completed; + Seq date -> Sequencing completed; NGS report + Attune upload -> Report released.
 const runStatusOf=c=>{const its=c.live?.items||[],rows=its.map(x=>x.m?.row).filter(Boolean);// Samples that match no tracker row (usually a name spelled differently) can't be judged; a run is only 'in progress' on that basis when most of it is unmatched.
