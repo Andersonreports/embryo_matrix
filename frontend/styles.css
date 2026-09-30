@@ -996,3 +996,56 @@ body:has(#genericView:not(.hidden) .run-page) #genericView{padding-top:12px}
 #genericHeaderTitle .case-test-badge{display:inline-flex;align-items:center;height:30px;padding:0 14px;border-radius:999px;line-height:1}
 body:has(#genericView:not(.hidden) .run-page) main>header{padding:18px 20px 0}
 body:has(#genericView:not(.hidden) .run-page) #genericView{padding-top:18px}
+
+/* Run page table: text columns left, short columns centred; headers follow their column */
+.run-live-table{table-layout:auto}
+.run-live-table th,.run-live-table td{text-align:center!important}
+.run-live-table th:nth-child(2),.run-live-table td:nth-child(2),
+.run-live-table th:nth-child(3),.run-live-table td:nth-child(3),
+.run-live-table th:nth-child(6),.run-live-table td:nth-child(6),
+.run-live-table th:nth-child(7),.run-live-table td:nth-child(7){text-align:left!important}
+.run-live-table td:nth-child(2){min-width:0;max-width:210px;white-space:normal}
+.run-live-table td:nth-child(6){max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.run-live-table td:nth-child(7){max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.run-live-table th,.run-live-table td{padding:11px 9px!important}
+/* Emoji icons in the run stat cards, like Home */
+.run-stat-icon{font-size:24px;line-height:1}
+
+/* QC fail notifications in the top bar */
+.qc-alerts{position:relative;flex-shrink:0}
+.qc-bell{position:relative;width:40px;height:40px;border-radius:50%;border:1px solid #d3ddd6;background:#fff;color:#4e5d56;display:grid;place-items:center;cursor:pointer}
+.qc-bell:hover,.qc-bell[aria-expanded="true"]{background:#f5e3de;color:#a04f3d;border-color:#e6c4ba}
+.qc-badge{position:absolute;top:-5px;right:-6px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#c2412d;color:#fff;font:700 11px/19px "Inter";text-align:center;box-shadow:0 0 0 2px #edf1e9}
+.qc-badge.hidden{display:none}
+.qc-panel{position:absolute;top:calc(100% + 10px);right:0;z-index:30;width:min(380px,calc(100vw - 32px));max-height:min(560px,75vh);display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 16px 40px rgba(16,36,50,.16);overflow:hidden}
+.qc-panel.hidden{display:none}
+.qc-panel-head{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px 12px;border-bottom:1px solid #edf0eb}
+.qc-panel-head h3{margin:0;font:500 16px "Lora"}
+.qc-panel-head span{font-size:12px;color:var(--muted)}
+.qc-list{overflow-y:auto;padding:8px}
+.qc-item{padding:11px 12px;border-radius:10px;border:1px solid transparent}
+.qc-item+.qc-item{margin-top:4px}
+.qc-item.qc-new{background:#fdf3f0;border-color:#f1d8d0}
+.qc-item-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.qc-item-head strong{font-size:14px;color:var(--ink);overflow-wrap:anywhere}
+.qc-fail-tag{flex-shrink:0;font-size:10px;font-weight:700;letter-spacing:.6px;color:#a04f3d;background:#f5e3de;border-radius:999px;padding:2px 8px}
+.qc-patient{margin:3px 0 0;font-size:12px;color:var(--muted)}
+.qc-item dl{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:9px 0 0}
+.qc-item dt{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#8a948e}
+.qc-item dd{margin:1px 0 0;font-size:12px;color:#27352c;overflow-wrap:anywhere}
+.qc-item small{display:block;margin-top:8px;font-size:11px;color:#8b968f}
+.qc-empty,.qc-more{padding:18px;text-align:center;font-size:12px;color:var(--muted)}
+.qc-more{padding:8px;border-top:1px solid #edf0eb}
+/* Keep the bell and account button on the same row as the nav on desktop */
+@media(min-width:721px){.topbar{flex-wrap:nowrap;gap:18px}.topnav{flex-wrap:nowrap;min-width:0;gap:4px}}}
+.topbar .qc-alerts{margin-left:auto}
+.topbar .qc-alerts+.session-info{margin-left:0}
+/* Home: overdue samples card (5th stat) and the Samples-tab chip that clears its filter */
+#homeView #homeStats{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:1200px){#homeView #homeStats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){#homeView #homeStats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat-icon.red{background:#f5e3de;color:#a04f3d}
+#homeStats .overdue-card{cursor:pointer;transition:border-color .15s}
+#homeStats .overdue-card:hover{border-color:#e6c4ba}
+#homeStats .overdue-card:focus-visible{outline:2px solid #a04f3d;outline-offset:2px}
+#homeStats .overdue-card strong{color:#a04f3d}
