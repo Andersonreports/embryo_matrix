@@ -1162,12 +1162,14 @@ async function handleResultAttach(files){
 
  // The run number in each file name must exist in the Sequencing Batch Record, and every
  // patient + embryo in the file must belong to that run's sample list.
- const seqRuns=(await kvGet('embryomatrix-sequencing-runs'))||[],runProblems=[];
+ const seqRuns=(await kvGet('embryomatrix-sequencing-runs'))||[],runProblems=[],notInRun=[];
  parsed.forEach(p=>{const rn=runNumberOf(p.file.name);if(!rn){runProblems.push(`${p.file.name}: no RUN number in the file name`);return}
   const run=seqRuns.find(r=>runIdNorm(r.runId)===runIdNorm(rn));if(!run){runProblems.push(`${p.file.name}: ${rn} is not in the Sequencing Batch Record`);return}
   const sheet=(run.samples||[]).map(x=>[nameKey(x.patient),cleanId(x.embryo)]),bad=[];
-  p.byKey.forEach((r,k)=>{const [pat,tag]=k.split('|'),pk=nameKey(pat);if(!sheet.some(([n,t])=>t===tag&&n&&n===pk))bad.push(`${field(r,['sample name'])||k}`)});
-  if(bad.length)runProblems.push(`${p.file.name}: ${bad.length} sample(s) not in ${rn} of the Sequencing Batch Record - ${bad.slice(0,8).join(', ')}${bad.length>8?` and ${bad.length-8} more`:''}`)});
+  // A sample whose patient + embryo isn't listed for this run is left out (not merged) rather than blocking the whole file; it is listed after the upload so the name can be fixed and re-uploaded.
+  [...p.byKey].forEach(([k,r])=>{const [pat,tag]=k.split('|'),pk=nameKey(pat);if(!sheet.some(([n,t])=>t===tag&&n&&n===pk)){bad.push(`${field(r,['sample name'])||k}`);p.byKey.delete(k)}});
+  if(bad.length)notInRun.push({rn,file:p.file.name,names:bad})});
+ const skippedHtml=notInRun.map(g=>`<span class="rf-blocked-line rf-missing"><b>${escapeHtml(g.rn)}</b>: ${g.names.length} sample(s) in the file are not listed for this run in the Sequencing Batch Record, so no result was added:<ul class="rf-missing-list">${g.names.map(n=>`<li>${escapeHtml(n)}</li>`).join('')}</ul><small>Fix the patient/embryo name in the sheet (or the file), then upload a file with just these samples.</small></span>`).join('');
  if(runProblems.length){status.innerHTML=`<span class="rf-blocked">Upload blocked: run number check failed.</span>${runProblems.map(t=>`<span class="rf-blocked-line">${escapeHtml(t)}</span>`).join('')}`;toast('Upload blocked: run number does not match the Sequencing Batch Record');return}
  const unverified=parsed.reduce((n,p)=>n+p.unverified,0),skippedNote=unverified?` · ${unverified} row(s) skipped (no single matching patient + embryo in the tracker).`:'';
  await loadResultFiles(allRows);
@@ -1180,7 +1182,7 @@ async function handleResultAttach(files){
   status.innerHTML=`<span class="rf-blocked">Upload blocked: ${conflicts.length} embryo(s) already have results. Delete the earlier file below first, then upload again.</span>${[...byPrev].map(([label,names])=>`<span class="rf-blocked-line"><b>${escapeHtml(label)}</b>: ${escapeHtml(names.slice(0,8).join(', '))}${names.length>8?` and ${names.length-8} more`:''}</span>`).join('')}`;
   toast('Upload blocked: results already exist for these samples');return}
  const mergedAt=new Date().toISOString(),entries=parsed.filter(p=>p.keys.length).map(p=>({id:`rf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,file:p.file,byKey:p.byKey,keys:p.keys}));
- if(!entries.length){status.textContent='None of the result rows matched a sample in the tracker.'+skippedNote;return}
+ if(!entries.length){status.innerHTML=escapeHtml('None of the result rows matched a sample in the tracker.'+skippedNote)+skippedHtml;return}
  const fileOfKey=new Map;entries.forEach(e=>e.keys.forEach(k=>fileOfKey.set(k,e)));
  let matchedRows=0;
  const updated=allRows.map(row=>{
@@ -1195,7 +1197,7 @@ async function handleResultAttach(files){
  await setupCases();await loadResultFiles(updated);renderResultFiles();
  const embryos=entries.reduce((n,e)=>n+e.keys.length,0);
  const runsDone=[...new Set(entries.map(e=>runNumberOf(e.file.name)))],gaps=runsDone.map(rn=>({rn,missing:runMissingResults(rn,seqRuns)}));
- status.innerHTML=`${escapeHtml(`${entries.length} file(s) uploaded · results added for ${embryos} embryo(s) across ${matchedRows} sample row(s).`+skippedNote)}${gaps.map(g=>g.missing.length?`<span class="rf-blocked-line rf-missing"><b>${escapeHtml(g.rn)}</b>: ${g.missing.length} embryo(s) in the Sequencing Batch Record have no result yet.<ul class="rf-missing-list">${g.missing.map(m=>`<li>${escapeHtml(m.label)}</li>`).join('')}</ul><small>Upload a file containing just these (same RUN number) to add them.</small></span>`:`<span class="rf-blocked-line"><b>${escapeHtml(g.rn)}</b>: every embryo has a result.</span>`).join('')}`;
+ status.innerHTML=`${escapeHtml(`${entries.length} file(s) uploaded · results added for ${embryos} embryo(s) across ${matchedRows} sample row(s).`+skippedNote)}${skippedHtml}${gaps.map(g=>g.missing.length?`<span class="rf-blocked-line rf-missing"><b>${escapeHtml(g.rn)}</b>: ${g.missing.length} embryo(s) in the Sequencing Batch Record have no result yet.<ul class="rf-missing-list">${g.missing.map(m=>`<li>${escapeHtml(m.label)}</li>`).join('')}</ul><small>Upload a file containing just these (same RUN number) to add them.</small></span>`:`<span class="rf-blocked-line"><b>${escapeHtml(g.rn)}</b>: every embryo has a result.</span>`).join('')}`;
  toast(`Results added for ${embryos} embryo(s)`);
 }
 async function deleteResultFile(id){
