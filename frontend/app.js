@@ -1037,18 +1037,18 @@ async function setupActivityView(){
  await load();
 }
 function parseCsv(text){const rows=[];let row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i],n=text[i+1];if(c==='"'&&quoted&&n==='"'){cell+='"';i++}else if(c==='"')quoted=!quoted;else if(c===','&&!quoted){row.push(cell.trim());cell=''}else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&n==='\n')i++;row.push(cell.trim());if(row.some(Boolean))rows.push(row);row=[];cell=''}else cell+=c}row.push(cell.trim());if(row.some(Boolean))rows.push(row);return rows}
-function recordsFrom(rows){if(!rows.length)return[];const signals=['patient name','sample id','sample name','embryo name','test','qc','conclusion','result','mapd'];let hi=-1,best=0;rows.slice(0,20).forEach((r,i)=>{const cells=r.map(c=>String(c).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()),score=signals.filter(s=>cells.includes(s)).length;if(score>best){best=score;hi=i}});if(hi<0||best<2)return[];const heads=rows[hi].map(h=>String(h).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim());return rows.slice(hi+1).filter(r=>r.some(Boolean)).map(r=>Object.fromEntries(heads.map((h,i)=>[h||`column ${i+1}`,r[i]||''])))}
+function recordsFrom(rows){if(!rows.length)return[];const signals=['patient name','sample id','sample name','embryo name','test','qc','conclusion','result','mapd','embryo details','ir final results','test name'];let hi=-1,best=0;rows.slice(0,20).forEach((r,i)=>{const cells=r.map(c=>String(c).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()),score=signals.filter(s=>cells.includes(s)).length;if(score>best){best=score;hi=i}});if(hi<0||best<2)return[];const heads=rows[hi].map(h=>String(h).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim());return rows.slice(hi+1).filter(r=>r.some(Boolean)).map(r=>Object.fromEntries(heads.map((h,i)=>[h||`column ${i+1}`,r[i]||''])))}
 function field(r,names){for(const n of names){const k=Object.keys(r).find(x=>x===n||x.includes(n));if(k&&r[k])return String(r[k]).trim()}return''}
 function embryoUnits(e){const n=parseFloat(field(e,['number of embryos']));return Number.isFinite(n)&&n>0?n:1}
-function cleanId(v){return String(v||'').toUpperCase().replace(/_L\d+$/,'').replace(/[^A-Z0-9]/g,'')}
-function resultIdentity(r){const raw=field(r,['sample name','embryo name','embryo']),clean=String(raw).replace(/_L\d+$/i,'').trim(),cut=clean.lastIndexOf('-');return cut>0?{patient:clean.slice(0,cut).replace(/[^a-z0-9]/gi,''),embryo:clean.slice(cut+1).replace(/[^a-z0-9]/gi,'')}:{patient:'',embryo:cleanId(clean)}}
+function cleanId(v){return String(v||'').toUpperCase().replace(/_L\d+(?:_R\d+)?$/,'').replace(/[^A-Z0-9]/g,'')}
+function resultIdentity(r){const raw=field(r,['sample name','embryo name','embryo']),clean=String(raw).replace(/_L\d+(?:_R\d+)?$/i,'').trim(),cut=clean.lastIndexOf('-');return cut>0?{patient:clean.slice(0,cut).replace(/[^a-z0-9]/gi,''),embryo:clean.slice(cut+1).replace(/[^a-z0-9]/gi,'')}:{patient:'',embryo:cleanId(clean)}}
 function fieldKey(r,names){for(const n of names){const k=Object.keys(r).find(x=>x===n||x.includes(n));if(k&&r[k])return k}return null}
 // A sheet row can hold several embryos ("AS-1,2,3,4"); results merged from the result
 // file are kept per embryo in _embryoResults, so each split-out embryo shows its own.
 function withEmbryoResult(r,embryo){if(!r._embryoResults)return r;const own=r._embryoResults[cleanId(embryo)];if(own){const{_fileId,...vals}=own,out={...r,...vals};if('karyotype mwf' in vals||'karyotype normal wf' in vals)out['karyotype']=vals['karyotype mwf']||vals['karyotype normal wf']||'';return out}
  // No result of its own yet: show only what the sample sheet had, not another embryo's result.
  const out={...r},orig=r._resultOriginals||{};RESULT_FIELDS.forEach(f=>{if(orig[f]!=null)out[f]=orig[f];else if(f in orig)delete out[f]});return out}
-function expandEmbryoRow(r){const key=fieldKey(r,['sample name','embryo name','embryo']);if(!key)return[r];const clean=String(r[key]||'').replace(/_L\d+$/i,'').trim(),cut=clean.lastIndexOf('-');
+function expandEmbryoRow(r){const key=fieldKey(r,['sample name','embryo name','embryo']);if(!key)return[r];const clean=String(r[key]||'').replace(/_L\d+(?:_R\d+)?$/i,'').trim(),cut=clean.lastIndexOf('-');
  if(cut>0){const list=clean.slice(cut+1);if(list.includes(',')){const nums=list.split(',').map(s=>s.trim()).filter(Boolean);if(nums.length>=2){const prefix=clean.slice(0,cut+1);return nums.map(n=>withEmbryoResult({...r,[key]:`${prefix}${n}`},`${prefix}${n}`))}}return[withEmbryoResult(r,clean)]}
  // No hyphen (e.g. a plain "1,2,3,4" with no patient-prefix tag): still split on commas,
  // matching expandEmbryoTags - otherwise this row never lines up with its own result-file data.
@@ -1068,7 +1068,7 @@ const RESULT_MERGE_FIELDS=['qc','conclusion','gender','karyotype mwf','karyotype
 // to left) against the tags we actually know about from the Details tab before
 // falling back to a plain suffix match, so those variants still resolve.
 function resolveSampleIdentity(raw,knownTags){
-  const clean=String(raw||'').replace(/_L\d+$/i,'').trim();
+  const clean=String(raw||'').replace(/_L\d+(?:_R\d+)?$/i,'').trim();
   const hyphens=[...clean].map((c,i)=>c==='-'?i:-1).filter(i=>i>=0);
   for(let i=hyphens.length-1;i>=0;i--){
     const cut=hyphens[i],tag=cleanId(clean.slice(cut+1));
@@ -1085,25 +1085,59 @@ function resolveSampleIdentity(raw,knownTags){
 // under. A tag can belong to more than one patient across a run (e.g. two
 // patients both having a "VA1"), which is exactly why the patient name is
 // still checked before trusting a match.
-// The result file's Details tab is a copy of the PGS-NGS sheet rows for that run, so it shares many columns
-// with the tracker. A Details row is tied to ONE tracker row by comparing every shared column; it only counts
-// when a single tracker row clearly scores best (same sample ID or patient + embryo names, plus more columns).
-const TRACKER_MATCH_COLS=['sample id','patient name','embryo name','date sample received','box number','center name','test name','embryologist name','date of biopsy','date trf received','number of embryos','location'];
+// ---- Tying result-file rows to PGS-NGS tracker rows through every column they share ----
+// The result file's Details tab (and the older PGT-M "Sheet 1" layout) repeat the PGS-NGS sheet's columns, but
+// names are shortened or corrected, dates come in other formats / day-month order, and older files often have
+// no Anderson ID. So each column is compared in a tolerant way and a tracker row is accepted only when one row
+// clearly out-scores the rest.
 const normCol=v=>String(v??'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-function makeTrackerIndex(rows){const bySid=new Map,byPat=new Map;rows.forEach(r=>{if(r._stale)return;const sid=cleanId(field(r,['sample id'])),pat=cleanId(field(r,['patient name','patient']));if(sid){if(!bySid.has(sid))bySid.set(sid,[]);bySid.get(sid).push(r)}if(pat){if(!byPat.has(pat))byPat.set(pat,[]);byPat.get(pat).push(r)}});return{bySid,byPat}}
-function matchTrackerRow(det,tix){const sid=cleanId(field(det,['sample id'])),pat=cleanId(field(det,['patient name']));
- const cand=new Set([...(sid&&tix.bySid.get(sid)||[]),...(pat&&tix.byPat.get(pat)||[])]);if(!cand.size)return null;
- const detEmb=normCol(field(det,['embryo name']));
- const scored=[...cand].map(t=>{let score=0,conflict=0;for(const c of TRACKER_MATCH_COLS){const a=normCol(field(det,[c])),b=normCol(field(t,[c]));if(!a||!b)continue;if(a===b)score++;else conflict++}
-  const strong=(sid&&cleanId(field(t,['sample id']))===sid)||(pat&&cleanId(field(t,['patient name','patient']))===pat&&normCol(field(t,['embryo name']))===detEmb);return{t,score,conflict,strong}}).filter(x=>x.strong&&x.score>=2);
- if(!scored.length)return null;scored.sort((a,b)=>b.score-a.score||a.conflict-b.conflict);
- if(scored.length>1&&scored[0].score===scored[1].score&&scored[0].conflict===scored[1].conflict)return null;
- return scored[0].t}
+const wordsOf=v=>String(v??'').toUpperCase().replace(/[^A-Z\s]/g,' ').split(/\s+/).filter(Boolean);
+// 3 identical, 2.5 one name is the start of the other (truncated), 2 every word matches a word's start, 1 about half the words do.
+function nameSim(a,b){const x=normCol(a),y=normCol(b);if(!x||!y)return 0;if(x===y)return 3;
+ const [sh,lo]=x.length<=y.length?[x,y]:[y,x];if(sh.length>=4&&lo.startsWith(sh))return 2.5;
+ const wa=wordsOf(a),wb=wordsOf(b),[ws,wl]=wa.length<=wb.length?[wa,wb]:[wb,wa];if(!ws.length)return 0;
+ const hit=ws.filter(w=>w.length>=2&&wl.some(v=>v===w||(w.length>=3&&(v.startsWith(w)||w.startsWith(v)&&v.length>=3)))).length;
+ return hit===ws.length&&hit>=2?2:hit/ws.length>=.5&&hit>=2?1:0}
+// Every day a date cell could mean: ISO / dd-mm-yyyy / Excel serial, plus the day<->month flip.
+function dayKeys(v){const out=new Set,t=String(v??'').trim();if(!t)return out;const add=(y,m,d)=>{if(y>2000&&y<2100&&m>=1&&m<=12&&d>=1&&d<=31)out.add(`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`)};
+ for(const m of t.matchAll(/(\d{4})-(\d{1,2})-(\d{1,2})/g)){add(+m[1],+m[2],+m[3]);add(+m[1],+m[3],+m[2])}
+ for(const m of t.matchAll(/(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/g)){add(+m[3],+m[2],+m[1]);add(+m[3],+m[1],+m[2])}
+ for(const m of t.matchAll(/(\d{1,2})[-/.](\d{1,2})[-/.](\d{2})(?!\d)/g)){add(2000+ +m[3],+m[2],+m[1]);add(2000+ +m[3],+m[1],+m[2])}
+ if(/^\d{5}(\.\d+)?$/.test(t)){const d=new Date(Date.UTC(1899,11,30)+Math.floor(+t)*864e5);add(d.getUTCFullYear(),d.getUTCMonth()+1,d.getUTCDate());add(d.getUTCFullYear(),d.getUTCDate(),d.getUTCMonth()+1)}
+ return out}
+const daysMeet=(a,b)=>{const x=dayKeys(a);if(!x.size)return false;for(const k of dayKeys(b))if(x.has(k))return true;return false};
+function scoreTrackerRow(det,t){let sc=0;const sid=cleanId(field(det,['sample id'])),tsid=cleanId(field(t,['sample id']));
+ if(sid&&tsid&&sid===tsid)sc+=4;
+ const box=normCol(field(det,['box number'])),tbox=normCol(field(t,['box number']));if(box&&tbox&&box===tbox&&box!=='NA')sc+=3;
+ const dEmb=field(det,['embryo name','embryo details','embryo id']),tEmb=field(t,['embryo name','embryo id','embryo']);
+ if(normCol(dEmb)&&normCol(dEmb)===normCol(tEmb))sc+=3;else{const a=new Set(expandEmbryoTags(dEmb));if(expandEmbryoTags(tEmb).some(x=>a.has(x)))sc+=1.5}
+ const ns=nameSim(field(det,['patient name','patient']),field(t,['patient name','patient']));sc+=ns>=3?3:ns>=2.5?2.5:ns>=2?2:ns>=1?1:0;
+ if(daysMeet(field(det,['date sample received']),field(t,['date sample received'])))sc+=2;
+ if(daysMeet(field(det,['date of biopsy']),field(t,['date of biopsy'])))sc+=1;
+ const cs=nameSim(field(det,['center name','centre name','hospital/clinic name']),field(t,['center name','hospital clinic name']));sc+=cs>=2.5?1.5:cs>=1?.5:0;
+ const dt=normCol(field(det,['test name','test'])),tt=normCol(field(t,['test name','test']));if(dt&&dt===tt)sc+=.5;
+ if(nameSim(field(det,['embryologist name']),field(t,['embryologist name']))>=2)sc+=.5;
+ return{sc,ns}}
+function makeTrackerIndex(rows){const byTag=new Map;rows.forEach(r=>{if(r._stale)return;expandEmbryoTags(field(r,['embryo name','embryo id','embryo'])).forEach(tag=>{if(!byTag.has(tag))byTag.set(tag,[]);byTag.get(tag).push(r)})});return{byTag}}
+function matchTrackerRow(det,tix){const tags=expandEmbryoTags(field(det,['embryo name','embryo details','embryo id']));if(!tags.length)return null;
+ const cand=new Set;tags.forEach(t=>(tix.byTag.get(t)||[]).forEach(r=>cand.add(r)));if(!cand.size)return null;
+ const sid=cleanId(field(det,['sample id'])),box=normCol(field(det,['box number']));
+ const scored=[...cand].map(t=>({t,...scoreTrackerRow(det,t),idEq:(sid&&cleanId(field(t,['sample id']))===sid)||(box&&box!=='NA'&&normCol(field(t,['box number']))===box)})).filter(x=>x.sc>=6&&(x.ns>=1||x.idEq));
+ if(!scored.length)return null;scored.sort((a,b)=>b.sc-a.sc);
+ return scored.length>1&&scored[0].sc-scored[1].sc<1.5?null:scored[0].t}
+// No Details row to lean on (older files): resolve "<name prefix>-<tag>" straight against the tracker. A name that fits several
+// rows (re-biopsy, same tag) is settled by the received date closest before the run date taken from the file name.
+function fileDateOf(name){const m=[...String(name||'').matchAll(/(\d{2})[-_.]?(\d{2})[-_.]?(20\d{2})/g)].pop();if(!m)return null;const d=new Date(+m[3],+m[2]-1,+m[1]);return isNaN(d)?null:d}
+function matchByPrefix(prefix,tag,tix,fileDate){const pn=normCol(prefix);if(pn.length<3)return null;
+ const c=(tix.byTag.get(tag)||[]).filter(t=>{const tn=normCol(field(t,['patient name','patient']));return tn&&(tn.startsWith(pn)||pn.startsWith(tn)&&tn.length>=4||nameSim(prefix,field(t,['patient name','patient']))>=2)});
+ if(c.length===1)return c[0];if(!c.length||!fileDate)return null;
+ const ranked=c.map(t=>{const ds=[...dayKeys(field(t,['date sample received']))].map(k=>new Date(k)),gaps=ds.map(d=>(fileDate-d)/864e5).filter(g=>g>=-3&&g<=120);return{t,gap:gaps.length?Math.min(...gaps):1e9}}).sort((a,b)=>a.gap-b.gap);
+ return ranked[0].gap<1e9&&(ranked.length===1||ranked[1].gap-ranked[0].gap>=7)?ranked[0].t:null}
 function buildAndersonIndex(detailsRows){
   const idx=new Map();
   for(const [di,r] of detailsRows.entries()){
     const sampleId=field(r,['sample id']),patient=field(r,['patient name']),embryoField=field(r,['embryo name']);
-    if(!sampleId||!patient||!embryoField)continue;
+    if(!patient||!embryoField)continue;   // Sample ID is optional: older files have none
     for(const tag of expandEmbryoTags(embryoField)){
       const list=idx.get(tag)||[];
       list.push({patientClean:cleanId(patient),patient,sampleId,row:r,di});
@@ -1178,7 +1212,7 @@ async function loadResultFiles(rows){const saved=(await kvGet('embryomatrix-resu
 // Read one result file: Summary rows matched to confirmed Anderson IDs via the Details tab,
 // with Inconclusive-tab details folded in. Returns results keyed patient|embryo tag|sample id.
 async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
- let summaryRows=[],detailsRows=[],inconclusiveRows=[];
+ let summaryRows=[],detailsRows=[],inconclusiveRows=[],pgtmRows=[];
  const sheets=await gridsFromFile(f);
  for(const {name,rows} of sheets){
   const records=recordsFrom(rows);
@@ -1186,6 +1220,7 @@ async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
   const label=name.toLowerCase();
   if(label.includes('inconclusive'))inconclusiveRows.push(...records);
   else if(label.includes('detail'))detailsRows.push(...records);
+  else if(records.some(r=>field(r,['embryo details'])&&field(r,['patient name']))&&!records.some(r=>field(r,['sample name'])))pgtmRows.push(...records);
   else summaryRows.push(...records);
  }
  const resultRows=summaryRows.filter(r=>field(r,['sample name'])&&(field(r,['result'])||field(r,['qc'])));
@@ -1193,24 +1228,39 @@ async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
  const inconclusiveIndex=buildInconclusiveIndex(inconclusiveRows,andersonIndex);
  // byKey: rows confirmed through a Details-tab Anderson ID. byName: rows without one,
  // matched later against the tracker by patient name + embryo tag alone.
- const byKey=new Map,byName=new Map,used=new Set,tix=makeTrackerIndex(trackerRows),unmatchedNames=[];
+ const byKey=new Map,byName=new Map,used=new Set,tix=makeTrackerIndex(trackerRows),unmatchedNames=[],fileDate=fileDateOf(f.name);
+ const trKey=(tr,tag)=>`${cleanId(field(tr,['patient name','patient']))}|${tag}|${cleanId(field(tr,['sample id']))}`,hasTag=(tr,tag)=>expandEmbryoTags(field(tr,['embryo name','embryo id','embryo'])).includes(tag);
+ let pgtmCount=0;
+ // A sample name is "<patient>-<tag>"; both parts can contain hyphens ("CHAKKA-SAI-SOWMIYA-CS2", "VR1-1_L00"), so every split is tried,
+ // right to left, and the first one that lands on a tracker row wins.
+ const splitsOf=raw=>{const clean=String(raw||'').replace(/_L\d+(?:_R\d+)?$/i,'').trim(),out=[];for(let i=clean.length-1;i>0;i--)if(clean[i]==='-'){const embryo=cleanId(clean.slice(i+1)),patient=clean.slice(0,i).replace(/[^a-z0-9]/gi,'');if(embryo&&patient)out.push({patient,embryo})}return out};
  resultRows.forEach(r=>{
-  const id=resolveSampleIdentity(field(r,['sample name']),andersonIndex);
-  if(!id.embryo)return;
-  const inconclusiveDetails=inconclusiveIndex.get(`${cleanId(id.patient)}|${id.embryo}`);
-  const row={...r,...inconclusiveDetails,_computedResult:computeEmbryoResult(r,!!inconclusiveDetails)};
-  const match=resolveAndersonId(id.patient,id.embryo,andersonIndex);
-  if(match){used.add(`${match.di}|${id.embryo}`);
-   // Tie the Details row to its tracker row through all shared columns, and key the result by that tracker row.
-   const tr=matchTrackerRow(match.row,tix),key=tr&&expandEmbryoTags(field(tr,['embryo name','embryo id','embryo'])).includes(id.embryo)?`${cleanId(field(tr,['patient name','patient']))}|${id.embryo}|${cleanId(field(tr,['sample id']))}`:`${match.patientClean}|${id.embryo}|${cleanId(match.sampleId)}`;
-   byKey.set(key,row);return}
-  // No Details-tab entry: split the sample name using the embryo tags the tracker knows.
-  const own=cleanId(id.patient)?id:resolveSampleIdentity(field(r,['sample name']),trackerTags);
-  if(cleanId(own.patient)&&own.embryo)byName.set(`${cleanId(own.patient)}|${own.embryo}`,row);
+  const raw=field(r,['sample name']),base=resolveSampleIdentity(raw,andersonIndex);let firstDet=null,done=false;
+  for(const id of [...splitsOf(raw)]){
+   const inc=inconclusiveIndex.get(`${cleanId(id.patient)}|${id.embryo}`),row={...r,...inc,_computedResult:computeEmbryoResult(r,!!inc)},match=resolveAndersonId(id.patient,id.embryo,andersonIndex);
+   if(match){used.add(`${match.di}|${id.embryo}`);const tr=matchTrackerRow(match.row,tix);
+    if(tr&&hasTag(tr,id.embryo)){byKey.set(trKey(tr,id.embryo),row);done=true;break}
+    const alt=matchByPrefix(id.patient,id.embryo,tix,fileDate);if(alt){byKey.set(trKey(alt,id.embryo),row);done=true;break}
+    if(!firstDet)firstDet={id,match,row}
+   }else{const tr=matchByPrefix(id.patient,id.embryo,tix,fileDate);if(tr){byKey.set(trKey(tr,id.embryo),row);done=true;break}}
+  }
+  if(done)return;
+  if(firstDet){byKey.set(`${firstDet.match.patientClean}|${firstDet.id.embryo}|${cleanId(firstDet.match.sampleId)}`,firstDet.row);return}
+  // Nothing tied to a tracker row: keep the name + tag so the loose name pass can still try.
+  if(!base.embryo)return;
+  const inc=inconclusiveIndex.get(`${cleanId(base.patient)}|${base.embryo}`),row={...r,...inc,_computedResult:computeEmbryoResult(r,!!inc)},own=cleanId(base.patient)?base:resolveSampleIdentity(raw,trackerTags);
+  if(cleanId(own.patient)&&own.embryo)byName.set(`${cleanId(own.patient)}|${own.embryo}`,row);else unmatchedNames.push(raw);
  });
+ // Older PGT-M layout ("Sheet 1": centre, patient, test, embryo details, IR final results): one row per embryo that carries
+ // the PGS-NGS columns itself, so it is tied to its tracker row directly.
+ // Patient, centre, location, embryologist and test are only typed on a patient's first row; later rows inherit them.
+ const carry={};['patient name','centre name','center name','location','embryologist name','test name'].forEach(k=>carry[k]='');
+ pgtmRows.forEach(rec=>{Object.keys(carry).forEach(k=>{const key=Object.keys(rec).find(x=>x===k||x.includes(k));if(!key)return;if(String(rec[key]||'').trim())carry[k]=rec[key];else if(carry[k])rec[key]=carry[k]});const res=field(rec,['ir final results','final result']);if(!res)return;pgtmCount++;
+  expandEmbryoTags(field(rec,['embryo details'])).forEach(tag=>{const det={...rec,'embryo name':field(rec,['embryo details'])},tr=matchTrackerRow(det,tix),label=`${field(rec,['patient name'])}-${tag}`;
+   if(tr&&hasTag(tr,tag))byKey.set(trKey(tr,tag),{'sample name':label,result:res,_computedResult:res});else unmatchedNames.push(label)})});
  // Embryos the Details tab lists that have no result row in this file.
  const missing=[];detailsRows.forEach((r,di)=>{const pt=field(r,['patient name']);expandEmbryoTags(field(r,['embryo name'])).forEach(tag=>{if(!used.has(`${di}|${tag}`))missing.push(`${pt} ${tag}`.trim())})});
- return {file:f,byKey,byName,count:resultRows.length,unverified:0,unmatchedNames,missing,hasDetails:detailsRows.length>0};
+ return {file:f,byKey,byName,count:resultRows.length+pgtmCount,unverified:0,unmatchedNames,missing,hasDetails:detailsRows.length>0};
 }
 function matchResultsByName(parsed,known){const byTag=new Map;for(const k of known){const [pat,tag]=k.split('|');if(!byTag.has(tag))byTag.set(tag,[]);byTag.get(tag).push({pat,key:k})}
  parsed.forEach(p=>p.byName.forEach((r,nk)=>{const [pat,tag]=nk.split('|'),hits=[...new Set((byTag.get(tag)||[]).filter(c=>c.pat&&(c.pat.includes(pat)||pat.includes(c.pat))).map(c=>c.key))];if(hits.length===1&&!p.byKey.has(hits[0]))p.byKey.set(hits[0],r);else{p.unverified++;p.unmatchedNames.push(field(r,['sample name'])||nk)}}))}
@@ -1232,17 +1282,17 @@ async function handleResultAttach(files){
  // Anything that can't be tied to exactly one tracker row is left out and listed after the upload.
  parsed.forEach(p=>{[...p.byKey].forEach(([k,r])=>{if(!known.has(k)){p.unmatchedNames.push(field(r,['sample name'])||k);p.byKey.delete(k)}})});
  const listHtml=(title,names,hint)=>names.length?`<span class="rf-blocked-line rf-missing"><b>${escapeHtml(title)}</b>: ${names.length} item(s)<ul class="rf-missing-list">${names.map(n=>`<li>${escapeHtml(n)}</li>`).join('')}</ul><small>${escapeHtml(hint)}</small></span>`:'';
- const skippedHtml=parsed.map(p=>listHtml(`${p.file.name} - not matched to a PGS-NGS sheet row, no result added`,p.unmatchedNames,'Make the patient / embryo name (or sample ID) the same in the PGS-NGS sheet and the result file, then upload a file with just these.')).join('');
+ let skippedHtml=parsed.map(p=>listHtml(`${p.file.name} - not matched to a PGS-NGS sheet row, no result added`,p.unmatchedNames,'Make the patient / embryo name (or sample ID) the same in the PGS-NGS sheet and the result file, then upload a file with just these.')).join('');
  const unverified=parsed.reduce((n,p)=>n+p.unverified,0),skippedNote=unverified?` · ${unverified} row(s) skipped (no single matching patient + embryo in the tracker).`:'';
  await loadResultFiles(allRows);
  const owner=new Map;resultFilesCache.forEach(e=>e.samples.forEach(k=>owner.set(k,e)));
  // Refuse the whole upload if any embryo already has results from another file (or twice in this batch).
+ // An embryo that already has a result (from an earlier file, or from an earlier file in this same batch) keeps it: the repeat is
+ // skipped and listed, so a big multi-file upload is never refused as a whole. To replace a result, delete its earlier file first.
  const conflicts=[];
- parsed.forEach(p=>{p.keys=[...p.byKey.keys()].filter(k=>known.has(k));p.keys.forEach(k=>{const prev=owner.get(k);if(prev)conflicts.push({name:field(p.byKey.get(k),['sample name']),prev});else owner.set(k,{fileName:p.file.name,run:runNumberOf(p.file.name)})})});
- if(conflicts.length){
-  const byPrev=new Map;conflicts.forEach(c=>{const label=`${c.prev.run||'No run no.'} · ${c.prev.fileName}`;byPrev.set(label,[...(byPrev.get(label)||[]),c.name])});
-  status.innerHTML=`<span class="rf-blocked">Upload blocked: ${conflicts.length} embryo(s) already have results. Delete the earlier file below first, then upload again.</span>${[...byPrev].map(([label,names])=>`<span class="rf-blocked-line"><b>${escapeHtml(label)}</b>: ${escapeHtml(names.slice(0,8).join(', '))}${names.length>8?` and ${names.length-8} more`:''}</span>`).join('')}`;
-  toast('Upload blocked: results already exist for these samples');return}
+ parsed.forEach(p=>{p.keys=[...p.byKey.keys()].filter(k=>known.has(k)).filter(k=>{const prev=owner.get(k);if(prev){conflicts.push({file:p.file.name,name:field(p.byKey.get(k),['sample name']),prev});return false}owner.set(k,{fileName:p.file.name,run:runNumberOf(p.file.name)});return true})});
+ if(conflicts.length){const byPrev=new Map;conflicts.forEach(c=>{const label=`${c.file} - kept the result from ${c.prev.fileName}`;byPrev.set(label,[...(byPrev.get(label)||[]),c.name])});
+  skippedHtml+=[...byPrev].map(([label,names])=>listHtml(label,names,'These embryos already had a result, so they were not changed. Delete the earlier file first to replace them.')).join('')}
  const mergedAt=new Date().toISOString(),entries=parsed.filter(p=>p.keys.length).map(p=>({id:`rf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,file:p.file,byKey:p.byKey,keys:p.keys}));
  if(!entries.length){status.innerHTML=escapeHtml('None of the result rows matched a sample in the tracker.'+skippedNote)+skippedHtml;return}
  const fileOfKey=new Map;entries.forEach(e=>e.keys.forEach(k=>fileOfKey.set(k,e)));

@@ -16,3 +16,6 @@ Analysis_*.xlsx
 # Old prototype and packaged builds (contain sheet IDs; not needed to run the app)
 prototype-v15/
 *.tar.gz
+
+# Patient result files (not for the repo)
+Pgs Results/
