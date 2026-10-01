@@ -1623,3 +1623,5 @@ body.role-embryologist #trfModeSeg{display:none}
 .rc-test-stat{display:flex!important;align-items:center;gap:10px}.rc-test-stat>.ico{width:34px;height:34px}.rc-test-stat>div{display:flex;flex-direction:column;align-items:flex-start;gap:0}
 .rc-grid .rc-test-stat{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:10px;text-align:left!important;padding:8px 12px!important}
 .rc-grid .rc-test-stat>.ico{width:32px;height:32px;flex:0 0 32px}.rc-grid .rc-test-stat>div{display:flex;flex-direction:column;align-items:flex-start;text-align:left;line-height:1.15}
+/* Home toolbar: Overview + Upload result side by side at the right */
+.home-actions{display:flex;align-items:center;gap:10px;justify-self:end}

@@ -15,8 +15,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&family=DM+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg" />
-  <link rel="stylesheet" href="/static/styles.css?v=20261007zze" />
-  <link rel="stylesheet" href="/static/trf-doc.css?v=20261007zze" />
+  <link rel="stylesheet" href="/static/styles.css?v=20261007zzf" />
+  <link rel="stylesheet" href="/static/trf-doc.css?v=20261007zzf" />
 </head>
 <body>
   <div class="app-shell">
@@ -25,7 +25,6 @@
         <div class="brand"><img class="brand-logo" src="/static/logo.svg" alt="EmbryoMatrix" width="40" height="40"><span><span class="brand-title">EmbryoMatrix</span><small>PGT INTELLIGENCE</small></span></div>
         <nav class="topnav" aria-label="Main navigation">
           <button class="nav-item nav-color-teal active" data-view="home"><span><img class="ico" src="/static/icons/navigation__home.png" alt=""></span> Home</button>
-          <button class="nav-item nav-color-teal" data-view="overview"><span><img class="ico" src="/static/icons/navigation__overview.png" alt=""></span> Overview</button>
           <button class="nav-item nav-color-blue" data-view="samples"><span><img class="ico" src="/static/icons/navigation__samples.png" alt=""></span> Samples <b id="caseCount">0</b></button>
           <button class="nav-item nav-color-violet" data-view="pgtm"><span><img class="ico" src="/static/icons/navigation__pgt-m.png" alt=""></span> PGT-M <b id="pgtmCount">0</b></button>
           <button class="nav-item nav-color-amber" data-view="runreports"><span><img class="ico" src="/static/icons/navigation__run-reports.png" alt=""></span> Run reports</button>
@@ -91,7 +90,7 @@
       </header>
 
       <section class="content" id="homeView">
-        <div class="home-toolbar"><h2 class="home-title">Batches <small class="run-filter-note" id="runFilterNote"></small></h2><div class="search-wrap" id="runSearchWrap"><span>⌕</span><input id="runSearch" placeholder="Search run, platform or patient…"></div><button class="nav-item import-data-btn" data-view="import" title="Upload result"><span><img class="ico" src="/static/icons/navigation__upload-result.png" alt=""></span> <span class="nav-label">Upload result</span></button></div>
+        <div class="home-toolbar"><h2 class="home-title">Batches <small class="run-filter-note" id="runFilterNote"></small></h2><div class="search-wrap" id="runSearchWrap"><span>⌕</span><input id="runSearch" placeholder="Search run, platform or patient…"></div><div class="home-actions"><button class="nav-item import-data-btn home-overview-btn" data-view="overview" title="Overview"><span><img class="ico" src="/static/icons/navigation__overview.png" alt=""></span> <span class="nav-label">Overview</span></button><button class="nav-item import-data-btn" data-view="import" title="Upload result"><span><img class="ico" src="/static/icons/navigation__upload-result.png" alt=""></span> <span class="nav-label">Upload result</span></button></div></div>
         <div class="stats" id="homeStats">
           <article data-run-filter="all" tabindex="0" role="button"><div><small>TOTAL RUNS</small><strong id="homeBatchesStat">0</strong><p id="homeBatchesSub">Sequencing runs in the batch record</p></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/run-summary__runs.png" alt=""></span></article>
           <article><div><small>TOTAL EMBRYOS</small><strong id="homeEmbryosStat">0</strong><p>Across every sample</p></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/stages-results__total-embryos.png" alt=""></span></article>
@@ -174,7 +173,7 @@
 
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="/static/clients.js"></script>
-  <script src="/static/trf-doc.js?v=20261007zze"></script>
-  <script src="/static/app.js?v=20261007zze"></script>
+  <script src="/static/trf-doc.js?v=20261007zzf"></script>
+  <script src="/static/app.js?v=20261007zzf"></script>
 </body>
 </html>
