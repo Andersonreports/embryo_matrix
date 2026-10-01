@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&family=DM+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260930zc" />
+  <link rel="stylesheet" href="/static/styles.css?v=20260930ze" />
   <link rel="stylesheet" href="/static/trf-doc.css" />
 </head>
 <body>
@@ -90,11 +90,10 @@
         <div class="stats" id="homeStats">
           <article data-run-filter="all" tabindex="0" role="button"><div><small>TOTAL RUNS</small><strong id="homeBatchesStat">0</strong><p id="homeBatchesSub">Sequencing runs in the batch record</p></div><span class="stat-icon blue">📦</span></article>
           <article><div><small>TOTAL EMBRYOS</small><strong id="homeEmbryosStat">0</strong><p>Across every sample</p></div><span class="stat-icon green">🧬</span></article>
-          <article data-run-filter="ongoing" tabindex="0" role="button"><div><small>ONGOING</small><strong id="homeOngoingStat">0</strong><p>Runs awaiting results · click to list</p></div><span class="stat-icon amber">⏳</span></article>
-          <article data-run-filter="completed" tabindex="0" role="button"><div><small>COMPLETED</small><strong id="homeCompletedStat">0</strong><p>Runs with results · click to list</p></div><span class="stat-icon violet">✔</span></article>
+          <article data-stage="wga" tabindex="0" role="button" title="List samples awaiting sequencing"><div><small>SEQUENCING</small><strong id="homeSeqStat">0</strong><p>Awaiting sequencing · click to list</p></div><span class="stat-icon amber">⏳</span></article>
+          <article data-stage="released" tabindex="0" role="button" title="List samples with a released report"><div><small>REPORT RELEASED</small><strong id="homeReleasedStat">0</strong><p>NGS report + Attune upload · click to list</p></div><span class="stat-icon green">✔</span></article>
           <article id="overdueCard" class="overdue-card" tabindex="0" role="button" title="Open the overdue samples list"><div><small>OVERDUE SAMPLES</small><strong id="overdueStat">0</strong><p>Past TAT date, no report sent · click to list</p></div><span class="stat-icon red">⏰</span></article>
         </div>
-        <div class="stage-funnel" id="stageFunnel" aria-label="Samples by current stage"></div>
         <section class="panel run-list-panel">
           <div id="runList"><div class="chart-empty">Loading…</div></div>
         </section>
@@ -171,6 +170,6 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="/static/clients.js"></script>
   <script src="/static/trf-doc.js"></script>
-  <script src="/static/app.js?v=20260930zc"></script>
+  <script src="/static/app.js?v=20260930ze"></script>
 </body>
 </html>
