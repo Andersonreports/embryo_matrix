@@ -1383,3 +1383,15 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
    Remove taller and pushed it down */
 .vg-actions{align-items:center}
 .vg-actions .vg-btn,.vg-actions button.vg-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;box-sizing:border-box;height:30px!important;min-height:0!important;margin:0!important;padding:0 12px!important;font:600 12px/1 "Inter"!important;border-radius:999px!important;box-shadow:none!important;transform:none!important;vertical-align:middle}
+/* QC fails dropdown: Samples / Embryologists tabs */
+.qc-tabs{display:flex;gap:4px;background:#f1f4f2;border-radius:9px;padding:3px}
+.qc-tabs button{flex:1;border:0;background:transparent;border-radius:7px;padding:6px 10px;font:600 12px "Inter";color:#5d6a63;cursor:pointer}
+.qc-tabs button b{margin-left:4px;font-weight:700;color:#8a948e}
+.qc-tabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(16,36,50,.12)}
+.qc-tabs button.active b{color:#a04f3d}
+.qc-emb-item{cursor:default}
+.qc-emb-item:hover{background:transparent}
+.qc-emb-count{margin:4px 0 0;font-size:12px;color:#5d6a63}
+.qc-emb-count b{color:#a04f3d;font-size:14px}
+.qc-patient-chip{border:0;cursor:pointer;font:inherit;font-size:11px}
+.qc-patient-chip:hover{background:#efcfc6}
