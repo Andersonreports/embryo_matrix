@@ -223,6 +223,24 @@ var EDITS_META = ['Record key', 'Sample ID', 'Embryo', 'Edited columns', 'Last e
 // Column key -> its header in the Embryo view (the app labels these two differently).
 var EDITS_HEADER_FOR = { 'dna conc unpurified': 'WGA CONC UNPURIFIED', 'dna conc purified': 'WGA CONC PURIFIED' };
 
+// Samples > Embryo view columns, in table order - the headers a new edits workbook starts with.
+// (Any column the app adds later is appended automatically on the next edit.)
+var EDITS_VIEW_COLUMNS = ['DATE OF BIOPSY', 'DATE SAMPLE RECEIVED', 'DATE TRF RECEIVED', 'RECEIVED BY', 'BOX NUMBER', 'SAMPLE ID', 'REMARKS', 'PATIENT NAME', 'NUMBER OF EMBRYOS', 'EMBRYO NAME', 'WGA CONC UNPURIFIED', 'WGA CONC PURIFIED', 'EMBRYO GRADE', 'KARYOTYPE', 'PGT RESULT', 'CONTROLS WGA SEQ CONTROLS', 'TEST NAME', 'CENTER NAME', 'LOCATION', 'EMBRYOLOGIST NAME', 'WGA DONE ON', 'WGA DONE BY', 'TRANSFERRED', 'TRANSFER DETAILS', 'KIT DETAIL', 'TAT'];
+
+// Run this once from the editor (function dropdown -> createEditsSheet -> Run) to create the
+// separate "EmbryoMatrix – Edited samples" workbook in your Drive right away, with all the
+// Embryo view headers. Its link is printed in the Execution log. Safe to run again: if the
+// workbook already exists it just prints the link - it never makes a second one.
+function createEditsSheet() {
+  var ss = editsSpreadsheet_(), tab = editsTab_(ss);
+  editsHeaders_(tab, EDITS_VIEW_COLUMNS);
+  tab.getRange(1, 1, 1, tab.getLastColumn()).setFontWeight('bold').setBackground('#d9ead3').setWrap(true);
+  tab.setFrozenRows(1);
+  tab.setColumnWidths(1, tab.getLastColumn(), 150);
+  Logger.log('EmbryoMatrix – Edited samples: ' + ss.getUrl());
+  return ss.getUrl();
+}
+
 function doPost(e) {
   var body = {};
   try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) { return jsonOutput_({ error: 'Bad JSON' }); }
