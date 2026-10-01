@@ -1229,3 +1229,9 @@ html,body{max-width:100%;overflow-x:hidden}
 .rr-table tfoot .rr-pct td{bottom:0;color:#0a7180;font-weight:600}
 .rr-link{cursor:pointer}
 .rr-src{display:inline-flex;margin-left:6px;padding:1px 7px;border-radius:999px;background:#e1ecf7;color:#2f6b98;font:600 10px "Inter";vertical-align:middle;text-transform:uppercase;letter-spacing:.4px}
+
+.od-filters.hidden{display:none!important}
+
+/* Patient dialog: which PGS-NGS sheet the patient is in */
+.case-sheet-badge{display:inline-flex;align-items:center;font:600 12px/1.3 "Inter";padding:6px 12px;border-radius:999px;background:#eef1ee;color:#4f5f57;border:1px solid #d6ddd8;white-space:nowrap}
+.case-sheet-badge.is-cancelled{background:#fbefeb;color:#a04f3d;border-color:#e6c4ba}
