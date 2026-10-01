@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&family=DM+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20260930za" />
+  <link rel="stylesheet" href="/static/styles.css?v=20260930zc" />
   <link rel="stylesheet" href="/static/trf-doc.css" />
 </head>
 <body>
@@ -94,6 +94,7 @@
           <article data-run-filter="completed" tabindex="0" role="button"><div><small>COMPLETED</small><strong id="homeCompletedStat">0</strong><p>Runs with results · click to list</p></div><span class="stat-icon violet">✔</span></article>
           <article id="overdueCard" class="overdue-card" tabindex="0" role="button" title="Open the overdue samples list"><div><small>OVERDUE SAMPLES</small><strong id="overdueStat">0</strong><p>Past TAT date, no report sent · click to list</p></div><span class="stat-icon red">⏰</span></article>
         </div>
+        <div class="stage-funnel" id="stageFunnel" aria-label="Samples by current stage"></div>
         <section class="panel run-list-panel">
           <div id="runList"><div class="chart-empty">Loading…</div></div>
         </section>
@@ -170,6 +171,6 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="/static/clients.js"></script>
   <script src="/static/trf-doc.js"></script>
-  <script src="/static/app.js?v=20260930za"></script>
+  <script src="/static/app.js?v=20260930zc"></script>
 </body>
 </html>
