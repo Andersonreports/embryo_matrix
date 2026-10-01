@@ -217,21 +217,23 @@ function jsonOutput_(obj) {
 // When a lab user edits an editable value in the app (WGA conc, karyotype,
 // PGT result), the server POSTs that embryo's whole Samples > Embryo view row
 // here, and it is upserted into the first tab of the spreadsheet below: one
-// row per edited embryo. The app reads the edited values back with
-// GET ?action=edits.
+// row per edited embryo, under the sheet's own column headers only. The app
+// reads the edited values back with GET ?action=edits.
 //
-// Columns: the Embryo view columns (DATE OF BIOPSY ... TAT) first, then the
-// tracking columns, which the script adds after the last column if missing.
-// Every column is found by its header, so they can be reordered in the sheet.
-// "Edited columns" lists which values were changed in the app (semicolon-
-// separated column keys) - only those values are read back into the app.
+// Which embryo a row belongs to, and which of its values were edited in the
+// app, is kept in hidden row metadata (Developer metadata, key EDITS_MD_KEY) -
+// nothing extra shows in the sheet, and it moves with the row if rows are
+// sorted or moved. Every column is found by its header.
 // ---------------------------------------------------------------------------
 
 // The native Google Sheet to write to: the ID between /d/ and /edit in its link.
 // Must be a Google Sheet (an uploaded .xlsx needs File > Save as Google Sheets first).
 var EDITS_SHEET_ID_SETTING = 'PASTE_THE_GOOGLE_SHEET_ID_HERE';
 
-var EDITS_META = ['Record key', 'Edited columns', 'Edited sample ID', 'Edited embryo', 'Last edited by', 'Last edited at'];
+var EDITS_MD_KEY = 'embryomatrix-edit';
+// Visible tracking columns an earlier version of this script added - moved into the hidden
+// metadata and removed automatically.
+var EDITS_OLD_META = ['Record key', 'Edited columns', 'Edited sample ID', 'Edited embryo', 'Last edited by', 'Last edited at'];
 // Column key -> its header in the Embryo view (the app labels these two differently).
 var EDITS_HEADER_FOR = { 'dna conc unpurified': 'WGA CONC UNPURIFIED', 'dna conc purified': 'WGA CONC PURIFIED' };
 
@@ -239,14 +241,11 @@ var EDITS_HEADER_FOR = { 'dna conc unpurified': 'WGA CONC UNPURIFIED', 'dna conc
 // (Any column the app adds later is appended automatically on the next edit.)
 var EDITS_VIEW_COLUMNS = ['DATE OF BIOPSY', 'DATE SAMPLE RECEIVED', 'DATE TRF RECEIVED', 'RECEIVED BY', 'BOX NUMBER', 'SAMPLE ID', 'REMARKS', 'PATIENT NAME', 'NUMBER OF EMBRYOS', 'EMBRYO NAME', 'WGA CONC UNPURIFIED', 'WGA CONC PURIFIED', 'EMBRYO GRADE', 'KARYOTYPE', 'PGT RESULT', 'CONTROLS WGA SEQ CONTROLS', 'TEST NAME', 'CENTER NAME', 'LOCATION', 'EMBRYOLOGIST NAME', 'WGA DONE ON', 'WGA DONE BY', 'TRANSFERRED', 'TRANSFER DETAILS', 'KIT DETAIL', 'RUN ID', 'TAT'];
 
-// Run this once from the editor (function dropdown -> checkEditsSheet -> Run) after pasting the
-// sheet ID above: it opens the sheet, adds the tracking columns after your columns, and prints
-// the link in the Execution log. Safe to run again.
+// Optional, from the editor: tidies the sheet (moves any old tracking columns into the hidden
+// metadata) and prints its link in the Execution log. Safe to run again.
 function checkEditsSheet() {
   var ss = editsSpreadsheet_(), tab = editsTab_(ss);
-  var headers = editsHeaders_(tab, EDITS_VIEW_COLUMNS.concat(EDITS_META));
   tab.setFrozenRows(1);
-  tab.getRange(1, 1, 1, headers.length).setFontWeight('bold');
   Logger.log('Writing edits to "' + ss.getName() + '" / tab "' + tab.getName() + '": ' + ss.getUrl());
   return ss.getUrl();
 }
@@ -280,15 +279,61 @@ function editsSpreadsheet_() {
   }
 }
 
-// The first tab of the edits sheet; an empty one gets the Embryo view + tracking headers.
+// The first tab of the edits sheet; an empty one gets the Embryo view headers. Old visible
+// tracking columns are moved into the hidden row metadata and deleted.
 function editsTab_(ss) {
   var tab = ss.getSheets()[0];
   if (tab.getLastRow() === 0) {
-    tab.appendRow(EDITS_VIEW_COLUMNS.concat(EDITS_META));
+    tab.appendRow(EDITS_VIEW_COLUMNS);
     tab.setFrozenRows(1);
-    tab.getRange(1, 1, 1, EDITS_VIEW_COLUMNS.length + EDITS_META.length).setFontWeight('bold');
+    tab.getRange(1, 1, 1, EDITS_VIEW_COLUMNS.length).setFontWeight('bold');
+    return tab;
   }
+  editsMigrateOldColumns_(tab);
   return tab;
+}
+
+function editsMigrateOldColumns_(tab) {
+  var lastCol = tab.getLastColumn();
+  var headers = tab.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h).trim(); });
+  var cols = EDITS_OLD_META.map(function (h) { return headers.indexOf(h); });
+  if (cols.every(function (c) { return c < 0; })) return;
+  var last = tab.getLastRow();
+  if (last >= 2) {
+    var values = tab.getRange(2, 1, last - 1, lastCol).getValues();
+    for (var i = 0; i < values.length; i++) {
+      var v = values[i], get = function (n) { var c = cols[n]; return c >= 0 ? String(v[c] || '') : ''; };
+      if (!get(0)) continue;
+      editsSetMeta_(tab, i + 2, { key: get(0), edited: editsSplit_(get(1)), sampleId: get(2), embryo: get(3), by: get(4), at: get(5) });
+    }
+  }
+  cols.filter(function (c) { return c >= 0; }).sort(function (a, b) { return b - a; })
+    .forEach(function (c) { tab.deleteColumn(c + 1); });
+}
+
+// Hidden per-row record: { key, edited: [column keys], sampleId, embryo, by, at }.
+function editsRowMeta_(tab) {
+  var out = {};
+  var found = tab.createDeveloperMetadataFinder().withKey(EDITS_MD_KEY).find();
+  for (var i = 0; i < found.length; i++) {
+    var md = found[i], loc = md.getLocation(), row = loc.getRow && loc.getRow();
+    if (!row) continue;
+    var info = {};
+    try { info = JSON.parse(md.getValue() || '{}'); } catch (err) { continue; }
+    out[row.getRow()] = { md: md, info: info };
+  }
+  return out;
+}
+
+function editsSetMeta_(tab, row, info) {
+  var range = tab.getRange(row + ':' + row);
+  var existing = range.getDeveloperMetadata().filter(function (m) { return m.getKey() === EDITS_MD_KEY; });
+  if (existing.length) {
+    existing[0].setValue(JSON.stringify(info));
+    for (var i = 1; i < existing.length; i++) existing[i].remove();
+  } else {
+    range.addDeveloperMetadata(EDITS_MD_KEY, JSON.stringify(info));
+  }
 }
 
 // Headers in the sheet (trimmed), adding any wanted column the sheet doesn't have yet at the end.
@@ -297,7 +342,7 @@ function editsHeaders_(tab, wanted) {
   var headers = tab.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h).trim(); });
   while (headers.length && headers[headers.length - 1] === '') headers.pop();
   var added = [];
-  for (var i = 0; i < wanted.length; i++) if (headers.indexOf(wanted[i]) < 0 && added.indexOf(wanted[i]) < 0) added.push(wanted[i]);
+  for (var i = 0; i < wanted.length; i++) if (wanted[i] && headers.indexOf(wanted[i]) < 0 && added.indexOf(wanted[i]) < 0) added.push(wanted[i]);
   if (added.length) {
     tab.getRange(1, headers.length + 1, 1, added.length).setValues([added]).setFontWeight('bold');
     headers = headers.concat(added);
@@ -305,11 +350,8 @@ function editsHeaders_(tab, wanted) {
   return headers;
 }
 
-function editsFindRow_(tab, headers, key) {
-  var last = tab.getLastRow(), col = headers.indexOf('Record key');
-  if (last < 2 || col < 0) return -1;
-  var keys = tab.getRange(2, col + 1, last - 1, 1).getValues();
-  for (var i = 0; i < keys.length; i++) if (String(keys[i][0]) === key) return i + 2;
+function editsFindRow_(meta, key) {
+  for (var r in meta) if (meta[r].info.key === key) return Number(r);
   return -1;
 }
 
@@ -320,49 +362,45 @@ function editsSplit_(v) {
 function editsUpsert_(body) {
   var ss = editsSpreadsheet_(), tab = editsTab_(ss);
   var row = body.row || []; // [[header, value], ...] in Embryo view order
-  var headers = editsHeaders_(tab, row.map(function (p) { return String(p[0]).trim(); }).concat(EDITS_META));
-  var at = editsFindRow_(tab, headers, body.key);
+  var headers = editsHeaders_(tab, row.map(function (p) { return String(p[0]).trim(); }));
+  var meta = editsRowMeta_(tab), at = editsFindRow_(meta, body.key);
   var values = at > 0 ? tab.getRange(at, 1, 1, headers.length).getValues()[0] : headers.map(function () { return ''; });
-  var set = function (h, v) { var i = headers.indexOf(h); if (i >= 0) values[i] = v; };
-  for (var r = 0; r < row.length; r++) set(String(row[r][0]).trim(), row[r][1]);
-  var edited = editsSplit_(values[headers.indexOf('Edited columns')]);
-  if (edited.indexOf(body.column) < 0) edited.push(body.column);
-  set('Record key', body.key);
-  set('Edited columns', edited.join('; '));
-  set('Edited sample ID', body.sampleId);
-  set('Edited embryo', body.embryo);
-  set('Last edited by', body.editedBy || '');
-  set('Last edited at', body.editedAt || new Date().toISOString());
+  for (var r = 0; r < row.length; r++) { var i = headers.indexOf(String(row[r][0]).trim()); if (i >= 0) values[i] = row[r][1]; }
+  var info = at > 0 ? meta[at].info : { edited: [] };
+  if ((info.edited || []).indexOf(body.column) < 0) info.edited = (info.edited || []).concat([body.column]);
+  info.key = body.key; info.sampleId = body.sampleId; info.embryo = body.embryo;
+  info.by = body.editedBy || ''; info.at = body.editedAt || new Date().toISOString();
+  if (at < 0) at = tab.getLastRow() + 1;
   // Plain text, so the sheet never re-reads "02-09-2026" or "1,2" as a date / number.
-  var range = at > 0 ? tab.getRange(at, 1, 1, headers.length) : tab.getRange(tab.getLastRow() + 1, 1, 1, headers.length);
-  range.setNumberFormat('@').setValues([values]);
+  tab.getRange(at, 1, 1, headers.length).setNumberFormat('@').setValues([values]);
+  editsSetMeta_(tab, at, info);
   return { ok: true, sheetId: ss.getId(), url: ss.getUrl() };
 }
 
 // The app reverted an edit to the source-sheet value: drop that column from the row's
-// "Edited columns", and remove the row once nothing in it is edited any more.
+// edited list, and remove the row once nothing in it is edited any more.
 function editsRevert_(body) {
-  var ss = editsSpreadsheet_(), tab = editsTab_(ss), headers = editsHeaders_(tab, EDITS_META);
-  var at = editsFindRow_(tab, headers, body.key);
+  var ss = editsSpreadsheet_(), tab = editsTab_(ss);
+  var meta = editsRowMeta_(tab), at = editsFindRow_(meta, body.key);
   if (at < 0) return { ok: true, url: ss.getUrl() };
-  var cell = tab.getRange(at, headers.indexOf('Edited columns') + 1);
-  var left = editsSplit_(cell.getValue()).filter(function (x) { return x !== body.column; });
-  if (left.length) cell.setValue(left.join('; ')); else tab.deleteRow(at);
+  var info = meta[at].info;
+  info.edited = (info.edited || []).filter(function (x) { return x !== body.column; });
+  if (info.edited.length) editsSetMeta_(tab, at, info); else tab.deleteRow(at);
   return { ok: true, url: ss.getUrl() };
 }
 
 // GET ?action=edits - every edited value, for the app to apply over the source sheets.
 function editsList_() {
-  var ss = editsSpreadsheet_(), tab = ss.getSheets()[0];
+  var ss = editsSpreadsheet_(), tab = editsTab_(ss);
   if (tab.getLastRow() < 2) return { edits: [], url: ss.getUrl() };
   var values = tab.getDataRange().getValues(), headers = values[0].map(function (h) { return String(h).trim(); }), edits = [];
-  var col = function (h) { return headers.indexOf(h); }, cEdited = col('Edited columns');
-  if (cEdited < 0) return { edits: [], url: ss.getUrl() };
-  for (var r = 1; r < values.length; r++) {
-    var row = values[r], cols = editsSplit_(row[cEdited]);
-    for (var c = 0; c < cols.length; c++) {
-      var idx = col(EDITS_HEADER_FOR[cols[c]] || String(cols[c]).toUpperCase());
-      edits.push({ sampleId: String(row[col('Edited sample ID')] || ''), embryo: String(row[col('Edited embryo')] || ''), column: cols[c], value: idx >= 0 ? formatCell_(row[idx]) : '', editedBy: String(row[col('Last edited by')] || ''), editedAt: String(row[col('Last edited at')] || '') });
+  var meta = editsRowMeta_(tab);
+  for (var r in meta) {
+    var info = meta[r].info, row = values[Number(r) - 1];
+    if (!row) continue;
+    for (var c = 0; c < (info.edited || []).length; c++) {
+      var col = info.edited[c], idx = headers.indexOf(EDITS_HEADER_FOR[col] || String(col).toUpperCase());
+      edits.push({ sampleId: String(info.sampleId || ''), embryo: String(info.embryo || ''), column: col, value: idx >= 0 ? formatCell_(row[idx]) : '', editedBy: String(info.by || ''), editedAt: String(info.at || '') });
     }
   }
   return { edits: edits, url: ss.getUrl() };
