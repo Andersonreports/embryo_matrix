@@ -87,8 +87,21 @@ def _send_or_queue(body: dict) -> dict:
             return {"ok": False, "status": "queued", "error": str(e)}
 
 
+def _queue_and_send(body: dict) -> dict:
+    """Queue the change and send it from a background thread, so saving an edit never waits on
+    Google (a push takes seconds). Newest per record + column wins; failures stay queued."""
+    if not configured():
+        return {"ok": False, "status": "not-configured"}
+    with _lock:
+        pending = [p for p in _read_json(PENDING_PATH, []) if not (p.get("key") == body["key"] and p.get("column") == body["column"])]
+        pending.append(body)
+        _write_json(PENDING_PATH, pending)
+    threading.Thread(target=retry_pending, daemon=True).start()
+    return {"ok": True, "status": "sending"}
+
+
 def push_edit(entry: dict, row: list) -> dict:
-    return _send_or_queue({
+    return _queue_and_send({
         "action": "editsUpsert", "key": record_key(entry["sampleId"], entry["embryo"]),
         "sampleId": entry["sampleId"], "embryo": entry["embryo"], "column": entry["column"],
         "editedBy": entry.get("editedBy", ""), "editedAt": entry.get("editedAt", ""),
@@ -97,7 +110,7 @@ def push_edit(entry: dict, row: list) -> dict:
 
 
 def push_revert(sample_id: str, embryo: str, column: str) -> dict:
-    return _send_or_queue({"action": "editsRevert", "key": record_key(sample_id, embryo), "sampleId": sample_id, "embryo": embryo, "column": str(column or "").strip().lower()})
+    return _queue_and_send({"action": "editsRevert", "key": record_key(sample_id, embryo), "sampleId": sample_id, "embryo": embryo, "column": str(column or "").strip().lower()})
 
 
 def retry_pending() -> int:
@@ -115,7 +128,7 @@ def retry_pending() -> int:
                 break
         _write_json(PENDING_PATH, left)
         if len(left) < len(pending):
-            _cache["at"] = 0.0
+            _cache["at"] = _cache["miss_at"] = 0.0
         return len(left)
 
 

@@ -59,7 +59,7 @@ dialog{border-radius:22px!important}
 .editable-cell{cursor:text;background:#f6f1fb!important}
 .editable-cell:hover{background:#efe6f9!important}
 .editable-cell:focus{background:#f1e9fa!important;outline:none}
-.editable-cell.cell-saving{opacity:.5;pointer-events:none}
+.editable-cell.cell-saving{opacity:.6}
 .embryo-columns-table tbody tr:hover{background:#eaf5f4!important}
 .embryo-columns-table thead th{background:#f2f7f6!important;border-bottom:1px solid var(--line)}
 .id-chip{display:inline-block;padding:3px 10px;border-radius:var(--radius-pill);background:#eef6f5;border:1px solid #d8e9e7;color:#0f5f5c;font:600 11px "Inter",sans-serif;letter-spacing:.3px;white-space:nowrap}
