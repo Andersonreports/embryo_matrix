@@ -1208,3 +1208,4 @@ html,body{max-width:100%;overflow-x:hidden}
 .od-filter select:focus{border-color:#0a8a86}
 .od-clear{height:36px;padding:0 14px;border:1px solid #e6c4ba;border-radius:10px;background:#fbefeb;color:#a04f3d;font:600 13px "Inter";cursor:pointer}
 .prep-toolbar{gap:10px}
+.od-filters.hidden{display:none!important}
