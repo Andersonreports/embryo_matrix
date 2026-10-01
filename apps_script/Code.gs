@@ -350,8 +350,25 @@ function editsHeaders_(tab, wanted) {
   return headers;
 }
 
-function editsFindRow_(meta, key) {
-  for (var r in meta) if (meta[r].info.key === key) return Number(r);
+function editsCleanId_(v) {
+  return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+// The row for this embryo: by its hidden record first; else (a row written before the hidden
+// records existed, or typed in by hand) by SAMPLE ID / BOX NUMBER (or patient + date received)
+// and EMBRYO NAME - the same identity the app uses - so it is updated instead of duplicated.
+function editsFindRow_(tab, headers, meta, body) {
+  for (var r in meta) if (meta[r].info.key === body.key) return Number(r);
+  var last = tab.getLastRow();
+  if (last < 2) return -1;
+  var values = tab.getRange(2, 1, last - 1, headers.length).getValues(), col = function (h) { return headers.indexOf(h); };
+  var want = editsCleanId_(body.sampleId), emb = editsCleanId_(body.embryo);
+  for (var i = 0; i < values.length; i++) {
+    if (meta[i + 2]) continue;
+    var v = values[i], get = function (h) { var c = col(h); return c >= 0 ? String(v[c] || '').trim() : ''; };
+    var id = get('SAMPLE ID') || get('BOX NUMBER') || [get('PATIENT NAME'), get('DATE SAMPLE RECEIVED')].filter(String).join(' ');
+    if (editsCleanId_(id) === want && editsCleanId_(get('EMBRYO NAME')) === emb) return i + 2;
+  }
   return -1;
 }
 
@@ -363,10 +380,10 @@ function editsUpsert_(body) {
   var ss = editsSpreadsheet_(), tab = editsTab_(ss);
   var row = body.row || []; // [[header, value], ...] in Embryo view order
   var headers = editsHeaders_(tab, row.map(function (p) { return String(p[0]).trim(); }));
-  var meta = editsRowMeta_(tab), at = editsFindRow_(meta, body.key);
+  var meta = editsRowMeta_(tab), at = editsFindRow_(tab, headers, meta, body);
   var values = at > 0 ? tab.getRange(at, 1, 1, headers.length).getValues()[0] : headers.map(function () { return ''; });
   for (var r = 0; r < row.length; r++) { var i = headers.indexOf(String(row[r][0]).trim()); if (i >= 0) values[i] = row[r][1]; }
-  var info = at > 0 ? meta[at].info : { edited: [] };
+  var info = at > 0 && meta[at] ? meta[at].info : { edited: [] };
   if ((info.edited || []).indexOf(body.column) < 0) info.edited = (info.edited || []).concat([body.column]);
   info.key = body.key; info.sampleId = body.sampleId; info.embryo = body.embryo;
   info.by = body.editedBy || ''; info.at = body.editedAt || new Date().toISOString();
@@ -380,9 +397,10 @@ function editsUpsert_(body) {
 // The app reverted an edit to the source-sheet value: drop that column from the row's
 // edited list, and remove the row once nothing in it is edited any more.
 function editsRevert_(body) {
-  var ss = editsSpreadsheet_(), tab = editsTab_(ss);
-  var meta = editsRowMeta_(tab), at = editsFindRow_(meta, body.key);
+  var ss = editsSpreadsheet_(), tab = editsTab_(ss), headers = editsHeaders_(tab, []);
+  var meta = editsRowMeta_(tab), at = editsFindRow_(tab, headers, meta, body);
   if (at < 0) return { ok: true, url: ss.getUrl() };
+  if (!meta[at]) { tab.deleteRow(at); return { ok: true, url: ss.getUrl() }; } // untracked row: its only edit is being undone
   var info = meta[at].info;
   info.edited = (info.edited || []).filter(function (x) { return x !== body.column; });
   if (info.edited.length) editsSetMeta_(tab, at, info); else tab.deleteRow(at);
