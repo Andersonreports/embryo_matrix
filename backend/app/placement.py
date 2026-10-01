@@ -115,10 +115,9 @@ class Placement:
         # tracker rows - so the file's month is the received date of one of those rows.
         self.rf_by_embryo: dict[tuple, str] = {}
         self.rf_folder: dict[str, str] = {}
+        self.rf_months: dict[str, tuple] = {}   # result-file id -> (year, month) its samples were mostly received in
         for f in self.rfiles:
             label = _run_key(f.get("run"))
-            if not label:
-                continue
             # The run's month = the month most of its samples were received in. The sheet's day/month order is unreliable
             # ("04-01-2026" may be 1 April), so each date is read the way that fits the sample's own sheet tab.
             tally: dict[tuple, int] = {}
@@ -130,6 +129,9 @@ class Placement:
             if not tally:
                 continue
             ym = sorted(tally.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+            self.rf_months[str(f.get("id"))] = ym
+            if not label:
+                continue
             month = f"{ym[0]}/{ym[1]:02d} - {MONTHS[ym[1] - 1]}"
             folder = f"{month}/RUN_{safe(label)}"
             self.rf_folder.setdefault(label, folder)

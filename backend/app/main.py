@@ -314,6 +314,12 @@ def list_result_files_for_sync(since: str = "", db: Session = Depends(get_db)):
         "relPath": f"{pl.result_folder(f.get('run'))}/{_safe_name(f.get('fileName'), 'resultfile_' + str(f['id']))}",
     } for f in files]
 
+@app.get("/api/result-file-months")
+def result_file_months(db: Session = Depends(get_db)):
+    """Which month each uploaded result file's run belongs to (same rule as its Windows folder), for the Upload result list."""
+    pl = Placement(db)
+    return {fid: {"year": ym[0], "month": ym[1]} for fid, ym in pl.rf_months.items()}
+
 @app.delete("/api/result-files/{file_id}")
 def delete_result_file(file_id: str, request: Request, db: Session = Depends(get_db)):
     row, files = _result_files(db)
