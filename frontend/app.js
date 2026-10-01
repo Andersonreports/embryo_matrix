@@ -129,7 +129,11 @@ const cellValue=(x,k)=>k==='tat date'?tatDate(x.embryo,x.case):x.embryo[k]
 // Overdue: TAT date has passed and the NGS report date is still empty.
 // Samples in the NOT REPORTING sheet are cancelled, so they are never counted as overdue.
 const isNotReporting=e=>/not\s*reporting/i.test(String(e._importSource||''));
-function isOverdue(e,c){if(isNotReporting(e))return false;const tat=parseSheetDate(tatDate(e,c));if(!tat||field(e,['ngs report']))return false;const today=new Date();today.setHours(0,0,0,0);return tat<today}
+// These need no separate report date: once the SEQ date is filled they count as completed (PGT-A+M, PGT-M, Embryo validation, HLA-C typing,
+// and anything in the MaReCs or NOT REPORTING sheets).
+const SEQ_ONLY_TESTS=/A\+M|PGTM|VALIDATION|HLA/;
+function isCompleteOnSeq(e,c){if(!field(e,['seq date']))return false;const t=String(field(e,['test','test name'])||c?.test||'').toUpperCase().replace(/[^A-Z+]/g,'');return SEQ_ONLY_TESTS.test(t)||/mare?cs/i.test(String(e._importSource||''))||isNotReporting(e)}
+function isOverdue(e,c){if(isNotReporting(e)||isCompleteOnSeq(e,c))return false;const tat=parseSheetDate(tatDate(e,c));if(!tat||field(e,['ngs report']))return false;const today=new Date();today.setHours(0,0,0,0);return tat<today}
 function syncOverdueCard(){const stat=$('#overdueStat');if(stat)stat.textContent=allEmbryos().filter(e=>isOverdue(e,e._case)).length.toLocaleString()}
 const PIN_ICON='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>';
 function fitTableHeight(el){if(!el)return;const top=el.getBoundingClientRect().top;let h=Math.max(240,window.innerHeight-top-24);el.style.maxHeight=`${h}px`;const overflow=document.documentElement.scrollHeight-window.innerHeight;if(overflow>0){h=Math.max(240,h-overflow);el.style.maxHeight=`${h}px`}}
