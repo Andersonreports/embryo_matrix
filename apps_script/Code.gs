@@ -1,9 +1,13 @@
 /**
- * EmbryoMatrix — read-only Google Sheets API.
+ * EmbryoMatrix — Google Sheets API.
  *
  * Paste this whole file into Extensions > Apps Script (from any one of the
  * three source spreadsheets), then deploy it as a Web App. It never writes
- * to the sheet — only SpreadsheetApp.openById(...).getValues() reads.
+ * to the three source sheets — only SpreadsheetApp.openById(...).getValues()
+ * reads them. The ONE spreadsheet it writes to is its own "EmbryoMatrix –
+ * Edited samples" sheet, which it creates in your Drive the first time a lab
+ * user edits a value in the app (see "Edited samples sheet" at the bottom):
+ * one row per edited embryo, holding its whole Samples > Embryo view row.
  *
  * Why this exists: the server currently polls
  *   https://docs.google.com/spreadsheets/d/<id>/export?format=xlsx
@@ -119,6 +123,10 @@ function doGet(e) {
     return jsonOutput_({ error: 'Unauthorized' });
   }
 
+  if (params.action === 'edits') {
+    try { return jsonOutput_(editsList_()); } catch (err) { return jsonOutput_({ error: String(err) }); }
+  }
+
   try {
     var sheetIds = params.sheetId ? [params.sheetId] : DEFAULT_SHEET_IDS;
     var sources = [];
@@ -193,4 +201,132 @@ function formatCell_(v) {
 
 function jsonOutput_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+
+// ---------------------------------------------------------------------------
+// Edited samples sheet (the only spreadsheet this script writes to).
+//
+// When a lab user edits an editable value in the app (WGA conc, karyotype,
+// PGT result), the server POSTs that embryo's whole Samples > Embryo view row
+// here. The row is upserted into the "Edits" tab of a spreadsheet this script
+// creates on first use and remembers in Script Properties (EDITS_SHEET_ID).
+// The app reads the edited values back with GET ?action=edits.
+//
+// Columns: the tracking columns below, then every Embryo view column, in the
+// order the app sends them. "Edited columns" lists which values were changed
+// in the app (semicolon-separated column keys) - only those are read back.
+// ---------------------------------------------------------------------------
+var EDITS_SHEET_NAME = 'EmbryoMatrix – Edited samples';
+var EDITS_TAB = 'Edits';
+var EDITS_META = ['Record key', 'Sample ID', 'Embryo', 'Edited columns', 'Last edited by', 'Last edited at'];
+// Column key -> its header in the Embryo view (the app labels these two differently).
+var EDITS_HEADER_FOR = { 'dna conc unpurified': 'WGA CONC UNPURIFIED', 'dna conc purified': 'WGA CONC PURIFIED' };
+
+function doPost(e) {
+  var body = {};
+  try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) { return jsonOutput_({ error: 'Bad JSON' }); }
+  var expected = PropertiesService.getScriptProperties().getProperty('SHARED_SECRET');
+  if (expected && body.token !== expected) return jsonOutput_({ error: 'Unauthorized' });
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    if (body.action === 'editsUpsert') return jsonOutput_(editsUpsert_(body));
+    if (body.action === 'editsRevert') return jsonOutput_(editsRevert_(body));
+    return jsonOutput_({ error: 'Unknown action' });
+  } catch (err) {
+    return jsonOutput_({ error: String(err) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function editsSpreadsheet_() {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty('EDITS_SHEET_ID');
+  if (id) {
+    try { return SpreadsheetApp.openById(id); } catch (err) { /* deleted or no access - make a new one */ }
+  }
+  var ss = SpreadsheetApp.create(EDITS_SHEET_NAME);
+  ss.getSheets()[0].setName(EDITS_TAB);
+  props.setProperty('EDITS_SHEET_ID', ss.getId());
+  return ss;
+}
+
+function editsTab_(ss) {
+  var tab = ss.getSheetByName(EDITS_TAB) || ss.insertSheet(EDITS_TAB);
+  if (tab.getLastRow() === 0) {
+    tab.appendRow(EDITS_META);
+    tab.setFrozenRows(1);
+    tab.getRange(1, 1, 1, EDITS_META.length).setFontWeight('bold');
+  }
+  return tab;
+}
+
+// Headers in the sheet, adding any Embryo view column the sheet doesn't have yet at the end.
+function editsHeaders_(tab, wanted) {
+  var lastCol = Math.max(tab.getLastColumn(), 1);
+  var headers = tab.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h); });
+  var added = [];
+  for (var i = 0; i < wanted.length; i++) if (headers.indexOf(wanted[i]) < 0 && added.indexOf(wanted[i]) < 0) added.push(wanted[i]);
+  if (added.length) {
+    tab.getRange(1, headers.length + 1, 1, added.length).setValues([added]).setFontWeight('bold');
+    headers = headers.concat(added);
+  }
+  return headers;
+}
+
+function editsFindRow_(tab, key) {
+  var last = tab.getLastRow();
+  if (last < 2) return -1;
+  var keys = tab.getRange(2, 1, last - 1, 1).getValues();
+  for (var i = 0; i < keys.length; i++) if (String(keys[i][0]) === key) return i + 2;
+  return -1;
+}
+
+function editsUpsert_(body) {
+  var ss = editsSpreadsheet_(), tab = editsTab_(ss);
+  var row = body.row || []; // [[header, value], ...] in Embryo view order
+  var headers = editsHeaders_(tab, row.map(function (p) { return String(p[0]); }));
+  var at = editsFindRow_(tab, body.key);
+  var current = at > 0 ? tab.getRange(at, 1, 1, headers.length).getValues()[0] : headers.map(function () { return ''; });
+  var editedCols = String(current[3] || '').split(';').map(function (x) { return x.trim(); }).filter(String);
+  if (editedCols.indexOf(body.column) < 0) editedCols.push(body.column);
+  var values = current.slice();
+  var meta = [body.key, body.sampleId, body.embryo, editedCols.join('; '), body.editedBy || '', body.editedAt || new Date().toISOString()];
+  for (var m = 0; m < meta.length; m++) values[m] = meta[m];
+  for (var r = 0; r < row.length; r++) values[headers.indexOf(String(row[r][0]))] = row[r][1];
+  // Plain text, so the sheet never re-reads "02-09-2026" or "1,2" as a date / number.
+  var range = at > 0 ? tab.getRange(at, 1, 1, headers.length) : tab.getRange(tab.getLastRow() + 1, 1, 1, headers.length);
+  range.setNumberFormat('@').setValues([values]);
+  return { ok: true, sheetId: ss.getId(), url: ss.getUrl() };
+}
+
+// The app reverted an edit to the source-sheet value: drop that column from the row's
+// "Edited columns", and remove the row once nothing in it is edited any more.
+function editsRevert_(body) {
+  var ss = editsSpreadsheet_(), tab = editsTab_(ss);
+  var at = editsFindRow_(tab, body.key);
+  if (at < 0) return { ok: true, url: ss.getUrl() };
+  var cell = tab.getRange(at, 4);
+  var left = String(cell.getValue() || '').split(';').map(function (x) { return x.trim(); }).filter(function (x) { return x && x !== body.column; });
+  if (left.length) cell.setValue(left.join('; ')); else tab.deleteRow(at);
+  return { ok: true, url: ss.getUrl() };
+}
+
+// GET ?action=edits - every edited value, for the app to apply over the source sheets.
+function editsList_() {
+  var id = PropertiesService.getScriptProperties().getProperty('EDITS_SHEET_ID');
+  if (!id) return { edits: [], url: '' };
+  var ss = SpreadsheetApp.openById(id), tab = ss.getSheetByName(EDITS_TAB);
+  if (!tab || tab.getLastRow() < 2) return { edits: [], url: ss.getUrl() };
+  var values = tab.getDataRange().getValues(), headers = values[0].map(String), edits = [];
+  for (var r = 1; r < values.length; r++) {
+    var row = values[r], cols = String(row[3] || '').split(';').map(function (x) { return x.trim(); }).filter(String);
+    for (var c = 0; c < cols.length; c++) {
+      var header = EDITS_HEADER_FOR[cols[c]] || String(cols[c]).toUpperCase(), idx = headers.indexOf(header);
+      edits.push({ sampleId: String(row[1]), embryo: String(row[2]), column: cols[c], value: idx >= 0 ? formatCell_(row[idx]) : '', editedBy: String(row[4]), editedAt: String(row[5]) });
+    }
+  }
+  return { edits: edits, url: ss.getUrl() };
 }

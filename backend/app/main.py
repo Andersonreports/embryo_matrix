@@ -18,7 +18,7 @@ from .placement import Placement, safe as _safe_name
 from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn
 from .sheet_sync import parse_sources, sync_sources
-from . import cell_edits, storage, trf_pdf
+from . import cell_edits, edits_sheet, storage, trf_pdf
 from sqlalchemy import inspect, text
 import mimetypes
 
@@ -360,11 +360,17 @@ def log_legacy_result_delete(payload: KVValue, request: Request, db: Session = D
     log_activity(db, "result_delete", f"{data.get('fileName') or 'Earlier upload'} · results removed from {int(data.get('count', 0))} embryo(s)", request=request)
     return {"ok": True}
 
-# --- Manual cell edits: kept in their own .xlsx (see cell_edits.py), not the database ---
+# --- Manual cell edits: written to the live "Edited samples" Google Sheet (edits_sheet.py)
+# and kept in their own .xlsx as the local copy (cell_edits.py), not the database ---
 
 @app.get("/api/cell-edits")
 def get_cell_edits():
-    return cell_edits.list_edits()
+    return edits_sheet.merged_edits(cell_edits.list_edits())
+
+@app.get("/api/edits-sheet")
+def get_edits_sheet():
+    edits_sheet.fetch_edits()  # kicks off a background retry / re-read when stale
+    return edits_sheet.status()
 
 @app.post("/api/cell-edits")
 def post_cell_edit(payload: CellEditIn, request: Request, db: Session = Depends(get_db)):
@@ -378,11 +384,14 @@ def post_cell_edit(payload: CellEditIn, request: Request, db: Session = Depends(
         raise HTTPException(400, str(e))
     where = f"{entry['sampleId']}" + (f" embryo {entry['embryo']}" if entry["embryo"] else "")
     log_activity(db, "cell_edit", f"{where} · {entry['column']}: '{entry['oldValue']}' → '{entry['value']}'", request=request)
+    edits_sheet.retry_pending()
+    entry["sheet"] = edits_sheet.push_edit(entry, payload.row)
     return entry
 
 @app.delete("/api/cell-edits")
 def remove_cell_edit(sampleId: str, column: str, embryo: str = "", request: Request = None, db: Session = Depends(get_db)):
     ok = cell_edits.delete_edit(sampleId, embryo, column)
+    edits_sheet.push_revert(sampleId, embryo, column)
     if ok:
         where = f"{sampleId}" + (f" embryo {embryo}" if embryo else "")
         log_activity(db, "cell_edit_revert", f"{where} · {column} reverted to sheet value", request=request)

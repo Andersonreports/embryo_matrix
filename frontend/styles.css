@@ -1370,3 +1370,21 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .ur-table td.num{color:#8b968f;width:36px}.ur-table td.clip{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ur-tag{display:inline-block;margin-right:6px;padding:1px 8px;border-radius:999px;background:#eef1ee;color:#4f5f57;font:600 11px "Inter"}
 .ur-more{margin:10px 8px}
+/* Run reports table alignment: figures centred under their headings, text columns left,
+   group titles centred over their columns, evenly sized figure columns */
+.rr-table .num,.rr-table th.num{text-align:center}
+.rr-table th.num,.rr-table td.num{min-width:78px}
+.rr-table .rr-groups th{text-align:center}
+.rr-table .rr-groups th:first-child{text-align:left}
+.rr-table td:first-child,.rr-table th:first-child{text-align:center;min-width:52px;width:52px}
+.rr-table tfoot td{text-align:center}
+.rr-table tfoot td[colspan]{text-align:left}
+.rr-table td.rr-date{min-width:100px}
+.rr-heat{justify-content:center}
+.edits-sheet-link{text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.edits-sheet-link.hidden{display:none}
+.edits-sheet-link .filters-badge{background:#fbe6e2;color:#a04f3d}
+/* Replace (a label) and Remove (a button) must look identical - general button rules made
+   Remove taller and pushed it down */
+.vg-actions{align-items:center}
+.vg-actions .vg-btn,.vg-actions button.vg-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;box-sizing:border-box;height:30px!important;min-height:0!important;margin:0!important;padding:0 12px!important;font:600 12px/1 "Inter"!important;border-radius:999px!important;box-shadow:none!important;transform:none!important;vertical-align:middle}

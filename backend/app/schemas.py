@@ -31,3 +31,5 @@ class CellEditIn(BaseModel):
     embryo: str = ""
     column: str
     value: str = ""
+    # The embryo's whole Samples > Embryo view row ([header, value] pairs), for the edits sheet.
+    row: list[list[str]] = []
