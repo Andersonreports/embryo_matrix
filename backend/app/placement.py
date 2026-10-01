@@ -71,6 +71,15 @@ def _tab_month(label):
     return None
 
 
+def _month_from_filename(name):
+    """(year, month) from the last dd-mm-yyyy style date in a file name (e.g. 'Analysis_RUN30-28-09-2026.xlsx')."""
+    ms = list(re.finditer(r"(\d{2})[-_.]?(\d{2})[-_.]?(20\d{2})", str(name or "")))
+    if not ms:
+        return None
+    d, mo, y = (int(x) for x in ms[-1].groups())
+    return (y, mo) if 1 <= mo <= 12 and 1 <= d <= 31 else None
+
+
 def _resolve_month(text, tab):
     """(year, month) a received-date cell most likely means, reading dd-mm-yyyy or the flipped mm-dd-yyyy."""
     m = re.match(r"^\s*(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\s*$", str(text or ""))
@@ -129,6 +138,8 @@ class Placement:
             chosen = re.fullmatch(r"(\d{4})-(\d{2})", str(f.get("month") or ""))
             if chosen:
                 tally = {(int(chosen.group(1)), int(chosen.group(2))): 1}   # the month the file was filed under wins
+            elif (fm := _month_from_filename(f.get("fileName"))):
+                tally = {fm: 1}   # no month filed: the date written in the file name decides
             if not tally:
                 continue
             ym = sorted(tally.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
