@@ -224,6 +224,16 @@ class Placement:
             return f"{base}/{patient}"
         return f"_Unassigned/{patient}" + (f" ({safe(case_code)})" if info and info["patient"] else "")
 
+    def file_result_folder(self, f: dict) -> str:
+        """Folder for ONE result file: its own month, then its run number. (Run numbers repeat across sequencers and months, so the
+        month can never be taken from another file that happens to share the label.)"""
+        ym = self.rf_months.get(str(f.get("id")))
+        if not ym:
+            return "_ResultFiles"
+        base = f"{ym[0]}/{ym[1]:02d} - {MONTHS[ym[1] - 1]}"
+        label = _run_key(f.get("run"))
+        return f"{base}/RUN_{safe(label)}/Results" if label else f"{base}/No run number/Results"
+
     def result_folder(self, run_label) -> str:
         base = self.run_folder(run_label) if run_label else None
         return f"{base}/Results" if base else "_ResultFiles"

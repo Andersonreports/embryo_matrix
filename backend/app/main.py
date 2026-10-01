@@ -315,7 +315,7 @@ def list_result_files_for_sync(since: str = "", db: Session = Depends(get_db)):
         "id": f["id"], "fileName": f.get("fileName"), "run": f.get("run"),
         "at": f.get("at"), "matched": f.get("matched"),
         "url": f"/uploads/{f['filePath']}",
-        "relPath": f"{pl.result_folder(f.get('run'))}/{_safe_name(f.get('fileName'), 'resultfile_' + str(f['id']))}",
+        "relPath": f"{pl.file_result_folder(f)}/{_safe_name(f.get('fileName'), 'resultfile_' + str(f['id']))}",
     } for f in files]
 
 @app.patch("/api/result-files/{file_id}/month")

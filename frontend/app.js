@@ -1337,6 +1337,28 @@ async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
 }
 function matchResultsByName(parsed,known){const byTag=new Map;for(const k of known){const [pat,tag]=k.split('|');if(!byTag.has(tag))byTag.set(tag,[]);byTag.get(tag).push({pat,key:k})}
  parsed.forEach(p=>p.byName.forEach((r,nk)=>{const [pat,tag]=nk.split('|'),hits=[...new Set((byTag.get(tag)||[]).filter(c=>c.pat&&(c.pat.includes(pat)||pat.includes(c.pat))).map(c=>c.key))];if(hits.length===1&&!p.byKey.has(hits[0]))p.byKey.set(hits[0],r);else{p.unverified++;p.unmatchedNames.push(field(r,['sample name'])||nk)}}))}
+// ---- "Not added" report: a filterable table with Excel export ----
+const REPORT_KINDS={review:'Not added',older:'Older run (newer kept)',disputed:'In two files, different results',already:'Already had a result',nodetail:'Listed in file, no result row'};
+function reasonGroup(r){const t=String(r.reason||'');if(r.kind!=='review')return REPORT_KINDS[r.kind];
+ if(/no PGS-NGS row/i.test(t))return 'Patient / embryo not in PGS-NGS sheet';
+ if(/received after this run|does not fit this run|received date differs/i.test(t))return 'Received date does not fit (other cycle?)';
+ if(/equally well|more than one|more than once/i.test(t))return 'Ambiguous / duplicate';
+ return 'Other'}
+function renderUploadReport(status,headline,report){
+ report.forEach(r=>r.group=reasonGroup(r));
+ const groups=[...new Set(report.map(r=>r.group))];let sel='',q='',shown=300;
+ status.innerHTML=`<div class="ur-head">${escapeHtml(headline)}</div>${report.length?`<div class="ur-panel"><div class="ur-bar"><strong>${report.length.toLocaleString()} item(s) not added or needing a look</strong><input type="search" class="ur-search" placeholder="Search file, sample, patient…"><button type="button" class="secondary compact ur-export">↓ Export to Excel</button></div><div class="ur-chips"></div><div class="ur-wrap"></div></div>`:'<div class="ur-head ur-ok">Everything in the files was added.</div>'}`;
+ if(!report.length)return;
+ const chips=status.querySelector('.ur-chips'),wrap=status.querySelector('.ur-wrap');
+ const list=()=>report.filter(r=>(!sel||r.group===sel)&&(!q||[r.file,r.sample,r.reason,r.closest,r.group].join(' ').toLowerCase().includes(q)));
+ const draw=()=>{const l=list();chips.innerHTML=`<button type="button" class="ur-chip${sel?'':' on'}" data-g="">All <b>${report.length}</b></button>`+groups.map(g=>`<button type="button" class="ur-chip${sel===g?' on':''}" data-g="${escapeHtml(g)}">${escapeHtml(g)} <b>${report.filter(r=>r.group===g).length}</b></button>`).join('');
+  wrap.innerHTML=`<table class="ur-table"><thead><tr><th>#</th><th>File</th><th>Sample</th><th>Why</th><th>Closest PGS-NGS patient</th></tr></thead><tbody>${l.slice(0,shown).map((r,i)=>`<tr><td class="num">${i+1}</td><td class="clip" title="${escapeHtml(r.file)}">${escapeHtml(r.file)}</td><td class="strong">${escapeHtml(r.sample)}</td><td><span class="ur-tag">${escapeHtml(r.group)}</span> ${escapeHtml(r.reason)}</td><td>${escapeHtml(r.closest||'—')}</td></tr>`).join('')}</tbody></table>${l.length>shown?`<button type="button" class="secondary compact ur-more">Show ${Math.min(300,l.length-shown)} more (${l.length-shown} hidden - export has all)</button>`:''}`};
+ chips.onclick=e=>{const b=e.target.closest('.ur-chip');if(!b)return;sel=b.dataset.g;shown=300;draw()};
+ status.querySelector('.ur-search').oninput=e=>{q=e.target.value.trim().toLowerCase();shown=300;draw()};
+ wrap.onclick=e=>{if(e.target.closest('.ur-more')){shown+=300;draw()}};
+ status.querySelector('.ur-export').onclick=async()=>{const l=list(),headers=['#','File','Sample','Category','Why','Closest PGS-NGS patient'],body=l.map((r,i)=>[i+1,r.file,r.sample,r.group,r.reason,r.closest||'']),stamp=new Date().toISOString().slice(0,10);
+  try{await loadXlsxLib();const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([headers,...body]);ws['!cols']=[5,52,36,34,70,30].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,'Not added');XLSX.writeFile(wb,`result-upload-not-added-${stamp}.xlsx`)}catch(err){downloadRegistry('excel',{headers,rows:body},`result-upload-not-added-${stamp}`)}};
+ draw()}
 async function handleResultAttach(files,opts={}){
  const status=$('#resultAttachStatus');
  status.textContent=`Reading ${files.length} file(s)…`;
@@ -1354,8 +1376,9 @@ async function handleResultAttach(files,opts={}){
  // Results are matched to the PGS-NGS (tracker) rows only; the Sequencing Batch Record is not consulted here.
  // Anything that can't be tied to exactly one tracker row is left out and listed after the upload.
  parsed.forEach(p=>{[...p.byKey].forEach(([k,r])=>{if(!known.has(k)){p.unmatchedNames.push(field(r,['sample name'])||k);p.byKey.delete(k)}})});
- const listHtml=(title,names,hint)=>names.length?`<span class="rf-blocked-line rf-missing"><b>${escapeHtml(title)}</b>: ${names.length} item(s)<ul class="rf-missing-list">${names.map(n=>`<li>${escapeHtml(n)}</li>`).join('')}</ul><small>${escapeHtml(hint)}</small></span>`:'';
- let skippedHtml=parsed.map(p=>listHtml(`${p.file.name} - not added (could not be tied safely to one PGS-NGS patient)`,[...new Set([...(p.review||[]).map(x=>`${x.raw} — ${x.reason}${x.candidate?` (closest: ${x.candidate})`:''}`),...p.unmatchedNames.filter(n=>!(p.review||[]).some(x=>x.raw===n))])],'Make the patient / embryo name (or sample ID) the same in the PGS-NGS sheet and the result file, then upload a file with just these.')).join('');
+ // Everything that was NOT added is collected into one report (shown as a table, exportable) instead of long paragraphs.
+ const report=[],listHtml=(file,kind,names)=>{names.forEach(n=>{const m=/^(.*?) — (.*?)(?: \(closest: (.*)\))?$/.exec(String(n));report.push({file,kind,sample:m?m[1]:String(n),reason:m?m[2]:'',closest:m&&m[3]||''})});return ''};
+ let skippedHtml=parsed.map(p=>listHtml(p.file.name,'review',[...new Set([...(p.review||[]).map(x=>`${x.raw} — ${x.reason}${x.candidate?` (closest: ${x.candidate})`:''}`),...p.unmatchedNames.filter(n=>!(p.review||[]).some(x=>x.raw===n))])])).join('');
  const unverified=parsed.reduce((n,p)=>n+p.unverified,0),skippedNote=unverified?` · ${unverified} row(s) skipped (no single matching patient + embryo in the tracker).`:'';
  await loadResultFiles(allRows);
  const owner=new Map;resultFilesCache.forEach(e=>e.samples.forEach(k=>owner.set(k,e)));
@@ -1372,12 +1395,11 @@ async function handleResultAttach(files,opts={}){
  const conflicts=[];
  parsed.forEach(p=>{[...p.byKey].forEach(([k,r])=>{const dsp=disputed.get(k);if(!dsp||dsp.winner===p.file.name)return;const others=[...new Set(dsp.files)].filter(n=>n!==p.file.name),label=field(r,['sample name'])||k;
   if(dsp.winner)(p.supersededList=p.supersededList||[]).push(`${label} — replaced by the newer run in ${dsp.winner}`);else (p.disputedList=p.disputedList||[]).push(`${label} — also in ${others.join(', ')||'another file'}`);p.byKey.delete(k)})});
- skippedHtml+=parsed.map(p=>listHtml(`${p.file.name} - older run of an embryo that was tested again, newer result kept`,p.supersededList||[],'Same sample re-tested: the newer run\'s result is used. The older result is not stored.')).join('')+parsed.map(p=>listHtml(`${p.file.name} - same embryo in another file with a different result, not added`,p.disputedList||[],'Could not prove these are the same sample row (or the run dates are equal/unknown), so neither result was added. Upload only the file that is right.')).join('');
+ skippedHtml+=parsed.map(p=>listHtml(p.file.name,'older',p.supersededList||[])).join('')+parsed.map(p=>listHtml(p.file.name,'disputed',p.disputedList||[])).join('');
  parsed.forEach(p=>{p.keys=[...p.byKey.keys()].filter(k=>known.has(k)).filter(k=>{const prev=owner.get(k);if(prev){conflicts.push({file:p.file.name,name:field(p.byKey.get(k),['sample name']),prev});return false}owner.set(k,{fileName:p.file.name,run:runNumberOf(p.file.name)});return true})});
- if(conflicts.length){const byPrev=new Map;conflicts.forEach(c=>{const label=`${c.file} - kept the result from ${c.prev.fileName}`;byPrev.set(label,[...(byPrev.get(label)||[]),c.name])});
-  skippedHtml+=[...byPrev].map(([label,names])=>listHtml(label,names,'These embryos already had a result, so they were not changed. Delete the earlier file first to replace them.')).join('')}
+ if(conflicts.length){conflicts.forEach(c=>report.push({file:c.file,kind:'already',sample:c.name,reason:`already has a result from ${c.prev.fileName} - kept; delete that file first to replace it`,closest:''}))}
  const mergedAt=new Date().toISOString(),entries=parsed.filter(p=>p.keys.length).map(p=>({id:`rf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,file:p.file,byKey:p.byKey,keys:p.keys}));
- if(!entries.length){status.innerHTML=escapeHtml('None of the result rows matched a sample in the tracker.'+skippedNote)+skippedHtml;return}
+ if(!entries.length){renderUploadReport(status,'None of the result rows matched a sample in the tracker.'+skippedNote,report);return}
  const fileOfKey=new Map;entries.forEach(e=>e.keys.forEach(k=>fileOfKey.set(k,e)));
  let matchedRows=0;
  const updated=allRows.map(row=>{
@@ -1391,8 +1413,8 @@ async function handleResultAttach(files,opts={}){
  try{const r=await fetch('/api/upload-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:{files:entries.map(e=>e.file.name),matched:matchedRows,at:mergedAt}})});if(r.ok)uploadLogCache=(await r.json()).value||uploadLogCache}catch(err){}
  await setupCases();await loadResultFiles(updated);renderResultFiles();
  const embryos=entries.reduce((n,e)=>n+e.keys.length,0);
- const missingHtml=parsed.filter(p=>p.hasDetails).map(p=>listHtml(`${p.file.name} - listed in the file's Details tab but no result row`,p.missing,'Upload a file with just these embryos (same run) to add their results.')).join('');
- status.innerHTML=`${escapeHtml(`${entries.length} file(s) uploaded · results added for ${embryos} embryo(s) across ${matchedRows} sample row(s).`+skippedNote)}${skippedHtml}${missingHtml}`;
+ parsed.filter(p=>p.hasDetails).forEach(p=>listHtml(p.file.name,'nodetail',p.missing));
+ renderUploadReport(status,`${entries.length} file(s) uploaded · results added for ${embryos} embryo(s) across ${matchedRows} sample row(s).`+skippedNote,report);
  toast(`Results added for ${embryos} embryo(s)`);
 }
 async function deleteResultFile(id){

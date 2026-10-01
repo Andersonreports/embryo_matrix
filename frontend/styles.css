@@ -1343,3 +1343,30 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .rf-month{white-space:nowrap;font-weight:600;color:#4f6b68}
 .rf-monthpick{display:inline-flex;align-items:center;gap:8px;font:600 13px "Inter";color:#4f6b68}
 .rf-monthpick select{height:40px;padding:0 12px;border:1px solid #cfdcd8;border-radius:999px;background:#fff;font:600 13px "Inter";color:#0a6872}
+
+/* Upload result controls: one straight row, every control the same height and shape */
+.import-view .import-controls{flex-wrap:nowrap;gap:14px;align-items:center}
+@media(max-width:900px){.import-view .import-controls{flex-wrap:wrap}}
+.import-view .import-controls .file-button,.import-view .import-controls #resultUploadBtn{height:44px;min-width:160px;margin:0}
+.import-view .import-controls .rf-monthpick{box-sizing:border-box;height:44px;display:inline-flex;align-items:center;gap:8px;padding:0 6px 0 18px;margin:0;border:1.5px solid #0a7180;border-radius:999px;background:#fff;color:#0a7180;font:600 14px "Inter"}
+.import-view .import-controls .rf-monthpick select{height:36px;min-width:250px;border:0!important;box-shadow:none!important;background:#eef7f6;border-radius:999px;padding:0 14px;font:600 13px "Inter";color:#0a6872}
+
+/* Upload result: "not added" report */
+.ur-head{margin:10px 0;font:600 14px "Inter";color:#20302a}
+.ur-ok{color:#1f8a52}
+.ur-panel{margin-top:10px;border:1px solid var(--line);border-radius:12px;background:#fff;text-align:left;overflow:hidden}
+.ur-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ur-bar strong{font:700 14px "Inter"}
+.ur-search{flex:1 1 220px;max-width:340px;height:36px;border:1px solid #cfdcd8;border-radius:999px;padding:0 14px;font:500 13px "Inter"}
+.ur-bar .ur-export{margin-left:auto}
+.ur-chips{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px}
+.ur-chip{border:1px solid #cfdcd8;background:#fff;border-radius:999px;padding:5px 12px;font:600 12px "Inter";color:#4f6b68;cursor:pointer}
+.ur-chip b{margin-left:4px;color:#0a6872}
+.ur-chip.on{background:#0a7180;color:#fff;border-color:#0a7180}.ur-chip.on b{color:#fff}
+.ur-wrap{max-height:460px;overflow:auto;padding:0 8px 12px}
+.ur-table{width:100%;border-collapse:collapse;font-size:13px}
+.ur-table th{position:sticky;top:0;background:#f4f8f7;text-align:left;padding:8px 10px;font:700 11px "Inter";letter-spacing:.5px;text-transform:uppercase;color:#4f6b68}
+.ur-table td{padding:7px 10px;border-top:1px solid #edf1ee;vertical-align:top}
+.ur-table td.num{color:#8b968f;width:36px}.ur-table td.clip{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ur-tag{display:inline-block;margin-right:6px;padding:1px 8px;border-radius:999px;background:#eef1ee;color:#4f5f57;font:600 11px "Inter"}
+.ur-more{margin:10px 8px}
