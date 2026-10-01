@@ -64,6 +64,27 @@ def _parse_date(s: str):
         return None
 
 
+def _tab_month(label):
+    m = re.match(r"^\s*([A-Za-z]+)\s+(\d{4})\s*$", str(label or ""))
+    if m and m.group(1).capitalize() in MONTHS:
+        return (int(m.group(2)), MONTHS.index(m.group(1).capitalize()) + 1)
+    return None
+
+
+def _resolve_month(text, tab):
+    """(year, month) a received-date cell most likely means, reading dd-mm-yyyy or the flipped mm-dd-yyyy."""
+    m = re.match(r"^\s*(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\s*$", str(text or ""))
+    if not m:
+        return None
+    d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    reads = [(y, mo)] + ([(y, d)] if d <= 12 and d != mo else [])
+    if tab and tab in reads:
+        return tab
+    now = datetime.now()
+    ok = [r for r in reads if (r[0], r[1]) <= (now.year, now.month)]
+    return (ok or reads)[0]
+
+
 class Placement:
     def __init__(self, db: Session):
         def kv(key):
@@ -74,13 +95,13 @@ class Placement:
         self.manual = dict(db.query(CaseRunAssignment.case_code, CaseRunAssignment.run_id).all())
         # case id -> (patient, tags, received)
         self.cases: dict[str, dict] = {}
-        received_by_key: dict[str, str] = {}
+        received_by_key: dict[str, tuple] = {}   # key -> (received text, sheet-tab (year, month) or None)
         for r in kv("embryomatrix-imported-cases"):
             if r.get("_stale"):
                 continue
             rec0 = _field(r, ["date sample received"])
             for t0 in _expand_tags(_field(r, ["embryo name", "embryo id", "embryo"])):
-                received_by_key[f"{_clean(_field(r, ['patient name', 'patient']))}|{t0}|{_clean(_field(r, ['sample id']))}"] = rec0
+                received_by_key[f"{_clean(_field(r, ['patient name', 'patient']))}|{t0}|{_clean(_field(r, ['sample id']))}"] = (rec0, _tab_month(r.get('_importSource')))
             cid = _field(r, ["case id"]) or _field(r, ["sample id"])
             if not cid:
                 continue
@@ -98,14 +119,18 @@ class Placement:
             label = _run_key(f.get("run"))
             if not label:
                 continue
-            month = None
+            # The run's month = the month most of its samples were received in. The sheet's day/month order is unreliable
+            # ("04-01-2026" may be 1 April), so each date is read the way that fits the sample's own sheet tab.
+            tally: dict[tuple, int] = {}
             for k in f.get("samples") or []:
-                d = _parse_date(received_by_key.get(k))
-                if d:
-                    month = f"{d.year}/{d.month:02d} - {MONTHS[d.month - 1]}"
-                    break
-            if not month:
+                rec, tab = received_by_key.get(k, (None, None))
+                ym = _resolve_month(rec, tab)
+                if ym:
+                    tally[ym] = tally.get(ym, 0) + 1
+            if not tally:
                 continue
+            ym = sorted(tally.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+            month = f"{ym[0]}/{ym[1]:02d} - {MONTHS[ym[1] - 1]}"
             folder = f"{month}/RUN_{safe(label)}"
             self.rf_folder.setdefault(label, folder)
             for k in f.get("samples") or []:
