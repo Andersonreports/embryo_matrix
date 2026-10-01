@@ -1200,3 +1200,11 @@ html,body{max-width:100%;overflow-x:hidden}
 .od-patient strong,.od-dates strong{display:block;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis}
 .od-patient small,.od-dates small{display:block;margin-top:2px;font-size:11px;color:#8b968f;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:1100px){.od-table{min-width:980px}}
+
+/* Overdue samples: filter dropdowns */
+.od-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 14px;margin:0 0 14px}
+.od-filter{display:flex;flex-direction:column;gap:4px;font:600 11px "Inter";color:#6b766f;text-transform:uppercase;letter-spacing:.5px;min-width:150px;flex:1 1 150px;max-width:230px}
+.od-filter select{font:500 13px "Inter";text-transform:none;letter-spacing:0;color:#20302a;height:36px;padding:0 10px;border:1px solid #cfdcd8;border-radius:10px;background:#fff;cursor:pointer;width:100%}
+.od-filter select:focus{border-color:#0a8a86}
+.od-clear{height:36px;padding:0 14px;border:1px solid #e6c4ba;border-radius:10px;background:#fbefeb;color:#a04f3d;font:600 13px "Inter";cursor:pointer}
+.prep-toolbar{gap:10px}
