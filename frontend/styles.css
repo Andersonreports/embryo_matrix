@@ -1038,11 +1038,6 @@ body:has(#genericView:not(.hidden) .run-page) #genericView{padding-top:18px}
 .qc-read-all{border:0;background:transparent;color:var(--green);font:600 12px "Inter";cursor:pointer;padding:6px 8px;border-radius:8px;white-space:nowrap}
 .qc-read-all:hover{background:var(--mint)}
 .qc-tools{display:grid;gap:8px;padding:0 16px 12px;border-bottom:1px solid #edf0eb}
-.qc-tabs{display:flex;gap:4px;background:#f1f4f2;border-radius:9px;padding:3px}
-.qc-tabs button{flex:1;border:0;background:transparent;border-radius:7px;padding:6px 10px;font:600 12px "Inter";color:#5d6a63;cursor:pointer}
-.qc-tabs button b{margin-left:4px;font-weight:700;color:#8a948e}
-.qc-tabs button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(16,36,50,.12)}
-.qc-tabs button.active b{color:#a04f3d}
 .qc-tools input{width:100%;padding:8px 11px;font-size:12px}
 .qc-list{overflow-y:auto;padding:6px 8px;flex:1}
 .qc-item{display:block;width:100%;text-align:left;font:inherit;color:inherit;background:transparent;border:0;border-radius:10px;padding:10px 12px;cursor:pointer}
