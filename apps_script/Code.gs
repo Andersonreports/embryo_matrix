@@ -74,6 +74,13 @@ var DEFAULT_SHEET_IDS = [
   'SHEET_ID_3',
 ];
 
+// The secret every request must carry: the key written above when it's been filled in
+// (so pasting the script + deploying is enough), else the one stored by setup().
+function sharedSecret_() {
+  if (SHARED_SECRET_PLACEHOLDER && SHARED_SECRET_PLACEHOLDER !== 'REPLACE_WITH_A_LONG_RANDOM_STRING') return SHARED_SECRET_PLACEHOLDER;
+  return PropertiesService.getScriptProperties().getProperty('SHARED_SECRET');
+}
+
 function setup() {
   var props = PropertiesService.getScriptProperties();
   props.setProperty('SHARED_SECRET', SHARED_SECRET_PLACEHOLDER);
@@ -118,7 +125,7 @@ function onSheetEdited(e) {
 
 function doGet(e) {
   var params = (e && e.parameter) || {};
-  var expected = PropertiesService.getScriptProperties().getProperty('SHARED_SECRET');
+  var expected = sharedSecret_();
   if (expected && params.token !== expected) {
     return jsonOutput_({ error: 'Unauthorized' });
   }
@@ -247,7 +254,7 @@ function checkEditsSheet() {
 function doPost(e) {
   var body = {};
   try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) { return jsonOutput_({ error: 'Bad JSON' }); }
-  var expected = PropertiesService.getScriptProperties().getProperty('SHARED_SECRET');
+  var expected = sharedSecret_();
   if (expected && body.token !== expected) return jsonOutput_({ error: 'Unauthorized' });
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
