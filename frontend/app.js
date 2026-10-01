@@ -1045,15 +1045,15 @@ function parseCsv(text){const rows=[];let row=[],cell='',quoted=false;for(let i=
 function recordsFrom(rows){if(!rows.length)return[];const signals=['patient name','sample id','sample name','embryo name','test','qc','conclusion','result','mapd','embryo details','ir final results','test name','result summary','kinship result','cnv qc'];let hi=-1,best=0;rows.slice(0,20).forEach((r,i)=>{const cells=r.map(c=>String(c).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()),score=signals.filter(s=>cells.includes(s)).length;if(score>best){best=score;hi=i}});if(hi<0||best<2)return[];const heads=rows[hi].map(h=>String(h).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim());return rows.slice(hi+1).filter(r=>r.some(Boolean)).map(r=>Object.fromEntries(heads.map((h,i)=>[h||`column ${i+1}`,r[i]||''])))}
 function field(r,names){for(const n of names){const k=Object.keys(r).find(x=>x===n||x.includes(n));if(k&&r[k])return String(r[k]).trim()}return''}
 function embryoUnits(e){const n=parseFloat(field(e,['number of embryos']));return Number.isFinite(n)&&n>0?n:1}
-function cleanId(v){return String(v||'').toUpperCase().replace(/_L\d+(?:_R\d+)?$/,'').replace(/[^A-Z0-9]/g,'')}
-function resultIdentity(r){const raw=field(r,['sample name','embryo name','embryo']),clean=String(raw).replace(/_L\d+(?:_R\d+)?$/i,'').trim(),cut=clean.lastIndexOf('-');return cut>0?{patient:clean.slice(0,cut).replace(/[^a-z0-9]/gi,''),embryo:clean.slice(cut+1).replace(/[^a-z0-9]/gi,'')}:{patient:'',embryo:cleanId(clean)}}
+function cleanId(v){return String(v||'').toUpperCase().replace(/(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$/i,'').replace(/[^A-Z0-9]/g,'')}
+function resultIdentity(r){const raw=field(r,['sample name','embryo name','embryo']),clean=String(raw).replace(/(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$/i,'').trim(),cut=clean.lastIndexOf('-');return cut>0?{patient:clean.slice(0,cut).replace(/[^a-z0-9]/gi,''),embryo:clean.slice(cut+1).replace(/[^a-z0-9]/gi,'')}:{patient:'',embryo:cleanId(clean)}}
 function fieldKey(r,names){for(const n of names){const k=Object.keys(r).find(x=>x===n||x.includes(n));if(k&&r[k])return k}return null}
 // A sheet row can hold several embryos ("AS-1,2,3,4"); results merged from the result
 // file are kept per embryo in _embryoResults, so each split-out embryo shows its own.
 function withEmbryoResult(r,embryo){if(!r._embryoResults)return r;const own=r._embryoResults[cleanId(embryo)];if(own){const{_fileId,...vals}=own,out={...r,...vals};if('karyotype mwf' in vals||'karyotype normal wf' in vals)out['karyotype']=vals['karyotype mwf']||vals['karyotype normal wf']||'';return out}
  // No result of its own yet: show only what the sample sheet had, not another embryo's result.
  const out={...r},orig=r._resultOriginals||{};RESULT_FIELDS.forEach(f=>{if(orig[f]!=null)out[f]=orig[f];else if(f in orig)delete out[f]});return out}
-function expandEmbryoRow(r){const key=fieldKey(r,['sample name','embryo name','embryo']);if(!key)return[r];const clean=String(r[key]||'').replace(/_L\d+(?:_R\d+)?$/i,'').trim(),cut=clean.lastIndexOf('-');
+function expandEmbryoRow(r){const key=fieldKey(r,['sample name','embryo name','embryo']);if(!key)return[r];const clean=String(r[key]||'').replace(/(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$/i,'').trim(),cut=clean.lastIndexOf('-');
  if(cut>0){const list=clean.slice(cut+1);if(list.includes(',')){const nums=list.split(',').map(s=>s.trim()).filter(Boolean);if(nums.length>=2){const prefix=clean.slice(0,cut+1);return nums.map(n=>withEmbryoResult({...r,[key]:`${prefix}${n}`},`${prefix}${n}`))}}return[withEmbryoResult(r,clean)]}
  // No hyphen (e.g. a plain "1,2,3,4" with no patient-prefix tag): still split on commas,
  // matching expandEmbryoTags - otherwise this row never lines up with its own result-file data.
@@ -1063,7 +1063,7 @@ function resolvedEmbryos(c){if(!c.embryos?.length)return[];const idxMap=new Map,
 function embryoDisplayId(r){const id=resultIdentity(r);return id.patient?`${id.patient}-${id.embryo}`:id.embryo}
 // "VV-1.1,1.2" means biopsy 1 / embryo 1, embryo 2; sample names write it "VV1-1", i.e. tag "VV11". The dotted tags are therefore also
 // listed in joined form (VV11, VV12). The older split reading (VV1, VV2) is kept so earlier stored results still line up.
-function expandEmbryoTags(embryo,dottedOnly){return [...new Set(String(embryo||'').split(/[,;/]+/).flatMap((part,i,a)=>{const prefix=(part.match(/[A-Za-z]+/)||a[0]?.match(/[A-Za-z]+/)||[''])[0],nums=part.match(/\d+/g)||[],dotted=(part.match(/\d+\.\d+/g)||[]).map(n=>cleanId(prefix+n));return dottedOnly&&dotted.length?dotted:[...nums.map(n=>cleanId(prefix+n)),...dotted]}).filter(Boolean))]}
+function expandEmbryoTags(embryo,dottedOnly){return [...new Set(String(embryo||'').split(/[,;/]+/).flatMap((part,i,a)=>{const lead=x=>String(x||'').match(/^[^0-9]*/)[0].replace(/[^A-Za-z]/g,''),prefix=lead(part)||lead(a[0]),nums=part.match(/\d+/g)||[],dotted=(part.match(/\d+\.\d+/g)||[]).map(n=>cleanId(prefix+n));return dottedOnly&&dotted.length?dotted:[...nums.map(n=>cleanId(prefix+n)),...dotted]}).filter(Boolean))]}
 function matchKeys(r){const patient=field(r,['patient name','patient']),embryo=field(r,['embryo name','embryo id','embryo']);if(field(r,['sample name'])){const x=resultIdentity(r);return [`${cleanId(x.patient)}|${cleanId(x.embryo)}`]}return expandEmbryoTags(embryo).map(e=>`${cleanId(patient)}|${e}`)}
 let xlsxLibPromise=null;
 function loadXlsxLib(){if(window.XLSX)return Promise.resolve();if(!xlsxLibPromise)xlsxLibPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s)});return xlsxLibPromise}
@@ -1075,7 +1075,7 @@ const RESULT_MERGE_FIELDS=['qc','conclusion','gender','karyotype mwf','karyotype
 // to left) against the tags we actually know about from the Details tab before
 // falling back to a plain suffix match, so those variants still resolve.
 function resolveSampleIdentity(raw,knownTags){
-  const clean=String(raw||'').replace(/_L\d+(?:_R\d+)?$/i,'').trim();
+  const clean=String(raw||'').replace(/(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$/i,'').trim();
   const hyphens=[...clean].map((c,i)=>c==='-'?i:-1).filter(i=>i>=0);
   for(let i=hyphens.length-1;i>=0;i--){
     const cut=hyphens[i],tag=cleanId(clean.slice(cut+1));
@@ -1157,7 +1157,7 @@ function matchByPrefix(prefix,tag,tix,fileDate,opts){lastMatchWhy='';const pn=no
  // Embryo Sure files (one per patient, no run date in the name): the test must be Embryo Sure / HLA, the name has to match in full and
  // only ONE such PGS-NGS row may exist for that name + embryo tag. The file's last-saved time (when known) only rules out samples that
  // arrived after it - it is not used to pick between rows.
- if(opts&&opts.testRe){const k=c.filter(t=>(normCol(field(t,['patient name','patient']))===pn||pn.length>=10)&&!receivedAfterRun(t,fileDate));
+ if(opts&&opts.testRe&&!opts.dated){const k=c.filter(t=>(normCol(field(t,['patient name','patient']))===pn||pn.length>=10)&&!receivedAfterRun(t,fileDate));
   if(k.length===1)return k[0];lastMatchWhy=k.length?'more than one Embryo Sure row has this name + embryo':'no Embryo Sure row has this patient + embryo (or it was received after this file was saved)';return null}
  // With no Details tab to confirm the row, the run date in the file name must back it up: the sample was received shortly before the run.
  if(!fileDate){lastMatchWhy='no run date in the file name to confirm the match';return null}
@@ -1243,6 +1243,14 @@ function legacyResultFiles(rows){const log=uploadLogCache||[],groups=new Map;
 async function loadResultFiles(rows){const saved=(await kvGet('embryomatrix-result-files'))||[];resultFilesCache=[...legacyResultFiles(rows||(await kvGet('embryomatrix-imported-cases'))||[]),...saved].sort((a,b)=>String(b.at).localeCompare(String(a.at)));await loadResultFileMonths();return resultFilesCache}
 // Read one result file: Summary rows matched to confirmed Anderson IDs via the Details tab,
 // with Inconclusive-tab details folded in. Returns results keyed patient|embryo tag|sample id.
+// NIPGS / NICS (spent-medium) summaries: "Sample name | QC | Conclusion | Gender | Karyotype | NICSAI | Result", names like
+// "ANUJA_POKHREL-APE1-NICS_L049_2026-04-16". Controls (NC, DC, ...CC) and rows with neither a result nor a conclusion carry no embryo result.
+function nipgsRecords(records){const g=(r,...ks)=>{for(const k of ks){const v=r[k];if(v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim().toUpperCase()!=='N/A'&&String(v).trim()!=='-')return String(v).trim()}return''};
+ return records.map(r=>{const name=g(r,'sample name');if(!name)return null;const base=name.replace(/(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$/i,''),i=base.lastIndexOf('-'),tag=(i>0?base.slice(i+1):'').trim().toUpperCase();
+   if(!tag||/^(NC|DC|CC|PC|NTC|BLANK)\d*$/.test(tag)||/CC$/.test(tag))return null;
+   const con=g(r,'conclusion').toLowerCase(),text=g(r,'result summary','result')||(/no copy number|^normal$/.test(con)?'Euploid':/mosaic/.test(con)?'Mosaic':/abnormal/.test(con)?'Abnormal':'');
+   if(!text)return null;
+   return{...r,'sample name':name,result:text,'karyotype mwf':text,'karyotype normal wf':text,qc:g(r,'qc'),_nips:true}}).filter(Boolean)}
 // Embryo Sure sequencer output: one Excel per patient/couple, header "Sample | Kinship_result | ... | Result summary | ...". Embryos are
 // "<NAME>-<TAG>"; rows without a tag, or tagged PB, are the parents' reference samples and carry no embryo result. The columns are
 // re-labelled into the standard Summary layout so the same matching and safety checks apply.
@@ -1250,6 +1258,8 @@ function embryosureRecords(records){const g=(r,...ks)=>{for(const k of ks){const
  return records.filter(r=>{const n=g(r,'sample'),i=n.lastIndexOf('-');if(!n||i<=0)return false;const tag=n.slice(i+1).trim().toUpperCase();return tag&&!/(^|-)(PB|BLOOD|DONOR|FATHER|MOTHER)(-|_|$)/i.test(n)&&(g(r,'result summary')||g(r,'cnv qc')||g(r,'karotype mwf'))})
   .map(r=>{const mwf=g(r,'karotype mwf'),res=g(r,'result summary')||(mwf&&!/^euploid$/i.test(mwf)?mwf:g(r,'heteroploid result')&&!/^normal$/i.test(g(r,'heteroploid result'))?g(r,'heteroploid result'):'Euploid'),qc=g(r,'cnv qc');
    return{'sample name':g(r,'sample'),test:'Embryo Sure',qc,conclusion:g(r,'heteroploid result'),gender:g(r,'sex chromosome karyotype'),'karyotype mwf':mwf,'karyotype normal wf':g(r,'karotype normal'),result:res,mtcopy:g(r,'mtcopy'),uniquereads:g(r,'unique reads'),mapd:g(r,'mapd'),bincv:g(r,'bincv'),cnvmergecv:g(r,'cnvmergecv'),cnvpq:g(r,'cnvpq'),autosomes:g(r,'autosomes','autosome'),sex:g(r,'sex'),'kinship result':g(r,'kinship result'),_es:true}})}
+// Newer sequencer names end in the run date: "...-NICS_L049_2026-04-16".
+function dateFromSampleNames(rows){const n={};rows.forEach(r=>{const all=[...String(r['sample name']||'').matchAll(/(\d{4})-(\d{2})-(\d{2})/g)],m=all[all.length-1];if(m)n[m[0]]=(n[m[0]]||0)+1});const top=Object.entries(n).sort((a,b)=>b[1]-a[1])[0];if(!top)return null;const m=/(\d{4})-(\d{2})-(\d{2})/.exec(top[0]),d=new Date(+m[1],+m[2]-1,+m[3]);return isNaN(d)?null:d}
 async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
  let summaryRows=[],detailsRows=[],inconclusiveRows=[],pgtmRows=[];
  const sheets=await gridsFromFile(f);
@@ -1259,6 +1269,7 @@ async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
   const label=name.toLowerCase();
   if(label.includes('inconclusive'))inconclusiveRows.push(...records);
   else if(label.includes('detail'))detailsRows.push(...records);
+  else if(records.some(r=>'karyotype' in r&&'conclusion' in r&&!('karyotype mwf' in r)))summaryRows.push(...nipgsRecords(records));
   else if(records.some(r=>'result summary' in r&&('kinship result' in r||'cnv qc' in r)))summaryRows.push(...embryosureRecords(records));
   else if(records.some(r=>field(r,['embryo details'])&&field(r,['patient name']))&&!records.some(r=>field(r,['sample name'])))pgtmRows.push(...records);
   else summaryRows.push(...records);
@@ -1270,7 +1281,7 @@ async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
  // matched later against the tracker by patient name + embryo tag alone.
  const byKey=new Map,byName=new Map,used=new Set,tix=makeTrackerIndex(trackerRows),unmatchedNames=[],review=[],
   // Embryo Sure files carry no date in their name; the file's own last-saved time stands in for the run date (the analysis is saved after the sample arrived).
-  fileDate=fileDateOf(f.name)||(summaryRows.some(r=>r._es)&&f.lastModified?new Date(f.lastModified):null);
+  fileDate=fileDateOf(f.name)||dateFromSampleNames(summaryRows)||(summaryRows.some(r=>r._es)&&f.lastModified?new Date(f.lastModified):null);
  const trKey=(tr,tag)=>`${cleanId(field(tr,['patient name','patient']))}|${tag}|${cleanId(field(tr,['sample id']))}`,hasTag=(tr,tag)=>expandEmbryoTags(field(tr,['embryo name','embryo id','embryo'])).includes(tag);
  const rowByKey=new Map;trackerRows.forEach(t=>{if(t._stale)return;expandEmbryoTags(field(t,['embryo name','embryo id','embryo'])).forEach(tag=>rowByKey.set(trKey(t,tag),t))});
  // Every result is stored against ONE tracker key. If two different result rows in this file claim the same key (the same
@@ -1285,7 +1296,7 @@ async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
   owner.set(key,{raw,via,tr,det,prefix,tag,strong});byKey.set(key,row);return true};
  // A sample name is "<patient>-<tag>"; both parts can contain hyphens ("CHAKKA-SAI-SOWMIYA-CS2", "VR1-1_L00"), so every split is tried,
  // right to left, and the first one that lands on a tracker row wins.
- const splitsOf=raw=>{const clean=String(raw||'').replace(/_L\d+(?:_R\d+)?$/i,'').trim(),out=[];for(let i=clean.length-1;i>0;i--)if(clean[i]==='-'){const embryo=cleanId(clean.slice(i+1)),patient=clean.slice(0,i).replace(/[^a-z0-9]/gi,'');if(embryo&&patient)out.push({patient,embryo})}return out};
+ const splitsOf=raw=>{const clean=String(raw||'').replace(/(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$/i,'').trim(),out=[];for(let i=clean.length-1;i>0;i--)if(clean[i]==='-'){const embryo=cleanId(clean.slice(i+1)),patient=clean.slice(0,i).replace(/[^a-z0-9]/gi,'');if(embryo&&patient)out.push({patient,embryo})}return out};
  resultRows.forEach(r=>{
   const raw=field(r,['sample name']);let firstDet=null,done=false,why='';
   for(const id of splitsOf(raw)){
@@ -1293,7 +1304,7 @@ async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
    if(match){used.add(`${match.di}|${id.embryo}`);let tr=matchTrackerRow(match.row,tix,fileDate);if(!tr&&!why)why=lastMatchWhy;
     if(tr&&hasTag(tr,id.embryo)){setKey(trKey(tr,id.embryo),row,raw,'details',tr,match.row,id.patient,id.embryo);done=true;break}
     if(!firstDet)firstDet={id,match,row}
-   }else{const tr=matchByPrefix(id.patient,id.embryo,tix,fileDate,r._es?{testRe:/embryo\s*sure|hla/i}:null);if(tr){setKey(trKey(tr,id.embryo),row,raw,'prefix',tr,null,id.patient,id.embryo);done=true;break}else if(!why)why=lastMatchWhy}
+   }else{const tr=matchByPrefix(id.patient,id.embryo,tix,fileDate,r._es?{testRe:/embryo\s*sure|hla/i}:r._nips?{testRe:/nipg|nics/i,dated:true}:null);if(tr){setKey(trKey(tr,id.embryo),row,raw,'prefix',tr,null,id.patient,id.embryo);done=true;break}else if(!why)why=lastMatchWhy}
   }
   if(done)return;
   // Details row found but no safe tracker row: only an exact patient + embryo + sample-ID hit that also passes the date gate is accepted.
