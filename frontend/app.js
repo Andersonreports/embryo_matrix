@@ -1263,7 +1263,9 @@ async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
  const setKey=(key,row,raw,via,tr,det,prefix,tag)=>{
   if(dupKeys.has(key)){hold(raw,'the same embryo appears more than once in this file',field(tr,['patient name']));return false}
   if(owner.has(key)){const prev=owner.get(key);byKey.delete(key);owner.delete(key);dupKeys.add(key);hold(prev.raw,'the same embryo appears more than once in this file',field(tr,['patient name']));hold(raw,'the same embryo appears more than once in this file',field(tr,['patient name']));return false}
-  owner.set(key,{raw,via,tr,det,prefix,tag});byKey.set(key,row);return true};
+  // "Strong" = this really is the same sample row: the file's copy and the tracker agree on sample ID or box number AND on the received date.
+  const eq=(a,b)=>a&&b&&a===b,strong=via==='details'&&!!det&&(eq(cleanId(field(det,['sample id'])),cleanId(field(tr,['sample id'])))||(eq(normCol(field(det,['box number'])),normCol(field(tr,['box number'])))&&normCol(field(det,['box number']))!=='NA'))&&daysMeet(field(det,['date sample received']),recvOf(tr));
+  owner.set(key,{raw,via,tr,det,prefix,tag,strong});byKey.set(key,row);return true};
  // A sample name is "<patient>-<tag>"; both parts can contain hyphens ("CHAKKA-SAI-SOWMIYA-CS2", "VR1-1_L00"), so every split is tried,
  // right to left, and the first one that lands on a tracker row wins.
  const splitsOf=raw=>{const clean=String(raw||'').replace(/_L\d+(?:_R\d+)?$/i,'').trim(),out=[];for(let i=clean.length-1;i>0;i--)if(clean[i]==='-'){const embryo=cleanId(clean.slice(i+1)),patient=clean.slice(0,i).replace(/[^a-z0-9]/gi,'');if(embryo&&patient)out.push({patient,embryo})}return out};
@@ -1296,8 +1298,8 @@ async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
    else hold(label,why||'no PGS-NGS row has this patient + embryo')})});
  // Embryos the Details tab lists that have no result row in this file.
  const missing=[];detailsRows.forEach((r,di)=>{const pt=field(r,['patient name']);expandEmbryoTags(field(r,['embryo name'])).forEach(tag=>{if(!used.has(`${di}|${tag}`))missing.push(`${pt} ${tag}`.trim())})});
- const audit=[...owner.values()];
- return {file:f,audit,review,fileDate,byKey,byName,count:resultRows.length+pgtmCount,unverified:0,unmatchedNames,missing,hasDetails:detailsRows.length>0};
+ const audit=[...owner.values()],strongKeys=new Set([...owner].filter(([,v])=>v.strong).map(([k])=>k));
+ return {file:f,audit,strongKeys,review,fileDate,byKey,byName,count:resultRows.length+pgtmCount,unverified:0,unmatchedNames,missing,hasDetails:detailsRows.length>0};
 }
 function matchResultsByName(parsed,known){const byTag=new Map;for(const k of known){const [pat,tag]=k.split('|');if(!byTag.has(tag))byTag.set(tag,[]);byTag.get(tag).push({pat,key:k})}
  parsed.forEach(p=>p.byName.forEach((r,nk)=>{const [pat,tag]=nk.split('|'),hits=[...new Set((byTag.get(tag)||[]).filter(c=>c.pat&&(c.pat.includes(pat)||pat.includes(c.pat))).map(c=>c.key))];if(hits.length===1&&!p.byKey.has(hits[0]))p.byKey.set(hits[0],r);else{p.unverified++;p.unmatchedNames.push(field(r,['sample name'])||nk)}}))}
@@ -1328,11 +1330,15 @@ async function handleResultAttach(files){
  // skipped and listed, so a big multi-file upload is never refused as a whole. To replace a result, delete its earlier file first.
  // The same embryo in two files of one batch (re-runs, A/B halves, copies): identical results keep the first file; DIFFERENT results
  // are never guessed - that embryo is left out of both files and listed, so you choose which file is right.
- const claims=new Map;parsed.forEach(p=>[...p.byKey].forEach(([k,r])=>{if(!known.has(k))return;const a=claims.get(k)||[];a.push({file:p.file.name,sig:JSON.stringify(resultPatchOf(r))});claims.set(k,a)}));
- const disputed=new Map;claims.forEach((a,k)=>{if(a.length>1&&new Set(a.map(x=>x.sig)).size>1)disputed.set(k,a.map(x=>x.file))});
+ const claims=new Map;parsed.forEach(p=>[...p.byKey].forEach(([k,r])=>{if(!known.has(k))return;const a=claims.get(k)||[];a.push({file:p.file.name,sig:JSON.stringify(resultPatchOf(r)),strong:p.strongKeys.has(k),date:p.fileDate});claims.set(k,a)}));
+ // Same embryo, different results in two files = a re-test. When both files hold the SAME sample row (same sample ID / box number and
+ // received date) the newer run replaces the older one; the older result is listed, not silently lost. With weaker evidence, or equal /
+ // unknown run dates, nothing is guessed and the embryo is left out of both files.
+ const disputed=new Map;claims.forEach((a,k)=>{if(a.length>1&&new Set(a.map(x=>x.sig)).size>1){const times=a.map(x=>x.date?+x.date:NaN),newest=Math.max(...times),ok=a.every(x=>x.strong)&&times.every(t=>!isNaN(t))&&times.filter(t=>t===newest).length===1;disputed.set(k,{winner:ok?a[times.indexOf(newest)].file:null,files:a.map(x=>x.file)})}});
  const conflicts=[];
- parsed.forEach(p=>{[...p.byKey].forEach(([k,r])=>{if(disputed.has(k)){const others=[...new Set(disputed.get(k))].filter(n=>n!==p.file.name);(p.disputedList=p.disputedList||[]).push(`${field(r,['sample name'])||k} — also in ${others.join(', ')||'another file'}`);p.byKey.delete(k)}})});
- skippedHtml+=parsed.map(p=>listHtml(`${p.file.name} - same embryo in another file with a different result, not added`,p.disputedList||[],'Upload only the file that is right (or fix the other), then upload again.')).join('');
+ parsed.forEach(p=>{[...p.byKey].forEach(([k,r])=>{const dsp=disputed.get(k);if(!dsp||dsp.winner===p.file.name)return;const others=[...new Set(dsp.files)].filter(n=>n!==p.file.name),label=field(r,['sample name'])||k;
+  if(dsp.winner)(p.supersededList=p.supersededList||[]).push(`${label} — replaced by the newer run in ${dsp.winner}`);else (p.disputedList=p.disputedList||[]).push(`${label} — also in ${others.join(', ')||'another file'}`);p.byKey.delete(k)})});
+ skippedHtml+=parsed.map(p=>listHtml(`${p.file.name} - older run of an embryo that was tested again, newer result kept`,p.supersededList||[],'Same sample re-tested: the newer run\'s result is used. The older result is not stored.')).join('')+parsed.map(p=>listHtml(`${p.file.name} - same embryo in another file with a different result, not added`,p.disputedList||[],'Could not prove these are the same sample row (or the run dates are equal/unknown), so neither result was added. Upload only the file that is right.')).join('');
  parsed.forEach(p=>{p.keys=[...p.byKey.keys()].filter(k=>known.has(k)).filter(k=>{const prev=owner.get(k);if(prev){conflicts.push({file:p.file.name,name:field(p.byKey.get(k),['sample name']),prev});return false}owner.set(k,{fileName:p.file.name,run:runNumberOf(p.file.name)});return true})});
  if(conflicts.length){const byPrev=new Map;conflicts.forEach(c=>{const label=`${c.file} - kept the result from ${c.prev.fileName}`;byPrev.set(label,[...(byPrev.get(label)||[]),c.name])});
   skippedHtml+=[...byPrev].map(([label,names])=>listHtml(label,names,'These embryos already had a result, so they were not changed. Delete the earlier file first to replace them.')).join('')}
