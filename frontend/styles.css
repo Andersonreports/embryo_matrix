@@ -1395,3 +1395,11 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .qc-emb-count b{color:#a04f3d;font-size:14px}
 .qc-patient-chip{border:0;cursor:pointer;font:inherit;font-size:11px}
 .qc-patient-chip:hover{background:#efcfc6}
+/* Home toolbar: Overview + Upload result side by side at the right */
+.home-actions{display:flex;align-items:center;gap:10px;justify-self:end}
+.home-toolbar .home-actions .import-data-btn{font-size:14px;padding:9px 16px}
+.home-overview-btn svg{width:16px;height:16px;vertical-align:-3px}
+/* Upload result page: Image vault button, top right */
+.import-topbar{display:flex;justify-content:flex-end;margin:0 0 14px}
+.import-topbar .import-data-btn{font-size:14px;padding:9px 16px}
+.import-topbar .import-data-btn svg{width:16px;height:16px;vertical-align:-3px}
