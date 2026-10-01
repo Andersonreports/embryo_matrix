@@ -450,6 +450,28 @@ def list_case_images(case_code: str, db: Session = Depends(get_db)):
         "addedAt": r.added_at.isoformat(),
     } for r in rows]
 
+@app.post("/api/images/{image_id}/replace")
+def replace_image(image_id: int, request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Swap an image for a new file. Kept on the same case + embryo; stored as a NEW row so the lab-PC sync downloads
+    the new picture (it never deletes local copies, so the old file stays on that PC)."""
+    old = db.get(CaseImage, image_id)
+    if not old:
+        raise HTTPException(404, "Not found")
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(422, "Please choose an image file")
+    ext = Path(file.filename or "").suffix
+    disk_name = storage.write_compressed(UPLOADS, f"{uuid.uuid4().hex}{ext}", file.file)
+    new = CaseImage(case_code=old.case_code, embryo_label=old.embryo_label, filename=file.filename or disk_name,
+                    content_type=file.content_type or "application/octet-stream", file_path=disk_name)
+    old_path = UPLOADS / old.file_path
+    old_name = old.filename
+    db.add(new); db.delete(old); db.commit(); db.refresh(new)
+    if old_path.exists():
+        old_path.unlink()
+    log_activity(db, "image_replace", f"{old_name} → {new.filename} on case {new.case_code}" + (f", embryo {new.embryo_label}" if new.embryo_label else ""), request=request)
+    return {"id": new.id, "caseId": new.case_code, "embryo": new.embryo_label, "filename": new.filename,
+            "url": f"/uploads/{new.file_path}", "addedAt": new.added_at.isoformat()}
+
 @app.delete("/api/images/{image_id}")
 def delete_image(image_id: int, request: Request, db: Session = Depends(get_db)):
     img = db.get(CaseImage, image_id)
