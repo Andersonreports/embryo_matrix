@@ -1,0 +1,174 @@
+"""Repairs day/month-swapped dates in the rows the dashboard keeps - the Google Sheet itself is never touched.
+
+The live sheet uses a US locale, so a date typed as 01-09-2026 (1 Sept) was stored as 9 Jan. Dates with a day above 12
+(13-09-2026) could not be misread and are fine; those with a day of 12 or below may be swapped.
+
+For every such date two readings exist: as stored (dd-mm) and flipped (mm-dd). The row's own sheet tells which one is real:
+a sample sitting in the "September 2026" sheet was received in September (or the month before), so only one reading fits.
+The other dates of the sample follow from that one in process order (received -> WGA -> sequencing -> reports), each inside
+a plausible window after the previous step. A date is changed ONLY when exactly one reading fits; if both or neither fit it is
+left exactly as stored and listed as "unclear". The original text is kept in row["_rawDates"] so any change can be traced.
+"""
+import re
+from datetime import date, timedelta
+
+MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august",
+          "september", "october", "november", "december"]
+
+# Process order and the window (days relative to the previous step) a real date must fall into.
+RECEIVED = "date sample received"
+CHAIN = [  # (field, anchor, min days from anchor, max days from anchor)
+    ("date of biopsy", "received", -30, 3),
+    ("date trf received", "received", -10, 30),
+    ("wga done on", "received", -1, 45),
+    ("seq date", "wga|received", -1, 90),
+    ("attune upload", "seq|wga|received", -1, 150),
+    ("ngs report", "attune|seq|wga|received", -1, 180),
+]
+DATE_FIELDS = [RECEIVED] + [c[0] for c in CHAIN]
+_TOKEN = re.compile(r"(\d{1,2})([-/.])(\d{1,2})\2(\d{4})")
+
+
+def tab_month(label):
+    m = re.match(r"^\s*([A-Za-z]+)\s+(\d{4})\s*$", str(label or ""))
+    if m and m.group(1).lower() in MONTHS:
+        return (int(m.group(2)), MONTHS.index(m.group(1).lower()) + 1)
+    return None
+
+
+def _mk(y, mo, d):
+    try:
+        return date(y, mo, d)
+    except ValueError:
+        return None
+
+
+def readings(d, mo, y):
+    """Possible real dates for a stored dd-mm-yyyy: as stored, plus the flipped reading when it exists."""
+    out = [_mk(y, mo, d)]
+    if d <= 12 and d != mo:
+        out.append(_mk(y, d, mo))
+    return [x for x in out if x]
+
+
+def _fits_tab(dt, tab):
+    diff = (tab[0] - dt.year) * 12 + (tab[1] - dt.month)
+    return diff in (0, 1)   # received in the sheet's month, or the month before
+
+
+def _within(dt, anchor, lo, hi):
+    return anchor + timedelta(days=lo) <= dt <= anchor + timedelta(days=hi)
+
+
+def _fmt(dt):
+    return f"{dt.day:02d}-{dt.month:02d}-{dt.year}"
+
+
+def _tokens(text):
+    return [(m, int(m.group(1)), int(m.group(3)), int(m.group(4))) for m in _TOKEN.finditer(str(text or ""))]
+
+
+def _pick(cands, test):
+    """The single candidate that passes `test`, else None (None = zero or several fit: do not guess)."""
+    ok = [c for c in cands if test(c)]
+    return ok[0] if len(ok) == 1 else None
+
+
+def normalize_row(row, today=None):
+    """-> (fixes {field: new text}, unclear [field, ...]). The row itself is not modified."""
+    today = today or date.today()
+    tab = tab_month(row.get("_importSource"))
+    fixes, unclear = {}, []
+    resolved = {}      # step name -> chosen date (single, the latest when a cell holds several)
+
+    def chosen_for(field, anchor_names, lo, hi, use_tab=False):
+        """Resolve every date token in `field`. Returns the last resolved date (for anchoring) and the new text."""
+        text = row.get(field)
+        toks = _tokens(text)
+        if not toks:
+            return None, None
+        anchor = None
+        for n in anchor_names:
+            if n in resolved:
+                anchor = resolved[n]
+                break
+        new_text, last, changed, bad = str(text), None, False, False
+        pieces, pos = [], 0
+        for m, d, mo, y in toks:
+            cands = readings(d, mo, y)
+            pick = None
+            if len(cands) == 1:
+                pick = cands[0]                                   # cannot be flipped
+            else:
+                cands = [c for c in cands if c <= today + timedelta(days=1)] or cands   # never in the future
+                if use_tab and tab:
+                    pick = _pick(cands, lambda c: _fits_tab(c, tab))
+                if pick is None and anchor is not None:
+                    pick = _pick(cands, lambda c: _within(c, anchor, lo, hi))
+                if pick is None and len(cands) == 1:
+                    pick = cands[0]
+            if pick is None:
+                bad = True
+                pick_text = m.group(0)
+            else:
+                pick_text = _fmt(pick)
+                last = pick if last is None or pick > last else last
+                if pick_text != m.group(0).replace("/", "-").replace(".", "-") and pick_text != m.group(0):
+                    changed = True
+            pieces.append(text[pos:m.start()] if isinstance(text, str) else "")
+            pieces.append(pick_text)
+            pos = m.end()
+        pieces.append(text[pos:] if isinstance(text, str) else "")
+        new_text = "".join(pieces)
+        if bad:
+            unclear.append(field)
+        elif changed:
+            fixes[field] = new_text
+        return last, new_text
+
+    # 1. received date: the sheet tab decides (then, failing that, the later steps)
+    last, _ = chosen_for(RECEIVED, [], 0, 0, use_tab=True)
+    if last is not None:
+        resolved["received"] = last
+    elif RECEIVED in unclear:
+        # both / neither reading fit the tab: try the sample's own later, unambiguous dates as anchors
+        for later in ("wga done on", "seq date", "attune upload", "ngs report"):
+            toks = _tokens(row.get(later))
+            sure = [readings(d, mo, y)[0] for _, d, mo, y in toks if len(readings(d, mo, y)) == 1]
+            if sure:
+                anchor_date = min(sure)
+                rtoks = _tokens(row.get(RECEIVED))
+                if rtoks:
+                    _, d, mo, y = rtoks[0]
+                    pick = _pick(readings(d, mo, y), lambda c: -2 <= (anchor_date - c).days <= 120)
+                    if pick:
+                        resolved["received"] = pick
+                        unclear.remove(RECEIVED)
+                        text = row.get(RECEIVED)
+                        if _fmt(pick) != str(text).strip():
+                            fixes[RECEIVED] = re.sub(_TOKEN, _fmt(pick), str(text), count=1)
+                break
+    # 2. the rest of the chain, each inside its window after the previous step
+    for field, anchors, lo, hi in CHAIN:
+        names = [a for a in anchors.split("|")]
+        last, _ = chosen_for(field, names, lo, hi)
+        key = {"date of biopsy": "biopsy", "date trf received": "trf", "wga done on": "wga", "seq date": "seq",
+               "attune upload": "attune", "ngs report": "ngs"}[field]
+        if last is not None:
+            resolved[key] = last
+    return fixes, unclear
+
+
+def apply_to_row(row, today=None):
+    """Returns a copy of `row` with the fixes applied and the originals kept in _rawDates / _dateUnclear.
+    Always starts from the original (raw) text, so running it again never compounds a change."""
+    base = {**row, **(row.get("_rawDates") or {})}
+    fixes, unclear = normalize_row(base, today)
+    out = dict(base)
+    raw = {}
+    for f, new in fixes.items():
+        raw[f] = base.get(f)
+        out[f] = new
+    out["_rawDates"] = raw
+    out["_dateUnclear"] = unclear
+    return out

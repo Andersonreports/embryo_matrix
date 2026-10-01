@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # Key for image_sync/sync-images.ps1 (runs on the lab's storage PC and
     # pulls new embryo images down). It can only list images. Blank = disabled.
     image_sync_token: str = ""
+    # Repair day/month-swapped dates in the dashboard's copy of the sheet rows (never written back to the Google Sheet).
+    # Off until the dry-run report has been checked: set DATE_FIX_ENABLED=true in .env.
+    date_fix_enabled: bool = False
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", extra="ignore")
 
 settings = Settings()

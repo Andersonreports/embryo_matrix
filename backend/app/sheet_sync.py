@@ -8,6 +8,7 @@ from datetime import date, datetime, timezone
 import openpyxl
 from sqlalchemy.orm import Session
 
+from . import date_fix
 from .config import settings
 from .models import KVStore
 
@@ -373,6 +374,9 @@ def sync_sources(db: Session, sheet_ids: list[str]) -> dict:
                 # A cell that just repeats its own column heading (e.g. "Transfer
                 # Details" typed under the Transfer Details column) isn't data.
                 r = {k: ("" if not k.startswith("column ") and str(v).strip().lower() == k else v) for k, v in r.items()}
+                if settings.date_fix_enabled:
+                    # Day/month-swap repair on the DASHBOARD's copy only (the Google Sheet is read, never written). See date_fix.py.
+                    r = {k: v for k, v in date_fix.apply_to_row({**r, "_importSource": label}).items() if k != "_importSource"}
                 key = _record_key(r)
                 if not key or key == "|":
                     skipped += 1
