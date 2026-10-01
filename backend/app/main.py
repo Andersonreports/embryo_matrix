@@ -384,8 +384,14 @@ def post_cell_edit(payload: CellEditIn, request: Request, db: Session = Depends(
         raise HTTPException(400, str(e))
     where = f"{entry['sampleId']}" + (f" embryo {entry['embryo']}" if entry["embryo"] else "")
     log_activity(db, "cell_edit", f"{where} · {entry['column']}: '{entry['oldValue']}' → '{entry['value']}'", request=request)
+    row = payload.row
+    if not row:  # app sent no row (e.g. an old browser tab) - rebuild it from the synced sheet rows
+        kv = db.get(KVStore, "embryomatrix-imported-cases")
+        mine = {e["column"]: e["value"] for e in cell_edits.list_edits()
+                if edits_sheet.record_key(e["sampleId"], e["embryo"]) == edits_sheet.record_key(entry["sampleId"], entry["embryo"])}
+        row = edits_sheet.row_from_cases(kv.value if kv else [], entry["sampleId"], entry["embryo"], {**mine, entry["column"]: entry["value"]})
     edits_sheet.retry_pending()
-    entry["sheet"] = edits_sheet.push_edit(entry, payload.row)
+    entry["sheet"] = edits_sheet.push_edit(entry, row)
     return entry
 
 @app.delete("/api/cell-edits")

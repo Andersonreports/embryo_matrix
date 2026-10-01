@@ -9,6 +9,7 @@ import json
 import threading
 import re
 import time
+from datetime import datetime, timedelta
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -179,3 +180,74 @@ def merged_edits(local: list) -> list:
 
 def status() -> dict:
     return {"configured": configured(), "url": _read_json(STATE_PATH, {}).get("url", ""), "pending": len(_read_json(PENDING_PATH, []))}
+
+
+# Samples > Embryo view headers, in table order (matches EDITS_VIEW_COLUMNS in apps_script/Code.gs).
+VIEW_COLUMNS = ['DATE OF BIOPSY', 'DATE SAMPLE RECEIVED', 'DATE TRF RECEIVED', 'RECEIVED BY', 'BOX NUMBER', 'SAMPLE ID', 'REMARKS', 'PATIENT NAME', 'NUMBER OF EMBRYOS', 'EMBRYO NAME', 'WGA CONC UNPURIFIED', 'WGA CONC PURIFIED', 'EMBRYO GRADE', 'KARYOTYPE', 'PGT RESULT', 'CONTROLS WGA SEQ CONTROLS', 'TEST NAME', 'CENTER NAME', 'LOCATION', 'EMBRYOLOGIST NAME', 'WGA DONE ON', 'WGA DONE BY', 'TRANSFERRED', 'TRANSFER DETAILS', 'KIT DETAIL', 'RUN ID', 'TAT']
+_KEY_FOR = {'WGA CONC UNPURIFIED': 'dna conc unpurified', 'WGA CONC PURIFIED': 'dna conc purified'}
+
+
+def _embryo_tags(name: str) -> list[str]:
+    """Python twin of the app's expandEmbryoTags for the common shapes ("DS-1,2,3", "AS1, AS2")."""
+    clean = re.sub(r"_L\d+$", "", str(name or "").strip(), flags=re.I)
+    if "-" in clean:
+        prefix, nums = clean.rsplit("-", 1)
+        p = _clean_id(prefix)
+        return [p + _clean_id(n) for n in nums.split(",") if _clean_id(n)]
+    return [_clean_id(x) for x in clean.split(",") if _clean_id(x)]
+
+
+def _edit_sample_id(r: dict) -> str:
+    """Same rule as the app's editSampleId: sample ID / box number, else patient name + date received."""
+    for k in ("sample id", "sample no", "box number"):
+        if str(r.get(k) or "").strip():
+            return str(r[k]).strip()
+    return " ".join(x for x in (str(r.get("patient name") or "").strip(), str(r.get("date sample received") or "").strip()) if x)
+
+
+def _tat(received: str, test: str) -> str:
+    m = re.match(r"^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})", str(received or "").strip())
+    if not m:
+        return ""
+    try:
+        d = datetime(int(m[3]), int(m[2]), int(m[1]))
+    except ValueError:
+        return ""
+    d += timedelta(days=21 if re.search(r"embryo\s*sure|hla", str(test or ""), re.I) else 10)
+    return d.strftime("%d-%m-%Y")
+
+
+def row_from_cases(cases: list, sample_id: str, embryo: str, values: dict) -> list:
+    """The edited embryo's Embryo view row rebuilt from the synced sheet rows - used when the
+    app sent an edit without its row (e.g. a browser tab opened before the app sent rows).
+    `values` = this embryo's edited values {column key: value}. Returns [] if not found."""
+    sid, tag = _clean_id(sample_id), _clean_id(embryo)
+    for r in cases or []:
+        if r.get("_stale") or _clean_id(_edit_sample_id(r)) != sid:
+            continue
+        name = str(r.get("embryo name") or "")
+        tags = _embryo_tags(name)
+        whole = [_clean_id(p) for p in name.split(",")] + [_clean_id(name)]
+        if tag not in tags and tag not in whole:
+            continue
+        if tags and tag in tags and "-" in name:
+            prefix = name.rsplit("-", 1)[0].strip()
+            shown = f"{prefix}-{tag[len(_clean_id(prefix)):]}"
+        else:
+            shown = next((p.strip() for p in name.split(",") if _clean_id(p) == tag), name)
+        row = []
+        for h in VIEW_COLUMNS:
+            key = _KEY_FOR.get(h, h.lower())
+            if key in values:
+                v = values[key]
+            elif h == "EMBRYO NAME":
+                v = shown
+            elif h == "NUMBER OF EMBRYOS":
+                v = "1"
+            elif h == "TAT":
+                v = _tat(r.get("date sample received"), r.get("test name"))
+            else:
+                v = r.get(key, "")
+            row.append([h, "" if v is None else str(v)])
+        return row
+    return []
