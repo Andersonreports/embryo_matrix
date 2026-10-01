@@ -4,10 +4,10 @@
  * Paste this whole file into Extensions > Apps Script (from any one of the
  * three source spreadsheets), then deploy it as a Web App. It never writes
  * to the three source sheets — only SpreadsheetApp.openById(...).getValues()
- * reads them. The ONE spreadsheet it writes to is its own "EmbryoMatrix –
- * Edited samples" sheet, which it creates in your Drive the first time a lab
- * user edits a value in the app (see "Edited samples sheet" at the bottom):
- * one row per edited embryo, holding its whole Samples > Embryo view row.
+ * reads them. The ONE spreadsheet it writes to is its own separate workbook,
+ * "EmbryoMatrix – Edited samples", created in your Drive by createEditsSheet()
+ * (see "Edited samples sheet" at the bottom): one row per embryo edited in
+ * the app, holding its whole Samples > Embryo view row.
  *
  * Why this exists: the server currently polls
  *   https://docs.google.com/spreadsheets/d/<id>/export?format=xlsx
