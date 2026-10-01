@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import secrets
 import time
 import uuid
@@ -267,6 +268,7 @@ def add_result_file(
     samples: str = Form("[]"),
     sampleNames: str = Form("[]"),
     matched: int = Form(0),
+    month: str = Form(""),
     file: UploadFile | None = File(None),
     db: Session = Depends(get_db),
 ):
@@ -292,6 +294,8 @@ def add_result_file(
         "by": user.get("username") or "",
         "role": user.get("role") or "",
         "filePath": stored_name,
+        # Month the result file belongs to (the folder it came from, e.g. "2026-01"). Drives the Month column and the Windows folder.
+        "month": month if re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", month or "") else "",
     }
     files.append(entry)
     _save_result_files(db, row, files)
@@ -313,6 +317,21 @@ def list_result_files_for_sync(since: str = "", db: Session = Depends(get_db)):
         "url": f"/uploads/{f['filePath']}",
         "relPath": f"{pl.result_folder(f.get('run'))}/{_safe_name(f.get('fileName'), 'resultfile_' + str(f['id']))}",
     } for f in files]
+
+@app.patch("/api/result-files/{file_id}/month")
+def set_result_file_month(file_id: str, payload: KVValue, request: Request, db: Session = Depends(get_db)):
+    month = str((payload.value or {}).get("month", "")) if isinstance(payload.value, dict) else ""
+    if month and not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", month):
+        raise HTTPException(422, "month must look like 2026-01")
+    row, files = _result_files(db)
+    files = [dict(f) for f in files]   # copies: editing the stored dicts in place would hide the change from SQLAlchemy
+    hit = next((f for f in files if f.get("id") == file_id), None)
+    if not hit:
+        raise HTTPException(404, "Not found")
+    hit["month"] = month
+    _save_result_files(db, row, files)
+    log_activity(db, "result_month", f"{hit.get('fileName')} → month {month or 'auto'}", request=request)
+    return {"id": file_id, "month": month}
 
 @app.get("/api/result-file-months")
 def result_file_months(db: Session = Depends(get_db)):

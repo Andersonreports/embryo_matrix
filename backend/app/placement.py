@@ -126,6 +126,9 @@ class Placement:
                 ym = _resolve_month(rec, tab)
                 if ym:
                     tally[ym] = tally.get(ym, 0) + 1
+            chosen = re.fullmatch(r"(\d{4})-(\d{2})", str(f.get("month") or ""))
+            if chosen:
+                tally = {(int(chosen.group(1)), int(chosen.group(2))): 1}   # the month the file was filed under wins
             if not tally:
                 continue
             ym = sorted(tally.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]

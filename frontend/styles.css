@@ -1341,3 +1341,5 @@ html,body{max-width:100%;overflow-x:hidden}
 .vg-remove:hover{background:#fbefeb}
 button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .rf-month{white-space:nowrap;font-weight:600;color:#4f6b68}
+.rf-monthpick{display:inline-flex;align-items:center;gap:8px;font:600 13px "Inter";color:#4f6b68}
+.rf-monthpick select{height:40px;padding:0 12px;border:1px solid #cfdcd8;border-radius:999px;background:#fff;font:600 13px "Inter";color:#0a6872}
