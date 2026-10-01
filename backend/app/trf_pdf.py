@@ -13,7 +13,6 @@ import html
 import re
 from pathlib import Path
 
-from weasyprint import HTML
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
 CSS_PATH = FRONTEND_DIR / "trf-doc.css"
@@ -255,4 +254,8 @@ def render_trf_pdf(data: dict, meta: dict | None = None) -> bytes:
         f'<!doctype html><html><head><meta charset="utf-8"><title>{esc(title)}</title>'
         f'<link rel="stylesheet" href="file://{CSS_PATH}"></head><body class="td-print">{body}</body></html>'
     )
+    # Imported here, not at module load: WeasyPrint needs the GTK/Pango system libraries,
+    # which a Windows install may lack - the server must still start, and the caller
+    # already treats a PDF render failure as non-fatal.
+    from weasyprint import HTML
     return HTML(string=html_doc, base_url=str(FRONTEND_DIR)).write_pdf()
