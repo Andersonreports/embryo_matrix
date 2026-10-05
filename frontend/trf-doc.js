@@ -27,7 +27,7 @@ function trfPagesHtml(d,meta={},opts={}){
  d=d||{};const isM=d.formType==='PGT-M',edit=!!opts.edit,tests=d.tests||[],gametes=d.gametes||[],embryos=d.embryos||[];
  const req=k=>edit&&TRF_REQUIRED[k]?' <b class="td-req">*</b>':'';
  // One "Label: ______" line; editable it becomes an input of the given type.
- const line=(label,key,type='text',extra='')=>`<div class="td-line"><span class="td-label">${label}${req(key)}</span>${edit
+ const line=(label,key,type='text',extra='')=>`<div class="td-line${key==='hospital'?' td-line-wrap':''}"><span class="td-label">${label}${req(key)}</span>${edit
   ?`<input class="td-input" data-f="${key}" type="${type}" value="${esc(d[key])}"${extra}>`
   :`<span class="td-value${type==='email'?' td-email':''}">${d[key]?(type==='date'?fmtDate(d[key]):esc(d[key])):'&nbsp;'}</span>`}</div>`;
  const para=key=>edit?`<textarea class="td-input td-area" data-f="${key}" rows="3">${esc(d[key])}</textarea>`:`<p class="td-para">${esc(d[key])||'&nbsp;'}</p>`;
@@ -171,7 +171,7 @@ function trfProblems(d){const p=Object.entries(TRF_REQUIRED).filter(([k])=>!d[k]
 function printTrf(d,meta={}){
  const w=window.open('','_blank');if(!w){alert('Allow pop-ups for this site to print the TRF.');return}
  const title=`TRF ${meta.ref||''} ${d?.patientName||''}`.trim();
- w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/static/trf-doc.css?v=20261006s"></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
+ w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/static/trf-doc.css?v=20261006t"></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
  w.document.close();
  const go=()=>{w.focus();w.print()};
  const img=w.document.querySelector('img');if(img&&!img.complete){img.onload=go;img.onerror=go}else setTimeout(go,300);

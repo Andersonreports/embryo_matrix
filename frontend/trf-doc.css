@@ -126,3 +126,17 @@ label.td-check{cursor:pointer}
 .td-embryos td{height:25px;padding:2px 6px}
 .td-embryos th{padding:6px 6px}
 .td-meta td{padding:4px 10px}
+/* Page 1 must clear the template footer (storage / confidentiality notes): tighter title block, labels wrap only where needed */
+.td-line .td-label{max-width:62%}
+.td-line-wrap .td-label{max-width:40%}
+.td-page.td-hdr{padding-top:34mm!important}
+.td-hdr .td-titlerow{margin-bottom:6px;gap:12px}
+.td-hdr .td-title{margin:0 0 2px;font-size:28px}
+.td-hdr .td-refbox{padding:4px 10px;gap:0}
+.td-hdr .td-refbox .td-line{margin:2px 0}
+.td-hdr .td-barcode{padding:8px 10px;min-height:0}
+.td-hdr .td-titlebox{gap:5px}
+.td-hdr .td-panel{margin-bottom:6px}
+.td-hdr .td-sign{margin:8px 0 4px}
+.td-body>div:not(.td-row)>.td-check{font-size:12px}
+.td-section h3{padding:3px 12px}

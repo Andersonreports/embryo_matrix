@@ -83,7 +83,8 @@ def serve_upload(path: str):
     data = storage.read_decompressed(full)
     guess_name = path[:-3] if path.endswith(".gz") else path
     content_type = mimetypes.guess_type(guess_name)[0] or "application/octet-stream"
-    return Response(content=data, media_type=content_type)
+    return Response(content=data, media_type=content_type,
+                    headers={"Content-Disposition": f'inline; filename="{Path(guess_name).name}"'})
 
 # No login of its own: this app is embedded behind another gated application,
 # which authenticates the user and forwards their identity on every request via
@@ -657,7 +658,7 @@ def _trf_summary(t: TrfSubmission) -> dict:
         "clinic": t.clinic, "patient": t.patient_name, "doctor": d.get("referringDoctor", ""),
         "tests": d.get("tests", []), "formType": d.get("formType", "PGT-A"), "biopsyDate": d.get("biopsyDate", ""), "embryos": len(d.get("embryos", [])),
         "statusBy": t.status_by, "statusAt": _iso_utc(t.status_at),
-        "caseCode": t.case_code, "pdfUrl": f"/uploads/{t.pdf_file_path}" if t.pdf_file_path else None,
+        "caseCode": t.case_code, "pdfUrl": f"/api/trf/{t.id}/pdf" if t.pdf_file_path else None,
     }
 
 def _generate_trf_pdf(db: Session, t: TrfSubmission):
@@ -725,6 +726,20 @@ def get_trf(trf_id: int, request: Request, db: Session = Depends(get_db)):
     if not t:
         raise HTTPException(404, "Not found")
     return {**_trf_summary(t), "data": t.data}
+
+@app.get("/api/trf/{trf_id}/pdf")
+def download_trf_pdf(trf_id: int, request: Request, db: Session = Depends(get_db)):
+    """The TRF's PDF as a normal .pdf download named after the TRF (the stored copy is gzip-compressed at rest)."""
+    _require_lab_user(request)
+    t = db.get(TrfSubmission, trf_id)
+    if not t or not t.pdf_file_path:
+        raise HTTPException(404, "Not found")
+    full = (UPLOADS / t.pdf_file_path).resolve()
+    if UPLOADS.resolve() not in full.parents or not full.is_file():
+        raise HTTPException(404, "Not found")
+    safe = re.sub(r'[^A-Za-z0-9._ -]+', "", f"TRF {t.ref} {t.patient_name}".strip()) or "TRF"
+    return Response(content=storage.read_decompressed(full), media_type="application/pdf",
+                    headers={"Content-Disposition": f'attachment; filename="{safe}.pdf"'})
 
 @app.patch("/api/trf/{trf_id}")
 def update_trf_status(trf_id: int, payload: KVValue, request: Request, db: Session = Depends(get_db)):

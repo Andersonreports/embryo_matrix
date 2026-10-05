@@ -614,7 +614,7 @@ function openTrfDialog(t,setStatus){let dlg=$('#trfDialog');
  const meta={ref:t.ref,submittedAt:t.submittedAt};
  const header=t.ref?`<strong>${escapeHtml(t.ref)}</strong> · ${escapeHtml(t.patient)} <span class="trf-status s-${t.status.toLowerCase()}">${escapeHtml(t.status)}</span>${t.statusBy?`<small> by ${escapeHtml(t.statusBy)}</small>`:''}`:`<strong>Preview</strong> <span class="muted">— not yet submitted</span>`;
  const statusButtons=t.ref?`${t.status!=='Approved'?'<button type="button" class="secondary compact" data-set="Approved">Approve</button>':''}${t.status!=='Rejected'?'<button type="button" class="secondary compact" data-set="Rejected">Reject</button>':''}${t.status!=='New'?'<button type="button" class="secondary compact" data-set="New">Move back to New</button>':''}`:'';
- const pdfLink=t.pdfUrl?`<a class="secondary compact" href="${escapeHtml(t.pdfUrl)}" target="_blank" rel="noopener">Download PDF</a>`:'';
+ const pdfLink=t.pdfUrl?`<a class="secondary compact" href="${escapeHtml(t.pdfUrl)}" download>Download PDF</a>`:'';
  // A submitted TRF has no reliable link to a case (the clinic just types a patient name) - a lab
  // user confirms the match here, which is what lets the lab-PC sync route this TRF's PDF correctly.
  const caseLink=t.ref?`<div class="trf-case-link"><span class="crb-label">CASE</span>${t.caseCode?`<span class="trf-case-linked">${escapeHtml(t.caseCode)}</span>`:`<input list="trfCaseList" id="trfCaseInput" placeholder="Search case ID or patient…" autocomplete="off"><datalist id="trfCaseList">${(typeof cases!=='undefined'?cases:[]).map(c=>`<option value="${escapeHtml(c.id)} — ${escapeHtml(c.patient)}">`).join('')}</datalist><button type="button" class="secondary compact" id="trfLinkCase">Link</button>`}</div>`:'';

@@ -45,7 +45,8 @@ def _line(d: dict, label: str, key: str, date=False) -> str:
     val = d.get(key)
     shown = fmt_date(val) if (val and date) else (esc(val) if val else "&nbsp;")
     cls = " td-email" if key.lower().endswith("email") or "email" in key.lower() else ""
-    return f'<div class="td-line"><span class="td-label">{label}</span><span class="td-value{cls}">{shown}</span></div>'
+    wrap = " td-line-wrap" if key == "hospital" else ""
+    return f'<div class="td-line{wrap}"><span class="td-label">{label}</span><span class="td-value{cls}">{shown}</span></div>'
 
 
 def _para(d: dict, key: str) -> str:
