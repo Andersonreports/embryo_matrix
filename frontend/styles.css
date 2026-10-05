@@ -1400,3 +1400,6 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .rr-actions{display:flex;gap:8px;align-items:center}
 .rr-actions .compact{height:42px}
 .home-toolbar #runSearchWrap{max-width:none;width:100%;justify-self:stretch}
+#genericHeaderLeft:has(#openImageVault){flex:1 1 100%;width:100%;display:flex;justify-content:center}
+#openImageVault{background:linear-gradient(135deg,#6d4bd1,#8a63ea)!important;color:#fff!important;border:0!important;font-weight:800!important;font-size:14px;padding:0 26px;height:40px;box-shadow:0 4px 12px rgba(109,75,209,.3)}
+#openImageVault:hover{filter:brightness(1.08)}
