@@ -1424,3 +1424,4 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .stats-3col .stat-card:nth-child(3){--c:#b8473a}
 .stats.stats-3col article.stat-card{background:#fff;transform:none}
 .stats.stats-3col article.stat-card::before{display:none}
+.filter-field:has(#samplesMonthFilter){display:none!important}
