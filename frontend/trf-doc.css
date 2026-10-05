@@ -94,3 +94,28 @@ label.td-check{cursor:pointer}
 .td-value.td-email{font-size:11.5px;white-space:nowrap;word-break:normal;overflow-wrap:normal}
 .td-line .td-label{max-width:42%}
 .td-value{text-align:left}
+
+/* Header / footer artwork lifted from the paper template (transparent PNGs) */
+.td-curve-top{height:14.7mm;background:url(trf-top.png) no-repeat 0 0/100% 100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.td-curve-top::after{display:none}
+.td-curve-bottom{width:50mm;height:30.5mm;right:0;bottom:19mm;background:url(trf-arch.png) no-repeat 100% 100%/100% 100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.td-curve-bottom::before{display:none}
+.td-footer{position:absolute;left:13mm;right:13mm;bottom:8mm;display:block;margin:0;padding:0;border-top:0}
+.td-services{margin:0;font-size:10.5px;font-weight:700;color:#f57d23;line-height:1.55}
+.td-sep{font-style:normal;color:#222;font-weight:700}
+.td-pagenum{display:block;text-align:right;margin-top:6px;font-size:10px;color:#444}
+.td-page{padding-top:17mm!important}
+.td-tiny{max-width:150mm}
+/* Pages 1-2 use the template's header image (curve + logo + heading) edge to edge */
+.td-header-img{position:absolute;top:0;left:0;width:210mm;height:auto;display:block}
+.td-page.td-hdr{padding-top:36mm!important}
+.td-hdr .td-logorow{display:none}
+/* Pages 1-2 use the template's header image (curve + logo + heading) edge to edge */
+.td-header-img{position:absolute;top:0;left:0;width:210mm;height:auto;display:block}
+.td-page.td-hdr{padding-top:36mm!important}
+.td-hdr .td-logorow{display:none}
+/* Footer: the template's services strip as an image, page number under its right corner */
+.td-footer{position:absolute;left:0;right:0;bottom:0;height:20mm;margin:0;padding:0}
+.td-footer-img{position:absolute;left:0;bottom:8mm;width:210mm;height:auto;display:block}
+.td-pagenum{position:absolute;right:13mm;bottom:3mm;margin:0;font-size:10px;color:#444}
+.td-curve-bottom{bottom:19.5mm}

@@ -53,6 +53,7 @@ def _para(d: dict, key: str) -> str:
 
 
 CURVES = '<div class="td-curve-top"></div><div class="td-curve-bottom"></div>'
+CURVE_BOTTOM = '<div class="td-curve-bottom"></div>'
 
 
 def _box(value_on: bool, label: str, radio: bool = False) -> str:
@@ -80,20 +81,14 @@ def _panel(*sections: str) -> str:
 
 
 def _footer(n: int) -> str:
-    return (
-        '<div class="td-footer"><p class="td-services">PGT-A, PGT-M &amp; PGT-SR | Clinical Exome Sequencing | '
-        "Microarray | Male Infertility | Recurrent Pregnancy Loss | Carrier Screening | Amniotic Fluid Testing | "
-        "POC Analysis | NIPS<br>Fertility Genetics | Genetic Counseling | Oncogenetics | Neurogenetics | "
-        f'Infectious Genetics | New Born Screening</p><span class="td-pagenum">Pg.{n} of 3</span></div>'
-    )
+    # Services strip cropped from the paper template; page number sits below its right corner.
+    return (f'<div class="td-footer"><img class="td-footer-img" src="file://{FRONTEND_DIR}/trf-footer.png" alt="">'
+            f'<span class="td-pagenum">Pg.{n} of 3</span></div>')
 
 
 def _logo_row(is_m: bool = False) -> str:
-    kicker = "Preimplantation Genetic Testing" + ("<br>Mutation (PGT-M)" if is_m else "")
-    return (
-        f'<div class="td-logorow"><img src="file://{LOGO_PATH}" alt="Anderson Diagnostics &amp; Labs">'
-        f'<div class="td-kicker">{kicker}</div></div>'
-    )
+    # The template's own header artwork (curve + logo + heading), cropped from the paper form.
+    return f'<img class="td-header-img" src="file://{FRONTEND_DIR}/trf-header-{"m" if is_m else "a"}.png" alt="Anderson Diagnostics &amp; Labs">'
 
 
 def _title_row(title: str, note_html: str, box_html: str) -> str:
@@ -160,7 +155,7 @@ def _page1(d: dict, meta: dict) -> str:
         ),
     )
     return (
-        f'<div class="td-page">{CURVES}{_logo_row(is_m)}'
+        f'<div class="td-page td-hdr">{CURVE_BOTTOM}{_logo_row(is_m)}'
         + _title_row("Test Requisition Form", '<p class="td-note-strong">ALL Sections of this form must be completed.</p>', ref_box + barcode_box)
         + f'<div class="td-grid">{left_panel}{right_panel}</div>'
         + '<div class="td-sign"><div>Patient Signature: <span></span></div><div>Clinician Signature: <span></span><br>Clinician Seal:</div></div>'
@@ -199,7 +194,7 @@ def _page2(d: dict) -> str:
         f"<tbody>{rows_html}</tbody></table>"
     )
     return (
-        f'<div class="td-page">{CURVES}{_logo_row(is_m)}'
+        f'<div class="td-page td-hdr">{CURVE_BOTTOM}{_logo_row(is_m)}'
         + _title_row("Biopsy worksheet", "", '<div class="td-barcode"><i>Affix barcode label here</i></div>')
         + meta_table + embryo_table
         + '<p class="td-small">• All negative controls should be labeled NC1, NC2, etc. If sending multiple negative '

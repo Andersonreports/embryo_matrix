@@ -44,14 +44,14 @@ function trfPagesHtml(d,meta={},opts={}){
  const section=(title,body)=>`<section class="td-section"><h3>${title}</h3><div class="td-body">${body}</div></section>`;
  // Groups sections into one continuous outlined panel, like the paper form's single bordered column.
  const panel=(...sections)=>`<div class="td-panel">${sections.join('')}</div>`;
- const curves=`<div class="td-curve-top"></div><div class="td-curve-bottom"></div>`;
- const footer=n=>`<div class="td-footer"><p class="td-services">PGT-A, PGT-M &amp; PGT-SR | Clinical Exome Sequencing | Microarray | Male Infertility | Recurrent Pregnancy Loss | Carrier Screening | Amniotic Fluid Testing | POC Analysis | NIPS<br>Fertility Genetics | Genetic Counseling | Oncogenetics | Neurogenetics | Infectious Genetics | New Born Screening</p><span class="td-pagenum">Pg.${n} of 3</span></div>`;
- const logoRow=`<div class="td-logorow"><img src="/static/anderson-logo.png" alt="Anderson Diagnostics &amp; Labs"><div class="td-kicker">Preimplantation Genetic Testing${isM?'<br>Mutation (PGT-M)':''}</div></div>`;
+ const curves=`<div class="td-curve-top"></div><div class="td-curve-bottom"></div>`,curveBottom='<div class="td-curve-bottom"></div>';
+ const footer=n=>`<div class="td-footer"><img class="td-footer-img" src="/static/trf-footer.png" alt="PGT-A, PGT-M &amp; PGT-SR | Clinical Exome Sequencing | Microarray | Male Infertility | Recurrent Pregnancy Loss | Carrier Screening | Amniotic Fluid Testing | POC Analysis | NIPS"><span class="td-pagenum">Pg.${n} of 3</span></div>`;
+ const logoRow=`<img class="td-header-img" src="/static/trf-header-${isM?'m':'a'}.png" alt="Anderson Diagnostics &amp; Labs - Preimplantation Genetic Testing">`;
  const titleRow=(title,noteHtml,boxHtml)=>`<div class="td-titlerow"><div><h2 class="td-title">${title}</h2>${noteHtml||''}</div><div class="td-titlebox">${boxHtml||''}</div></div>`;
  const refInfo=meta.ref?`TRF ref: <b>${esc(meta.ref)}</b>`:(edit?'<i>Reference number is given on submit</i>':'');
  const refBox=`<div class="td-refbox"><div>${line('Date of Biopsy:','biopsyDate','date')}</div>${(refInfo||meta.submittedAt)?`<div class="td-ref">${refInfo}${meta.submittedAt?`<span>Submitted ${esc(new Date(meta.submittedAt).toLocaleString())}</span>`:''}</div>`:''}</div>`;
  const barcodeBox=`<div class="td-barcode"><i>Affix barcode label here</i></div>`;
- const page1=`<div class="td-page">${curves}${logoRow}
+ const page1=`<div class="td-page td-hdr">${curveBottom}${logoRow}
   ${titleRow('Test Requisition Form','<p class="td-note-strong">ALL Sections of this form must be completed.</p>',refBox+barcodeBox)}
   <div class="td-grid">
    ${panel(
@@ -77,7 +77,7 @@ function trfPagesHtml(d,meta={},opts={}){
   ?`<tr><td class="td-n">${i+1}</td><td>${cellIn('label',e.label)}</td><td>${cellIn('grade',e.grade)}</td><td>${cellIn('cells',e.cells)}</td>${isM?'':`<td>${cellSel('day',e.day,['Day 5','Day 6'])}</td>`}<td>${cellSel('intact',e.intact,['Yes','No'])}</td><td>${cellIn('comments',e.comments)}</td><td class="td-x"><button type="button" class="td-remove" aria-label="Remove this embryo">×</button></td></tr>`
   :`<tr><td>${i<embryos.length?i+1:''}</td><td>${esc(e.label)}</td><td>${esc(e.grade)}</td><td>${esc(e.cells)}</td>${isM?'':`<td>${esc(e.day)}</td>`}<td>${esc(e.intact)}</td><td>${esc(e.comments)}</td></tr>`;
  const rows=edit?(embryos.length?embryos:[{},{},{}]):[...embryos,...Array(Math.max(0,11-embryos.length)).fill({})];
- const page2=`<div class="td-page">${curves}${logoRow}
+ const page2=`<div class="td-page td-hdr">${curveBottom}${logoRow}
   ${titleRow('Biopsy worksheet','',barcodeBox)}
   <table class="td-meta"><tr><td><div class="td-line"><span class="td-label">Patient name:</span><span class="td-value td-mirror">${esc(d.patientName)||'&nbsp;'}</span></div></td><td><div class="td-line"><span class="td-label">Date of Biopsy:</span><span class="td-value td-mirror-date">${d.biopsyDate?fmtDate(d.biopsyDate):'&nbsp;'}</span></div></td></tr><tr><td>${line('IVF Lab contact No.:','ivfLabContact','tel')}</td><td><span class="td-label">Re-biopsy included in this case:</span> ${box('rebiopsy','Yes','Yes',d.rebiopsy==='Yes',true)}${box('rebiopsy','No','No',d.rebiopsy==='No',true)}</td></tr></table>
   <table class="td-embryos"><thead><tr><th>Sl No.</th><th>${isM?'Embryo tags':'Embryo label'}${edit?' <b class="td-req">*</b>':''}</th><th>Embryo Grade</th><th>No. of cells biopsied</th>${isM?'':'<th>Day 5/ Day 6</th>'}<th>Intact cells observed (Yes/No)</th><th>Comments</th>${edit?'<th></th>':''}</tr></thead><tbody class="td-embryo-rows">${rows.map(embryoRow).join('')}</tbody></table>
@@ -175,7 +175,7 @@ function trfProblems(d){const p=Object.entries(TRF_REQUIRED).filter(([k])=>!d[k]
 function printTrf(d,meta={}){
  const w=window.open('','_blank');if(!w){alert('Allow pop-ups for this site to print the TRF.');return}
  const title=`TRF ${meta.ref||''} ${d?.patientName||''}`.trim();
- w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/static/trf-doc.css?v=20261006l"></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
+ w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/static/trf-doc.css?v=20261006q"></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
  w.document.close();
  const go=()=>{w.focus();w.print()};
  const img=w.document.querySelector('img');if(img&&!img.complete){img.onload=go;img.onerror=go}else setTimeout(go,300);
