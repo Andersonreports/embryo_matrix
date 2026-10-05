@@ -727,6 +727,23 @@ def get_trf(trf_id: int, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(404, "Not found")
     return {**_trf_summary(t), "data": t.data}
 
+@app.delete("/api/trf/{trf_id}")
+def delete_trf(trf_id: int, request: Request, db: Session = Depends(get_db)):
+    """Permanently removes a submitted TRF and its stored PDF."""
+    _require_lab_user(request)
+    t = db.get(TrfSubmission, trf_id)
+    if not t:
+        raise HTTPException(404, "Not found")
+    ref, patient, pdf = t.ref, t.patient_name, t.pdf_file_path
+    db.delete(t)
+    db.commit()
+    if pdf:
+        path = (UPLOADS / pdf).resolve()
+        if UPLOADS.resolve() in path.parents and path.is_file():
+            path.unlink()
+    log_activity(db, "trf_delete", f"{ref} · {patient} deleted", request=request)
+    return {"ok": True}
+
 @app.get("/api/trf/{trf_id}/pdf")
 def download_trf_pdf(trf_id: int, request: Request, db: Session = Depends(get_db)):
     """The TRF's PDF as a normal .pdf download named after the TRF (the stored copy is gzip-compressed at rest)."""
