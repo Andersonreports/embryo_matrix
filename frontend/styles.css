@@ -1514,3 +1514,31 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .rr-emb-right .prep-search{flex:1 1 280px;max-width:460px}
 .rr-emb-right .prep-search input{width:100%}
 .rr-emb-tools>.rr-min{flex:0 0 auto;padding-left:12px;border-left:1px solid var(--line)}
+/* TRF: per-embryo photos on the form, approver remark, photo gallery in the review dialog */
+.tf-table{min-width:980px}
+.tf-table td.tf-img{min-width:170px;white-space:nowrap}
+.tf-photo-btn{border:1px dashed #6cbf9f;background:#f4fbf8;color:#0a7180;border-radius:999px;font:600 12px "Inter";padding:6px 12px;cursor:pointer}
+.tf-photo-btn:hover{background:#e3f1ef}.tf-photo-btn:disabled{opacity:.6;cursor:wait}
+.tf-thumbs{display:inline-flex;gap:6px;vertical-align:middle;margin-right:6px}
+.tf-thumb{position:relative;display:inline-grid;place-items:center;width:38px;height:38px;border-radius:8px;border:1px solid #cfe3dc;background:#eef6f3;overflow:hidden}
+.tf-thumb img{width:100%;height:100%;object-fit:cover}.tf-thumb i{font-style:normal}
+.tf-thumb-x{position:absolute;top:0;right:0;width:16px;height:16px;border:0;border-radius:0 0 0 6px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;line-height:16px;padding:0;cursor:pointer}
+.trf-dialog{overflow:auto}
+.trf-dialog-bar{position:sticky;top:0;z-index:2}
+.trf-dialog-doc{max-height:none}
+.trf-remark{margin:0;padding:10px 18px;background:#fff8e6;border-bottom:1px solid #f0e0b0;font-size:13px}
+.trf-remark p{margin:4px 0 0;white-space:pre-wrap}
+.trf-photos{padding:12px 18px;background:#fff;border-bottom:1px solid var(--line)}
+.trf-photos h3{margin:0 0 8px;font-size:14px}
+.trf-photo-row{display:flex;gap:12px;align-items:flex-start;margin:6px 0}
+.trf-photo-row>strong{min-width:90px;font-size:13px;padding-top:6px}
+.trf-photo-row>div{display:flex;flex-wrap:wrap;gap:8px}
+.trf-photo-row img{height:110px;max-width:200px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block}
+.trf-note{display:block;max-width:180px;margin-top:3px;color:#6a756f;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trf-remark-dialog{width:min(460px,94vw);border:0;border-radius:14px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.trf-remark-dialog::backdrop{background:rgba(20,30,28,.45)}
+.trf-remark-dialog h3{margin:0 0 12px}
+.trf-remark-dialog label{display:grid;gap:6px;font-weight:600;font-size:13px}
+.trf-remark-dialog textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px!important;padding:10px;font:500 14px "Inter";resize:vertical}
+.trf-remark-err{color:#b83a2e;font-size:12px;margin:6px 0 0}
+.trf-remark-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}

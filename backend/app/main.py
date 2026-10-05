@@ -36,6 +36,7 @@ def _migrate_added_columns():
         "case_code": "VARCHAR(80)",
         "pdf_filename": "VARCHAR(255)",
         "pdf_file_path": "VARCHAR(500)",
+        "status_note": "TEXT",
     }
     with engine.begin() as conn:
         for col, coltype in add.items():
@@ -626,6 +627,9 @@ TRF_TEXT_FIELDS = (
     "explanationDate", "geneticClinicName", "geneticClinicAddress", "geneticClinicRegNo",
 )
 TRF_EMBRYO_FIELDS = ("label", "grade", "cells", "day", "intact", "comments")
+TRF_IMG_RE = re.compile(r"^[0-9a-f]{32}\.(jpg|png|webp)$")
+TRF_IMG_MAX_PER_EMBRYO = 6
+_trf_img_recent: dict[str, list[float]] = {}
 TRF_STATUSES = ("New", "Approved", "Rejected")
 _trf_recent: dict[str, list[float]] = {}  # client IP -> recent submit times, for a simple rate limit
 
@@ -646,7 +650,11 @@ def _clean_trf(raw: dict) -> dict:
     embryos = []
     for e in (raw.get("embryos") or [])[:60]:
         row = {k: s((e or {}).get(k), 500) for k in TRF_EMBRYO_FIELDS}
-        if any(row.values()):
+        imgs = [i for i in ((e or {}).get("images") or []) if isinstance(i, str) and TRF_IMG_RE.match(i)
+                and (UPLOADS / f"trfimg-{i}.gz").is_file()][:TRF_IMG_MAX_PER_EMBRYO]
+        if any(row.values()) or imgs:
+            if imgs:
+                row["images"] = imgs
             embryos.append(row)
     data["embryos"] = embryos
     return data
@@ -657,7 +665,7 @@ def _trf_summary(t: TrfSubmission) -> dict:
         "id": t.id, "ref": t.ref, "submittedAt": _iso_utc(t.submitted_at), "status": t.status,
         "clinic": t.clinic, "patient": t.patient_name, "doctor": d.get("referringDoctor", ""),
         "tests": d.get("tests", []), "formType": d.get("formType", "PGT-A"), "biopsyDate": d.get("biopsyDate", ""), "embryos": len(d.get("embryos", [])),
-        "statusBy": t.status_by, "statusAt": _iso_utc(t.status_at),
+        "statusBy": t.status_by, "statusAt": _iso_utc(t.status_at), "statusNote": t.status_note or "",
         "caseCode": t.case_code, "pdfUrl": f"/api/trf/{t.id}/pdf" if t.pdf_file_path else None,
     }
 
@@ -718,6 +726,42 @@ async def submit_trf(request: Request, db: Session = Depends(get_db)):
     log_activity(db, "trf_submit", f"{t.ref} · {t.patient_name} · {t.clinic}", request=request)
     return {"ref": t.ref, "submittedAt": _iso_utc(t.submitted_at)}
 
+@app.post("/api/trf-image")
+async def upload_trf_image(request: Request, file: UploadFile = File(...)):
+    """A photo of one embryo, attached to a TRF being filled in on the public form. The form sends
+    back the returned id with the embryo row; only lab users can view it (GET /api/trf-image/{id})."""
+    ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "")).split(",")[0].strip()
+    now = time.time()
+    recent = [t for t in _trf_img_recent.get(ip, []) if now - t < 3600]
+    if len(recent) >= 150:
+        raise HTTPException(429, "Too many images from this network. Please try again later.")
+    data = await file.read(8 * 1024 * 1024 + 1)
+    if len(data) > 8 * 1024 * 1024:
+        raise HTTPException(413, "Image is too large (max 8 MB)")
+    if data[:3] == b"\xff\xd8\xff":
+        ext = "jpg"
+    elif data[:8] == b"\x89PNG\r\n\x1a\n":
+        ext = "png"
+    elif data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        ext = "webp"
+    else:
+        raise HTTPException(415, "Please choose a JPG, PNG or WebP image")
+    name = f"{uuid.uuid4().hex}.{ext}"
+    storage.write_compressed_bytes(UPLOADS, f"trfimg-{name}", data)
+    _trf_img_recent[ip] = recent + [now]
+    return {"id": name}
+
+@app.get("/api/trf-image/{name}")
+def get_trf_image(name: str, request: Request):
+    _require_lab_user(request)
+    if not TRF_IMG_RE.match(name):
+        raise HTTPException(404, "Not found")
+    full = (UPLOADS / f"trfimg-{name}.gz").resolve()
+    if UPLOADS.resolve() not in full.parents or not full.is_file():
+        raise HTTPException(404, "Not found")
+    mt = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}[name.rsplit(".", 1)[1]]
+    return Response(content=storage.read_decompressed(full), media_type=mt, headers={"Cache-Control": "private, max-age=86400"})
+
 @app.get("/api/trf")
 def list_trfs(request: Request, db: Session = Depends(get_db)):
     _require_lab_user(request)
@@ -740,8 +784,13 @@ def delete_trf(trf_id: int, request: Request, db: Session = Depends(get_db)):
     if not t:
         raise HTTPException(404, "Not found")
     ref, patient, pdf = t.ref, t.patient_name, t.pdf_file_path
+    images = [i for e in (t.data or {}).get("embryos", []) for i in e.get("images", [])]
     db.delete(t)
     db.commit()
+    for i in images:
+        p = (UPLOADS / f"trfimg-{i}.gz").resolve()
+        if UPLOADS.resolve() in p.parents and p.is_file():
+            p.unlink()
     if pdf:
         path = (UPLOADS / pdf).resolve()
         if UPLOADS.resolve() in path.parents and path.is_file():
@@ -803,9 +852,12 @@ def update_trf_status(trf_id: int, payload: KVValue, request: Request, db: Sessi
         status = "Approved"
     if status not in TRF_STATUSES:
         raise HTTPException(400, "Unknown status")
-    t.status, t.status_by, t.status_at = status, user.get("username") or "", datetime.utcnow()
+    note = str(payload.value.get("note") or "").strip()[:1000]
+    if status == "Rejected" and not note:
+        raise HTTPException(422, "Please give a reason for rejecting this TRF")
+    t.status, t.status_by, t.status_at, t.status_note = status, user.get("username") or "", datetime.utcnow(), note
     db.commit()
-    log_activity(db, "trf_status", f"{t.ref} · {t.patient_name} → {status}", request=request)
+    log_activity(db, "trf_status", f"{t.ref} · {t.patient_name} → {status}" + (f" · {note}" if note else ""), request=request)
     return _trf_summary(t)
 
 @app.patch("/api/trf/{trf_id}/case")

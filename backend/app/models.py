@@ -112,6 +112,8 @@ class TrfSubmission(Base):
     case_code: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
     pdf_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     pdf_file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Remark the approver typed when approving / rejecting.
+    status_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 class ActivityLog(Base):
     """Who did what, when. Written server-side from the login token."""

@@ -110,7 +110,7 @@ function trfCollect(root){const d={};
  root.querySelectorAll('[data-f]').forEach(el=>d[el.dataset.f]=el.value.trim());
  const checked=g=>[...root.querySelectorAll(`[data-g="${g}"]:checked`)].map(x=>x.value);
  d.formType=d.formType==='PGT-M'?'PGT-M':'PGT-A';d.tests=checked('tests');d.gametes=checked('gametes');d.biopsyDay=checked('biopsyDay')[0]||'';d.rebiopsy=checked('rebiopsy')[0]||'';d.dryRun=checked('dryRun').length>0;
- d.embryos=[...root.querySelectorAll('.td-embryo-rows tr')].map(tr=>Object.fromEntries([...tr.querySelectorAll('[data-e]')].map(x=>[x.dataset.e,x.value.trim()]))).filter(e=>Object.values(e).some(Boolean));
+ d.embryos=[...root.querySelectorAll('.td-embryo-rows tr')].map(tr=>{const e=Object.fromEntries([...tr.querySelectorAll('[data-e]')].map(x=>[x.dataset.e,x.value.trim()]));let im=[];try{im=JSON.parse(tr.dataset.images||'[]')}catch{}if(im.length)e.images=im;return e}).filter(e=>Object.values(e).some(Boolean));
  return d}
 // The digital form: the template's sections and fields as a normal web form (labels above
 // inputs, sections as cards, one row per embryo). Same data-f / data-g / data-e names as the
@@ -118,7 +118,15 @@ function trfCollect(root){const d={};
 function trfEmbryoRowHtml(e={},i=0,type='PGT-A'){
  const inp=(k,ph='',mode='')=>`<input class="tf-cell" data-e="${k}" value="${esc(e[k])}"${ph?` placeholder="${ph}"`:''}${mode?` inputmode="${mode}"`:''}>`;
  const sel=(k,choices)=>`<select class="tf-cell" data-e="${k}"><option value="">—</option>${choices.map(c=>`<option${e[k]===c?' selected':''}>${c}</option>`).join('')}</select>`;
- return `<tr><td class="tf-n">${i+1}</td><td>${inp('label','e.g. SS1')}</td><td>${inp('grade','e.g. 4AA')}</td><td>${inp('cells','','numeric')}</td>${type==='PGT-M'?'':`<td>${sel('day',['Day 5','Day 6'])}</td>`}<td>${sel('intact',['Yes','No'])}</td><td>${inp('comments')}</td><td class="tf-x"><button type="button" class="td-remove" aria-label="Remove embryo ${i+1}">×</button></td></tr>`}
+ return `<tr data-images="${esc(JSON.stringify(e.images||[]))}"><td class="tf-n">${i+1}</td><td>${inp('label','e.g. SS1')}</td><td>${inp('grade','e.g. 4AA')}</td><td>${inp('cells','','numeric')}</td>${type==='PGT-M'?'':`<td>${sel('day',['Day 5','Day 6'])}</td>`}<td>${sel('intact',['Yes','No'])}</td><td>${inp('comments')}</td><td class="tf-img">${trfThumbsHtml(e.images||[])}<button type="button" class="tf-photo-btn" title="Attach photos of this embryo">📷 Add photo</button></td><td class="tf-x"><button type="button" class="td-remove" aria-label="Remove embryo ${i+1}">×</button></td></tr>`}
+// Photos attached to an embryo row (ids returned by /api/trf-image). Local previews are kept for this page session only.
+const TRF_LOCAL_THUMBS={};
+function trfThumbsHtml(ids){return `<span class="tf-thumbs">${ids.map(id=>`<span class="tf-thumb" data-id="${esc(id)}">${TRF_LOCAL_THUMBS[id]?`<img src="${TRF_LOCAL_THUMBS[id]}" alt="Embryo photo">`:'<i>📷</i>'}<button type="button" class="tf-thumb-x" aria-label="Remove photo">×</button></span>`).join('')}</span>`}
+// A JPEG no larger than 1600px on its long side keeps uploads quick on clinic connections.
+async function trfShrinkImage(file){try{const bmp=await createImageBitmap(file),k=Math.min(1,1600/Math.max(bmp.width,bmp.height)),c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.85));return b||file}catch{return file}}
+// Read-only gallery of the photos attached to each embryo, for whoever reviews the TRF (lab users only - the images are served to them alone).
+function trfImagesHtml(d){const rows=(d?.embryos||[]).filter(e=>(e.images||[]).length);if(!rows.length)return'';
+ return `<section class="trf-photos"><h3>Embryo photos</h3>${rows.map(e=>`<div class="trf-photo-row"><strong>${esc(e.label||'Embryo')}</strong><div>${e.images.map(id=>`<a href="/api/trf-image/${esc(id)}" target="_blank" rel="noopener"><img src="/api/trf-image/${esc(id)}" alt="Photo of ${esc(e.label||'embryo')}" loading="lazy"></a>`).join('')}</div></div>`).join('')}</section>`}
 function trfFormHtml(d={}){
  const isM=d.formType==='PGT-M',type=isM?'PGT-M':'PGT-A',tests=d.tests||[],gametes=d.gametes||[],embryos=d.embryos?.length?d.embryos:[{},{},{}];
  const f=(key,label,type='text',extra='')=>`<label class="tf-field"><span>${esc(label)}${TRF_REQUIRED[key]?' <b class="td-req">*</b>':''}</span><input data-f="${key}" type="${type}" value="${esc(d[key])}"${extra}></label>`;
@@ -133,7 +141,7 @@ function trfFormHtml(d={}){
  ${card(4,'Specimen details',`<div class="tf-grid">${f('biopsyDate','Date of Biopsy','date')}${isM?f('biopsyTime','Biopsy Time','time'):f('collectionDate','Specimen Collection Date','date')+f('collectionTime','Specimen Collection Time','time')}<div class="tf-field"><span>Biopsy day</span><div class="tf-opts">${(isM?['Day 5','Day 6']:['Day 3','Day 5','Day 6']).map(x=>opt('biopsyDay',x,x,d.biopsyDay===x,true)).join('')}</div></div><div class="tf-field"><span>IVF cycle — gametes</span><div class="tf-opts">${['Self','Donor Sperm','Donor Oocyte'].map(x=>opt('gametes',x,x,gametes.includes(x))).join('')}</div></div>${f('donorAge','If donor is used: Age of donor','text',' inputmode="numeric"')}</div>`)}
  ${card(5,'Test indication &amp; clinical history',`<div class="tf-grid tf-grid-2">${area('testIndication','Test Indication','Why is PGT being requested?')}${area('clinicalHistory','Patient Clinical History')}${isM?f('maternalGenotype','Maternal Genotype')+f('paternalGenotype','Paternal Genotype'):f('maternalKaryotype','Maternal Karyotype')+f('paternalKaryotype','Paternal Karyotype')}</div>`,isM?'Mutation details included.':'Karyotyping details included.')}
  ${card(6,'Biopsy worksheet',`<div class="tf-grid">${f('ivfLabContact','IVF Lab contact No.','tel',' inputmode="tel"')}<div class="tf-field"><span>Re-biopsy included in this case?</span><div class="tf-opts">${opt('rebiopsy','Yes','Yes',d.rebiopsy==='Yes',true)}${opt('rebiopsy','No','No',d.rebiopsy==='No',true)}</div></div></div>
-  <div class="tf-table-wrap"><table class="tf-table"><thead><tr><th>Sl No.</th><th>${isM?'Embryo tags':'Embryo label'} <b class="td-req">*</b></th><th>Embryo grade</th><th>No. of cells biopsied</th>${isM?'':'<th>Day 5 / Day 6</th>'}<th>Intact cells observed</th><th>Comments</th><th></th></tr></thead><tbody class="td-embryo-rows">${embryos.map((e,i)=>trfEmbryoRowHtml(e,i,type)).join('')}</tbody></table></div>
+  <div class="tf-table-wrap"><table class="tf-table"><thead><tr><th>Sl No.</th><th>${isM?'Embryo tags':'Embryo label'} <b class="td-req">*</b></th><th>Embryo grade</th><th>No. of cells biopsied</th>${isM?'':'<th>Day 5 / Day 6</th>'}<th>Intact cells observed</th><th>Comments</th><th>Photos</th><th></th></tr></thead><tbody class="td-embryo-rows">${embryos.map((e,i)=>trfEmbryoRowHtml(e,i,type)).join('')}</tbody></table></div>
   <button type="button" class="td-add tf-add">＋ Add embryo</button>
   <p class="tf-hint">Label negative controls NC1, NC2, etc. If sending several, say in Comments which embryos each NC belongs to.</p>
   <div class="tf-grid tf-row-end">${isM?'':opt('dryRun','yes','Embryo Biopsy dry run',!!d.dryRun)+f('embryologistName','Embryologist Name')}${f('embryologistEmail',isM?'Biopsy performed by — email address':'Embryologist email address','email')}</div>`,'One row per embryo biopsied.')}
@@ -162,6 +170,12 @@ function trfWire(root,onChange=()=>{}){
  const blankRow=()=>{const t=document.createElement('tbody');t.innerHTML=trfEmbryoRowHtml({},rowsEl.rows.length,root.querySelector('.tf-form')?.dataset.type||'PGT-A');return t.firstElementChild};
  root.querySelector('.td-add').onclick=()=>{rowsEl.appendChild(blankRow());renumber();rowsEl.lastElementChild.querySelector('input')?.focus();onChange()};
  rowsEl.addEventListener('click',e=>{const b=e.target.closest('.td-remove');if(!b)return;b.closest('tr').remove();if(!rowsEl.rows.length)rowsEl.appendChild(blankRow());renumber();onChange()});
+ const setImgs=(tr,ids)=>{tr.dataset.images=JSON.stringify(ids);tr.querySelector('.tf-thumbs').outerHTML=trfThumbsHtml(ids);onChange()};
+ rowsEl.addEventListener('click',e=>{const tr=e.target.closest('tr');if(!tr)return;const x=e.target.closest('.tf-thumb-x');if(x){const id=x.closest('.tf-thumb').dataset.id;setImgs(tr,JSON.parse(tr.dataset.images||'[]').filter(i=>i!==id));return}
+  if(!e.target.closest('.tf-photo-btn'))return;const have=JSON.parse(tr.dataset.images||'[]');if(have.length>=6){alert('Up to 6 photos per embryo.');return}
+  const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;inp.onchange=async()=>{const btn=tr.querySelector('.tf-photo-btn'),label=btn.textContent;btn.disabled=true;let ids=JSON.parse(tr.dataset.images||'[]');
+   for(const f of [...inp.files].slice(0,6-ids.length)){btn.textContent='Uploading…';try{const blob=await trfShrinkImage(f),fd=new FormData();fd.append('file',blob,'embryo.jpg');const r=await fetch('/api/trf-image',{method:'POST',body:fd}),j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||'Upload failed');TRF_LOCAL_THUMBS[j.id]=URL.createObjectURL(blob);ids=[...ids,j.id];setImgs(tr,ids)}catch(err){alert(`${f.name}: ${err.message||'could not be uploaded'}`)}}
+   btn.disabled=false;btn.textContent=label};inp.click()});
  root.addEventListener('input',()=>onChange());root.addEventListener('change',()=>onChange());
 }
 function trfProblems(d){const p=Object.entries(TRF_REQUIRED).filter(([k])=>!d[k]).map(([,l])=>l);
@@ -186,7 +200,7 @@ function printTrfHtml(d,meta={},existing){
  w.document.write('<!doctype html><title>Preparing…</title><p style="font:14px Arial;padding:24px">Preparing the TRF…</p>');
  // The stylesheet is embedded (not linked) so the print window can never render before it has loaded;
  // <base> lets its relative artwork URLs resolve against the app.
- fetch('/static/trf-doc.css?v=20261007e').then(r=>r.text()).catch(()=>'').then(css=>{
+ fetch('/static/trf-doc.css?v=20261007o').then(r=>r.text()).catch(()=>'').then(css=>{
   w.document.open();
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${location.origin}/static/"><title>${esc(title)}</title><style>${css}</style></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
   w.document.close();
@@ -195,5 +209,5 @@ function printTrfHtml(d,meta={},existing){
   Promise.all(imgs).then(()=>setTimeout(go,300));setTimeout(go,8000);
  });
 }
-Object.assign(global,{TRF_TEST_LABELS,TRF_TEST_LABELS_M,TRF_REQUIRED,trfPagesHtml,trfFormHtml,trfCollect,trfWire,trfProblems,printTrf});
+Object.assign(global,{TRF_TEST_LABELS,TRF_TEST_LABELS_M,TRF_REQUIRED,trfPagesHtml,trfFormHtml,trfCollect,trfWire,trfProblems,printTrf,trfImagesHtml});
 })(window);
