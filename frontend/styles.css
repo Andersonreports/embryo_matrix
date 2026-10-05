@@ -1395,3 +1395,5 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .qc-emb-count b{color:#a04f3d;font-size:14px}
 .qc-patient-chip{border:0;cursor:pointer;font:inherit;font-size:11px}
 .qc-patient-chip:hover{background:#efcfc6}
+
+.import-topbar{display:flex;justify-content:flex-end;margin-bottom:12px}
