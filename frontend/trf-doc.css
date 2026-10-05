@@ -153,3 +153,9 @@ label.td-check{cursor:pointer}
 .td-page-g .td-legal+.td-legal-label{margin-top:52px}
 .td-page-g .td-legal-label~.td-grid-tight{margin:14px 0}
 .td-page-g .td-legal-label~.td-line{margin:14px 0}
+/* Page 1 is the densest page: slightly smaller type and tighter rhythm so the signature block always clears the footer artwork (storage / confidentiality notes) */
+.td-page.td-hdr{font-size:13.5px;line-height:1.34}
+.td-hdr .td-line{margin:3px 0}
+.td-hdr .td-body{padding:5px 12px}
+.td-hdr .td-sign{margin:6px 0 0}
+.td-hdr .td-check{gap:5px}

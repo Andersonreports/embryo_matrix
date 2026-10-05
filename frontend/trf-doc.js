@@ -200,7 +200,7 @@ function printTrfHtml(d,meta={},existing){
  w.document.write('<!doctype html><title>Preparing…</title><p style="font:14px Arial;padding:24px">Preparing the TRF…</p>');
  // The stylesheet is embedded (not linked) so the print window can never render before it has loaded;
  // <base> lets its relative artwork URLs resolve against the app.
- fetch('/static/trf-doc.css?v=20261007o').then(r=>r.text()).catch(()=>'').then(css=>{
+ fetch('/static/trf-doc.css?v=20261007p').then(r=>r.text()).catch(()=>'').then(css=>{
   w.document.open();
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${location.origin}/static/"><title>${esc(title)}</title><style>${css}</style></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
   w.document.close();
