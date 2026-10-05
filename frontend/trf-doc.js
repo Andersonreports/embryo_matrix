@@ -171,10 +171,13 @@ function trfProblems(d){const p=Object.entries(TRF_REQUIRED).filter(([k])=>!d[k]
 function printTrf(d,meta={}){
  const w=window.open('','_blank');if(!w){alert('Allow pop-ups for this site to print the TRF.');return}
  const title=`TRF ${meta.ref||''} ${d?.patientName||''}`.trim();
- w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/static/trf-doc.css?v=20261006t"></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
+ w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/static/trf-doc.css?v=20261006u"></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
  w.document.close();
- const go=()=>{w.focus();w.print()};
- const img=w.document.querySelector('img');if(img&&!img.complete){img.onload=go;img.onerror=go}else setTimeout(go,300);
+ // Print only once the stylesheet and every image (header / footer artwork) have loaded - otherwise the
+ // browser prints an unstyled page.
+ let done=false;const go=()=>{if(done)return;done=true;w.focus();w.print()};
+ const waits=[...w.document.querySelectorAll('link[rel=stylesheet],img')].map(el=>new Promise(r=>{const ready=el.tagName==='IMG'?el.complete:!!el.sheet;if(ready)r();else{el.onload=r;el.onerror=r}}));
+ Promise.all(waits).then(()=>setTimeout(go,200));setTimeout(go,6000);
 }
 Object.assign(global,{TRF_TEST_LABELS,TRF_TEST_LABELS_M,TRF_REQUIRED,trfPagesHtml,trfFormHtml,trfCollect,trfWire,trfProblems,printTrf});
 })(window);
