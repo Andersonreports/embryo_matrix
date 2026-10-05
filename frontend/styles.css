@@ -1459,3 +1459,4 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 @media(max-width:1250px){.tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:900px){.tf-grid{grid-template-columns:1fr}.tf-wide{grid-column:1/-1}}
 .tf-grid.tf-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.tf-grid-2 .tf-wide{grid-column:span 1}@media(max-width:900px){.tf-grid.tf-grid-2{grid-template-columns:1fr}}
+.tf-grid-2 .tf-wide.tf-full{grid-column:1/-1}

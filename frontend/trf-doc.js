@@ -127,7 +127,7 @@ function trfFormHtml(d={}){
  const card=(n,title,body,note='')=>`<section class="tf-card"><header><span class="tf-step">${n}</span><div><h3>${title}</h3>${note?`<p>${note}</p>`:''}</div></header>${body}</section>`;
  return `<div class="tf-form" data-type="${type}">
  <input type="hidden" data-f="formType" value="${type}">
- ${card(1,'Referring details',`<div class="tf-grid">${f('hospital','Name of Hospital / IVF Centre','text',' autocomplete="off" placeholder="Start typing the hospital / centre name"')}${f('referringDoctor','Referring Doctor')}${f('phone','Phone','tel',' inputmode="tel"')}${f('email','Email','email')}<label class="tf-field tf-wide"><span>Address</span><textarea data-f="address" rows="2">${esc(d.address)}</textarea></label></div>`)}
+ ${card(1,'Referring details',`<div class="tf-grid tf-grid-2">${f('hospital','Name of Hospital / IVF Centre','text',' autocomplete="off" placeholder="Start typing the hospital / centre name"')}${f('referringDoctor','Referring Doctor')}${f('phone','Phone','tel',' inputmode="tel"')}${f('email','Email','email')}<label class="tf-field tf-wide tf-full"><span>Address</span><textarea data-f="address" rows="2">${esc(d.address)}</textarea></label></div>`)}
  ${card(2,'Patient information',`<div class="tf-grid">${f('patientName','Patient Name')}${f('patientDob','Date of Birth','date')}${f('uhid','UHID')}${f('aadhaar','Aadhaar Card No','text',' inputmode="numeric" maxlength="14" placeholder="12 digits"')}${f('husbandName',"Husband's Name")}${f('husbandDob',"Husband's Date of Birth",'date')}${f('patientEmail','Patient Email','email')}</div>`)}
  ${card(3,'Test requested <b class="td-req">*</b>',`<div class="tf-opts tf-opts-col">${Object.entries(trfLabelsFor(type)).map(([k,l])=>opt('tests',k,l,tests.includes(k))).join('')}</div>`,'Tick every test needed.')}
  ${card(4,'Specimen details',`<div class="tf-grid">${f('biopsyDate','Date of Biopsy','date')}${isM?f('biopsyTime','Biopsy Time','time'):f('collectionDate','Specimen Collection Date','date')+f('collectionTime','Specimen Collection Time','time')}<div class="tf-field"><span>Biopsy day</span><div class="tf-opts">${(isM?['Day 5','Day 6']:['Day 3','Day 5','Day 6']).map(x=>opt('biopsyDay',x,x,d.biopsyDay===x,true)).join('')}</div></div><div class="tf-field"><span>IVF cycle — gametes</span><div class="tf-opts">${['Self','Donor Sperm','Donor Oocyte'].map(x=>opt('gametes',x,x,gametes.includes(x))).join('')}</div></div>${f('donorAge','If donor is used: Age of donor','text',' inputmode="numeric"')}</div>`)}
@@ -186,7 +186,7 @@ function printTrfHtml(d,meta={},existing){
  w.document.write('<!doctype html><title>Preparing…</title><p style="font:14px Arial;padding:24px">Preparing the TRF…</p>');
  // The stylesheet is embedded (not linked) so the print window can never render before it has loaded;
  // <base> lets its relative artwork URLs resolve against the app.
- fetch('/static/trf-doc.css?v=20261006z').then(r=>r.text()).catch(()=>'').then(css=>{
+ fetch('/static/trf-doc.css?v=20261007a').then(r=>r.text()).catch(()=>'').then(css=>{
   w.document.open();
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${location.origin}/static/"><title>${esc(title)}</title><style>${css}</style></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
   w.document.close();
