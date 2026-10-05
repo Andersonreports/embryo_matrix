@@ -1449,3 +1449,4 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 @media(min-width:721px){.topbar .topnav{flex:1;justify-content:center;gap:4px;padding:0}}
 .trf-row-actions{white-space:nowrap}.trf-row-actions button{height:30px;padding:0 14px;font-size:12.5px;margin-right:6px}
 #trfTableWrap .prep-table th,#trfTableWrap .prep-table td{text-align:center!important}#trfTableWrap .prep-table td.clip{margin:0 auto}
+.trf-submit-row{display:flex;justify-content:flex-end;padding:18px 0 6px}.trf-submit-row .primary{height:44px;padding:0 34px;font-size:15px}
