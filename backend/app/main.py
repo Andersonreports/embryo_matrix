@@ -18,7 +18,7 @@ from .placement import Placement, safe as _safe_name
 from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn
 from .sheet_sync import parse_sources, sync_sources
-from . import cell_edits, edits_sheet, storage, trf_pdf
+from . import cell_edits, edits_sheet, storage, trf_fill, trf_pdf
 from sqlalchemy import inspect, text
 import mimetypes
 
@@ -668,7 +668,12 @@ def _generate_trf_pdf(db: Session, t: TrfSubmission):
         # A short locale-style stamp, like the browser's toLocaleString() - the raw ISO
         # timestamp is too long for the template's ref box and wraps/overlaps.
         submitted = t.submitted_at.strftime("%d/%m/%Y, %I:%M:%S %p")
-        pdf_bytes = trf_pdf.render_trf_pdf(t.data or {}, {"ref": t.ref, "submittedAt": submitted})
+        meta = {"ref": t.ref, "submittedAt": submitted}
+        try:  # the paper template itself, filled in
+            pdf_bytes = trf_fill.render_trf_filled_pdf(t.data or {}, meta)
+        except Exception as fill_exc:
+            print(f"TRF template fill failed for {t.ref}, using the HTML layout: {fill_exc}")
+            pdf_bytes = trf_pdf.render_trf_pdf(t.data or {}, meta)
         stored_name = f"{uuid.uuid4().hex}.pdf"
         disk_name = storage.write_compressed_bytes(UPLOADS, stored_name, pdf_bytes)
         t.pdf_filename, t.pdf_file_path = f"{t.ref}.pdf", disk_name
@@ -743,6 +748,35 @@ def delete_trf(trf_id: int, request: Request, db: Session = Depends(get_db)):
             path.unlink()
     log_activity(db, "trf_delete", f"{ref} · {patient} deleted", request=request)
     return {"ok": True}
+
+_trf_preview_recent: dict[str, list[float]] = {}
+
+@app.post("/api/trf/preview-pdf")
+async def preview_trf_pdf(request: Request):
+    """The TRF as the filled paper template, straight from the entered data (nothing is saved) - used by
+    Preview and Print / PDF in the app."""
+    body = await request.body()
+    if len(body) > 200_000:
+        raise HTTPException(413, "Form is too large")
+    ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "")).split(",")[0].strip()
+    now = time.time()
+    recent = [t for t in _trf_preview_recent.get(ip, []) if now - t < 600]
+    if len(recent) >= 40:
+        raise HTTPException(429, "Too many previews. Please wait a few minutes.")
+    _trf_preview_recent[ip] = recent + [now]
+    try:
+        raw = json.loads(body or b"{}")
+    except ValueError:
+        raise HTTPException(400, "Invalid form data")
+    data = _clean_trf((raw.get("data") if isinstance(raw, dict) else None) or {})
+    meta_in = raw.get("meta") if isinstance(raw, dict) and isinstance(raw.get("meta"), dict) else {}
+    meta = {"ref": str(meta_in.get("ref") or "")[:40], "submittedAt": str(meta_in.get("submittedAtText") or "")[:40]}
+    try:
+        pdf = trf_fill.render_trf_filled_pdf(data, meta)
+    except Exception as exc:
+        print(f"TRF preview failed: {exc}")
+        raise HTTPException(500, "The TRF could not be rendered")
+    return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": 'inline; filename="TRF.pdf"'})
 
 @app.get("/api/trf/{trf_id}/pdf")
 def download_trf_pdf(trf_id: int, request: Request, db: Session = Depends(get_db)):

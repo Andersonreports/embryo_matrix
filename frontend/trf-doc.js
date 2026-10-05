@@ -168,13 +168,25 @@ function trfProblems(d){const p=Object.entries(TRF_REQUIRED).filter(([k])=>!d[k]
  if(!d.tests.length)p.push('Test requested');if(!d.embryos.some(e=>e.label))p.push('At least one embryo label in the biopsy worksheet');
  const a=String(d.aadhaar||'').replace(/\D/g,'');if(a&&a.length!==12)p.push('Aadhaar number (must be 12 digits)');return p}
 // Opens the TRF in a new window laid out for A4 and brings up the print dialog (Save as PDF).
-function printTrf(d,meta={}){
+// Preview / Print: the server fills the lab's original paper template with the data and returns a PDF,
+// which opens in the browser's PDF viewer (print or save from there). If that fails, the HTML layout is printed instead.
+async function printTrf(d,meta={}){
  const w=window.open('','_blank');if(!w){alert('Allow pop-ups for this site to print the TRF.');return}
+ w.document.write('<!doctype html><title>Preparing…</title><p style="font:14px Arial;padding:24px">Preparing the TRF…</p>');
+ try{
+  const submittedAtText=meta.submittedAt?new Date(meta.submittedAt).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true}).toUpperCase():'';
+  const res=await fetch('/api/trf/preview-pdf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:d,meta:{ref:meta.ref||'',submittedAtText}})});
+  if(!res.ok)throw new Error('render failed');
+  w.location.href=URL.createObjectURL(await res.blob());
+ }catch{printTrfHtml(d,meta,w)}
+}
+function printTrfHtml(d,meta={},existing){
+ const w=existing||window.open('','_blank');if(!w){alert('Allow pop-ups for this site to print the TRF.');return}
  const title=`TRF ${meta.ref||''} ${d?.patientName||''}`.trim();
  w.document.write('<!doctype html><title>Preparing…</title><p style="font:14px Arial;padding:24px">Preparing the TRF…</p>');
  // The stylesheet is embedded (not linked) so the print window can never render before it has loaded;
  // <base> lets its relative artwork URLs resolve against the app.
- fetch('/static/trf-doc.css?v=20261006x').then(r=>r.text()).catch(()=>'').then(css=>{
+ fetch('/static/trf-doc.css?v=20261006y').then(r=>r.text()).catch(()=>'').then(css=>{
   w.document.open();
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${location.origin}/static/"><title>${esc(title)}</title><style>${css}</style></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
   w.document.close();
