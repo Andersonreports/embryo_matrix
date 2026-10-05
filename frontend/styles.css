@@ -1410,3 +1410,4 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .stage-dialog[open]{width:100vw;height:100vh;max-width:100vw;max-height:100vh;border-radius:0;margin:0;display:flex;flex-direction:column}
 .stage-dialog .sd-wrap{flex:1;max-height:none;min-height:0}
 .sheet-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;max-width:100%}.sheet-tabs .prep-seg b{margin-left:4px;opacity:.7}
+.sheet-tabs{gap:2px;padding:3px;border-radius:12px}.sheet-tabs .prep-seg{padding:5px 10px;font-size:12px;min-height:0;line-height:1.2}.sheet-tabs .prep-seg b{font-size:11px;margin-left:3px}
