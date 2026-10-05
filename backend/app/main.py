@@ -625,7 +625,7 @@ TRF_TEXT_FIELDS = (
     "explanationDate", "geneticClinicName", "geneticClinicAddress", "geneticClinicRegNo",
 )
 TRF_EMBRYO_FIELDS = ("label", "grade", "cells", "day", "intact", "comments")
-TRF_STATUSES = ("New", "Received", "Rejected")
+TRF_STATUSES = ("New", "Approved", "Rejected")
 _trf_recent: dict[str, list[float]] = {}  # client IP -> recent submit times, for a simple rate limit
 
 def _require_lab_user(request: Request):
@@ -733,6 +733,8 @@ def update_trf_status(trf_id: int, payload: KVValue, request: Request, db: Sessi
     if not t:
         raise HTTPException(404, "Not found")
     status = str((payload.value or {}).get("status", "")) if isinstance(payload.value, dict) else ""
+    if status == "Received":  # old name of Approved
+        status = "Approved"
     if status not in TRF_STATUSES:
         raise HTTPException(400, "Unknown status")
     t.status, t.status_by, t.status_at = status, user.get("username") or "", datetime.utcnow()
