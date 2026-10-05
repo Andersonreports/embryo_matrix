@@ -1411,3 +1411,14 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .stage-dialog .sd-wrap{flex:1;max-height:none;min-height:0}
 .sheet-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px;max-width:100%}.sheet-tabs .prep-seg b{margin-left:4px;opacity:.7}
 .sheet-tabs{gap:2px;padding:3px;border-radius:12px}.sheet-tabs .prep-seg{padding:5px 10px;font-size:12px;min-height:0;line-height:1.2}.sheet-tabs .prep-seg b{font-size:11px;margin-left:3px}
+/* Samples count cards: same look as the Home stat cards */
+.stats-3col .stat-card{--c:#0a7180;position:relative;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:0;padding:14px 18px 18px;border:1px solid var(--line);border-left:4px solid var(--c)!important;border-radius:12px;background:#fff;overflow:hidden;box-shadow:none}
+.stats-3col .stat-card .stat-top{order:2;display:block;width:auto}
+.stats-3col .stat-card .stat-top small{font:700 13px "Inter";color:#20302a;letter-spacing:0;text-transform:none}
+.stats-3col .stat-card .stat-icon,.stats-3col .stat-card p{display:none}
+.stats-3col .stat-card strong{order:1;font:500 28px/1.1 "Lora";color:var(--c)}
+.stats-3col .stat-card::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:46%;background:var(--c);opacity:.5}
+.stats-3col .stat-card.stat-card-link:hover{box-shadow:0 6px 18px -10px rgba(20,60,50,.35)}
+.stats-3col .stat-card:nth-child(1){--c:#0a7180}
+.stats-3col .stat-card:nth-child(2){--c:#c07a1d}
+.stats-3col .stat-card:nth-child(3){--c:#b8473a}
