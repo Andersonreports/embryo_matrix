@@ -25,9 +25,9 @@ TRF_TEST_LABELS = {
     "PGT-HLA": "Preimplantation Genetic Testing - HLA C typing",
 }
 TRF_TEST_LABELS_M = {
-    "PGT-M": "Mutation only",
-    "PGT-A+M": "Aneuploidies + Mutation (PGT-A+M)",
-    "PGT-A+M+HLA": "Aneuploidies + Mutation + HLA matching (PGT-A+M + HLA)",
+    "PGT-M": "Preimplantation Genetic Testing - Mutation only",
+    "PGT-A+M": "Preimplantation Genetic Testing - Aneuploidies + Mutation (PGT-A+ M)",
+    "PGT-A+M+HLA": "Preimplantation Genetic Testing - Aneuploidies + Mutation + HLA matching (PGT-A+ M + HLA)",
 }
 EMBRYO_FIELDS = ("label", "grade", "cells", "day", "intact", "comments")
 
@@ -44,15 +44,19 @@ def fmt_date(v) -> str:
 def _line(d: dict, label: str, key: str, date=False) -> str:
     val = d.get(key)
     shown = fmt_date(val) if (val and date) else (esc(val) if val else "&nbsp;")
-    return f'<div class="td-line"><span class="td-label">{label}</span><span class="td-value">{shown}</span></div>'
+    cls = " td-email" if key.lower().endswith("email") or "email" in key.lower() else ""
+    return f'<div class="td-line"><span class="td-label">{label}</span><span class="td-value{cls}">{shown}</span></div>'
 
 
 def _para(d: dict, key: str) -> str:
     return f'<p class="td-para">{esc(d.get(key)) or "&nbsp;"}</p>'
 
 
-def _box(value_on: bool, label: str) -> str:
-    return f'<span class="td-check"><span class="td-box{" on" if value_on else ""}">{"✓" if value_on else ""}</span>{esc(label)}</span>'
+CURVES = '<div class="td-curve-top"></div><div class="td-curve-bottom"></div>'
+
+
+def _box(value_on: bool, label: str, radio: bool = False) -> str:
+    return f'<span class="td-check"><span class="td-box{" td-radio" if radio else ""}{" on" if value_on else ""}">{"✓" if value_on else ""}</span>{esc(label)}</span>'
 
 
 def _blank(d: dict, key: str) -> str:
@@ -85,7 +89,7 @@ def _footer(n: int) -> str:
 
 
 def _logo_row(is_m: bool = False) -> str:
-    kicker = "Preimplantation Genetic Testing" + (" Mutation (PGT-M)" if is_m else "")
+    kicker = "Preimplantation Genetic Testing" + ("<br>Mutation (PGT-M)" if is_m else "")
     return (
         f'<div class="td-logorow"><img src="file://{LOGO_PATH}" alt="Anderson Diagnostics &amp; Labs">'
         f'<div class="td-kicker">{kicker}</div></div>'
@@ -116,7 +120,7 @@ def _page1(d: dict, meta: dict) -> str:
         + _line(d, "Email:", "email")
     )
     tests_body = "".join(f"<div>{_box(k in tests, label)}</div>" for k, label in (TRF_TEST_LABELS_M if is_m else TRF_TEST_LABELS).items())
-    biopsy_days = "".join(_box(d.get("biopsyDay") == x, f"{x} Biopsy") for x in (("Day 5", "Day 6") if is_m else ("Day 3", "Day 5", "Day 6")))
+    biopsy_days = "".join(_box(d.get("biopsyDay") == x, f"{x} Biopsy", radio=True) for x in (("Day 5", "Day 6") if is_m else ("Day 3", "Day 5", "Day 6")))
     gamete_boxes = "".join(_box(x in gametes, x) for x in ("Self", "Donor Sperm", "Donor Oocyte"))
     if is_m:
         when = (f'<div class="td-line"><span class="td-label">Biopsy Date:</span><span class="td-value">'
@@ -156,10 +160,11 @@ def _page1(d: dict, meta: dict) -> str:
         ),
     )
     return (
-        f'<div class="td-page">{_logo_row(is_m)}'
+        f'<div class="td-page">{CURVES}{_logo_row(is_m)}'
         + _title_row("Test Requisition Form", '<p class="td-note-strong">ALL Sections of this form must be completed.</p>', ref_box + barcode_box)
         + f'<div class="td-grid">{left_panel}{right_panel}</div>'
         + '<div class="td-sign"><div>Patient Signature: <span></span></div><div>Clinician Signature: <span></span><br>Clinician Seal:</div></div>'
+        + ('<p class="td-small">Only ICSI embryos to be used</p>' if is_m else "")
         + '<p class="td-small">Storage and Transport: Store and ship refrigerated at -20ºC</p>'
         + '<p class="td-tiny">CONFIDENTIAL WHEN COMPLETED. The personal health information is collected for the purpose of clinical '
         + "laboratory testing only. Specimen processing at Central processing Lab at 150 PH Road, No. 150, Poonamallee High Road, "
@@ -170,7 +175,7 @@ def _page1(d: dict, meta: dict) -> str:
 
 
 def _embryo_row(e: dict, i: int, total: int, is_m: bool = False) -> str:
-    n = i + 1 if total else ""
+    n = i + 1 if i < total else ""
     cells = "".join(f"<td>{esc(e.get(k))}</td>" for k in EMBRYO_FIELDS if not (is_m and k == "day"))
     return f"<tr><td>{n}</td>{cells}</tr>"
 
@@ -178,7 +183,7 @@ def _embryo_row(e: dict, i: int, total: int, is_m: bool = False) -> str:
 def _page2(d: dict) -> str:
     is_m = d.get("formType") == "PGT-M"
     embryos = d.get("embryos") or []
-    rows = embryos if embryos else [{}]
+    rows = embryos + [{}] * max(0, 11 - len(embryos))  # the paper form always shows 11 rows
     rows_html = "".join(_embryo_row(e, i, len(embryos), is_m) for i, e in enumerate(rows))
     meta_table = (
         '<table class="td-meta"><tr><td><div class="td-line"><span class="td-label">Patient name:</span>'
@@ -186,7 +191,7 @@ def _page2(d: dict) -> str:
         '<td><div class="td-line"><span class="td-label">Date of Biopsy:</span>'
         f'<span class="td-value td-mirror-date">{fmt_date(d.get("biopsyDate")) if d.get("biopsyDate") else "&nbsp;"}</span></div></td></tr>'
         f'<tr><td>{_line(d, "IVF Lab contact No.:", "ivfLabContact")}</td>'
-        f'<td><span class="td-label">Re-biopsy included in this case:</span> {_box(d.get("rebiopsy") == "Yes", "Yes")}{_box(d.get("rebiopsy") == "No", "No")}</td></tr></table>'
+        f'<td><span class="td-label">Re-biopsy included in this case:</span> {_box(d.get("rebiopsy") == "Yes", "Yes", True)}{_box(d.get("rebiopsy") == "No", "No", True)}</td></tr></table>'
     )
     embryo_table = (
         '<table class="td-embryos"><thead><tr><th>Sl No.</th><th>' + ("Embryo tags" if is_m else "Embryo label") + '</th><th>Embryo Grade</th>'
@@ -194,15 +199,19 @@ def _page2(d: dict) -> str:
         f"<tbody>{rows_html}</tbody></table>"
     )
     return (
-        f'<div class="td-page">{_logo_row(is_m)}'
+        f'<div class="td-page">{CURVES}{_logo_row(is_m)}'
         + _title_row("Biopsy worksheet", "", '<div class="td-barcode"><i>Affix barcode label here</i></div>')
         + meta_table + embryo_table
         + '<p class="td-small">• All negative controls should be labeled NC1, NC2, etc. If sending multiple negative '
         + "controls, please specify which embryo samples correspond to each NC.</p>"
-        + f"<p>{_box(bool(d.get('dryRun')), 'Embryo Biopsy dry run')}</p>"
-        + f'<div class="td-grid td-grid-tight"><div>{_line(d, "Embryologist Name:", "embryologistName")}</div>'
-        + '<div>Embryologist Signature: <span class="td-signline"></span></div></div>'
-        + _line(d, "Embryologist email address:", "embryologistEmail")
+        + (
+            '<p class="td-biopsy-by">Biopsy performed by</p><p>Embryologist Signature: <span class="td-signline"></span></p>' + _line(d, "Email address:", "embryologistEmail")
+            if is_m
+            else f"<p>{_box(bool(d.get('dryRun')), 'Embryo Biopsy dry run')}</p>"
+            + f'<div class="td-grid td-grid-tight"><div>{_line(d, "Embryologist Name:", "embryologistName")}</div>'
+            + '<div>Embryologist Signature: <span class="td-signline"></span></div></div>'
+            + _line(d, "Embryologist email address:", "embryologistEmail")
+        )
         + '<p class="td-small">Contact Anderson Diagnostics and Labs with any questions at enquiries@andersondiagnostics.com</p>'
         + _footer(2)
         + "</div>"
@@ -213,7 +222,7 @@ def _page3(d: dict) -> str:
     relation = d.get("consentRelation")
     relation_html = f"<b>{esc(relation.lower())}</b>" if relation else "<b>wife/daughter</b>"
     return (
-        f'<div class="td-page"><div class="td-formg-title"><h2>FORM G – FORM OF CONSENT</h2><p>[See Rule 10]</p></div>'
+        f'<div class="td-page">{CURVES}<div class="td-formg-title"><h2>FORM G – FORM OF CONSENT</h2><p>[See Rule 10]</p></div>'
         f'<p class="td-legal">I, {_mirror(d, "patientName")}, {relation_html} of {_blank(d, "consentGuardianName")}. '
         f'Age {_blank(d, "consentAge")} years residing at {_blank(d, "patientAddress")}, hereby state that I have been '
         "explained fully the probable side effects and after effects of the pre-natal diagnostic procedures. I wish to "

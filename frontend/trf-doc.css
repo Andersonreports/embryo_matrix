@@ -84,4 +84,13 @@ label.td-check{cursor:pointer}
 .td-add{border:1px dashed #6cbf6c;background:#f6fbf6;color:#2e7d32;font:600 12.5px Arial,Helvetica,sans-serif;padding:7px 14px;border-radius:6px;cursor:pointer;margin-bottom:6px}
 .td-ref i{color:#888;font-size:11px}
 .td-radio{border-radius:50%}.td-biopsy-by{margin:14px 0 6px;font-size:17px;font-weight:600}
-.td-kicker{text-align:right;line-height:1.25}.td-meta td{white-space:nowrap}.td-row .td-check{white-space:nowrap}
+.td-kicker{text-align:right;line-height:1.25}.td-row .td-check{white-space:nowrap}
+/* Date of Biopsy box: date on its own line, TRF ref underneath (a two-column grid squeezed the date into 3 lines) */
+.td-refbox{display:block}
+.td-refbox .td-ref{text-align:right;margin-top:4px}
+/* Test names may be long: wrap instead of being clipped by the section edge */
+.td-body>div:not(.td-row)>.td-check{white-space:normal;align-items:flex-start}
+/* Emails are never broken mid-word: smaller, single line. Long labels (hospital) wrap like on the paper form so the value keeps room. */
+.td-value.td-email{font-size:11.5px;white-space:nowrap;word-break:normal;overflow-wrap:normal}
+.td-line .td-label{max-width:42%}
+.td-value{text-align:left}

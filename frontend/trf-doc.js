@@ -29,7 +29,7 @@ function trfPagesHtml(d,meta={},opts={}){
  // One "Label: ______" line; editable it becomes an input of the given type.
  const line=(label,key,type='text',extra='')=>`<div class="td-line"><span class="td-label">${label}${req(key)}</span>${edit
   ?`<input class="td-input" data-f="${key}" type="${type}" value="${esc(d[key])}"${extra}>`
-  :`<span class="td-value">${d[key]?(type==='date'?fmtDate(d[key]):esc(d[key])):'&nbsp;'}</span>`}</div>`;
+  :`<span class="td-value${type==='email'?' td-email':''}">${d[key]?(type==='date'?fmtDate(d[key]):esc(d[key])):'&nbsp;'}</span>`}</div>`;
  const para=key=>edit?`<textarea class="td-input td-area" data-f="${key}" rows="3">${esc(d[key])}</textarea>`:`<p class="td-para">${esc(d[key])||'&nbsp;'}</p>`;
  // Checkbox (group = array field) or radio (single-value field).
  const box=(group,value,label,on,radio=false)=>edit
@@ -83,7 +83,7 @@ function trfPagesHtml(d,meta={},opts={}){
   <table class="td-embryos"><thead><tr><th>Sl No.</th><th>${isM?'Embryo tags':'Embryo label'}${edit?' <b class="td-req">*</b>':''}</th><th>Embryo Grade</th><th>No. of cells biopsied</th>${isM?'':'<th>Day 5/ Day 6</th>'}<th>Intact cells observed (Yes/No)</th><th>Comments</th>${edit?'<th></th>':''}</tr></thead><tbody class="td-embryo-rows">${rows.map(embryoRow).join('')}</tbody></table>
   ${edit?'<button type="button" class="td-add">＋ Add embryo row</button>':''}
   <p class="td-small">• All negative controls should be labeled NC1, NC2, etc. If sending multiple negative controls, please specify which embryo samples correspond to each NC.</p>
-  ${isM?`<p class="td-biopsy-by">Biopsy performed by</p><div class="td-line"><span class="td-label">Embryologist Signature</span><span class="td-signline"></span></div>${line('Email address:','embryologistEmail','email')}`
+  ${isM?`<p class="td-biopsy-by">Biopsy performed by</p><p>Embryologist Signature: <span class="td-signline"></span></p>${line('Email address:','embryologistEmail','email')}`
   :`<p>${box('dryRun','yes','Embryo Biopsy dry run',!!d.dryRun)}</p>
   <div class="td-grid td-grid-tight"><div>${line('Embryologist Name:','embryologistName')}</div><div>Embryologist Signature: <span class="td-signline"></span></div></div>
   ${line('Embryologist email address:','embryologistEmail','email')}`}
@@ -175,7 +175,7 @@ function trfProblems(d){const p=Object.entries(TRF_REQUIRED).filter(([k])=>!d[k]
 function printTrf(d,meta={}){
  const w=window.open('','_blank');if(!w){alert('Allow pop-ups for this site to print the TRF.');return}
  const title=`TRF ${meta.ref||''} ${d?.patientName||''}`.trim();
- w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/static/trf-doc.css?v=20261006c"></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
+ w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/static/trf-doc.css?v=20261006l"></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
  w.document.close();
  const go=()=>{w.focus();w.print()};
  const img=w.document.querySelector('img');if(img&&!img.complete){img.onload=go;img.onerror=go}else setTimeout(go,300);
