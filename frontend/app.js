@@ -857,6 +857,7 @@ async function renderPatientImages(c){const grid=$('#patientImageGrid');if(!grid
  $$('.image-replace input').forEach(inp=>inp.onchange=async()=>{const f=inp.files[0];if(!f)return;try{await replaceImage(inp.closest('[data-image-id]').dataset.imageId,f);await renderPatientImages(c);toast('Image replaced')}catch(err){toast(err.message||'Could not replace the image')}})}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)}
 function showView(view){
+ {const gt=$('#genericHeaderTitle');if(gt)gt.textContent=''}  // header buttons (Image vault, Protocols) belong to one view only
  let scope='';if(view==='pgtm'){view='samples';scope='pgtm'}if(!scope)pgtmCard=null;
  if(view==='samples'||view==='cases'){const changed=samplesScope!==scope;samplesScope=scope;const h=$('#registryHeaderLeft h2');if(h?.firstChild)h.firstChild.nodeValue=scope?'PGT-M & HLA-C samples':'Patient & embryo registry';if(changed){refreshTestFilterOptions();const sms=$('#samplesMonthFilter');if(sms){if(scope){pgtmSavedMonth=sms.value;sms.value=allEmbryos().some(e=>isPgtmSample(e)&&recordMonth(e)==='Pending')?'Pending':''}else if(pgtmSavedMonth!==null){sms.value=pgtmSavedMonth;pgtmSavedMonth=null}}renderCases()}}
  const navView=scope?'pgtm':view;

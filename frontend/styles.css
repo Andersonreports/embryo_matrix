@@ -1489,3 +1489,4 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .rr-nav .rr-filters select{height:42px;min-width:130px}
 .rr-nav .rr-filters .text-button{height:42px}
 .vault-embryo-block h4{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.vault-del-btn{margin-left:auto;border:1px solid #e3b8b2;background:#fff;color:#a02f23;border-radius:999px;font:700 11px Inter,sans-serif;padding:3px 10px;cursor:pointer}.vault-del-btn:hover{background:#fdecea}
+#genericHeaderLeft.hidden{display:none!important}
