@@ -136,7 +136,7 @@ function trfFormHtml(d={}){
   <div class="tf-table-wrap"><table class="tf-table"><thead><tr><th>Sl No.</th><th>${isM?'Embryo tags':'Embryo label'} <b class="td-req">*</b></th><th>Embryo grade</th><th>No. of cells biopsied</th>${isM?'':'<th>Day 5 / Day 6</th>'}<th>Intact cells observed</th><th>Comments</th><th></th></tr></thead><tbody class="td-embryo-rows">${embryos.map((e,i)=>trfEmbryoRowHtml(e,i,type)).join('')}</tbody></table></div>
   <button type="button" class="td-add tf-add">＋ Add embryo</button>
   <p class="tf-hint">Label negative controls NC1, NC2, etc. If sending several, say in Comments which embryos each NC belongs to.</p>
-  <div class="tf-grid">${isM?'':opt('dryRun','yes','Embryo Biopsy dry run',!!d.dryRun)+'<span></span>'+f('embryologistName','Embryologist Name')}${f('embryologistEmail',isM?'Biopsy performed by — email address':'Embryologist email address','email')}</div>`,'One row per embryo biopsied.')}
+  <div class="tf-grid tf-row-end">${isM?'':opt('dryRun','yes','Embryo Biopsy dry run',!!d.dryRun)+f('embryologistName','Embryologist Name')}${f('embryologistEmail',isM?'Biopsy performed by — email address':'Embryologist email address','email')}</div>`,'One row per embryo biopsied.')}
  ${card(7,'Consent (Form G)',`<div class="tf-grid">
   <div class="tf-field"><span>Patient is</span><div class="tf-opts">${opt('consentRelation','Wife','Wife',d.consentRelation==='Wife',true)}${opt('consentRelation','Daughter','Daughter',d.consentRelation==='Daughter',true)}</div></div>
   ${f('consentGuardianName','Name of husband / father')}
@@ -186,7 +186,7 @@ function printTrfHtml(d,meta={},existing){
  w.document.write('<!doctype html><title>Preparing…</title><p style="font:14px Arial;padding:24px">Preparing the TRF…</p>');
  // The stylesheet is embedded (not linked) so the print window can never render before it has loaded;
  // <base> lets its relative artwork URLs resolve against the app.
- fetch('/static/trf-doc.css?v=20261007a').then(r=>r.text()).catch(()=>'').then(css=>{
+ fetch('/static/trf-doc.css?v=20261007b').then(r=>r.text()).catch(()=>'').then(css=>{
   w.document.open();
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${location.origin}/static/"><title>${esc(title)}</title><style>${css}</style></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
   w.document.close();
