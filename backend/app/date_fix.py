@@ -25,6 +25,17 @@ CHAIN = [  # (field, anchor, min days from anchor, max days from anchor)
     ("attune upload", "seq|wga|received", -1, 150),
     ("ngs report", "attune|seq|wga|received", -1, 180),
 ]
+# Tight "usual gap" windows (days after the step named) taken from the sheet's own unambiguous dates (day above 12): e.g. the WGA
+# is done 0-10 days after receipt, sequencing 0-5 days after WGA (99th percentile). Used only to choose between two readings that
+# both fit the wide window above: if exactly one reading falls in the usual gap, that is the real one.
+TIGHT = {
+    ("date of biopsy", "received"): (-20, 2),
+    ("date trf received", "received"): (-2, 3),
+    ("wga done on", "received"): (-2, 20),
+    ("seq date", "wga"): (-1, 15), ("seq date", "received"): (-1, 30),
+    ("attune upload", "seq"): (0, 30), ("attune upload", "wga"): (0, 40), ("attune upload", "received"): (0, 50),
+    ("ngs report", "attune"): (-5, 5), ("ngs report", "seq"): (0, 35), ("ngs report", "wga"): (0, 45), ("ngs report", "received"): (0, 55),
+}
 DATE_FIELDS = [RECEIVED] + [c[0] for c in CHAIN]
 _TOKEN = re.compile(r"(\d{1,2})([-/.])(\d{1,2})\2(\d{4})")
 
@@ -87,10 +98,10 @@ def normalize_row(row, today=None):
         toks = _tokens(text)
         if not toks:
             return None, None
-        anchor = None
+        anchor, anchor_name = None, None
         for n in anchor_names:
             if n in resolved:
-                anchor = resolved[n]
+                anchor, anchor_name = resolved[n], n
                 break
         new_text, last, changed, bad = str(text), None, False, False
         pieces, pos = [], 0
@@ -105,6 +116,9 @@ def normalize_row(row, today=None):
                     pick = _pick(cands, lambda c: _fits_tab(c, tab))
                 if pick is None and anchor is not None:
                     pick = _pick(cands, lambda c: _within(c, anchor, lo, hi))
+                    if pick is None and (field, anchor_name) in TIGHT:
+                        t_lo, t_hi = TIGHT[(field, anchor_name)]
+                        pick = _pick(cands, lambda c: _within(c, anchor, t_lo, t_hi))
                 if pick is None and len(cands) == 1:
                     pick = cands[0]
             if pick is None:

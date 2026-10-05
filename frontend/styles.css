@@ -1482,3 +1482,9 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .rr-filters label{display:flex;flex-direction:column;gap:4px;font:600 11px "Inter";color:#5d6c66;text-transform:uppercase;letter-spacing:.6px}
 .rr-filters select{height:38px;min-width:150px;border:1px solid #cfdcd8;border-radius:999px;padding:0 14px;font:500 13px "Inter";background:#fff;color:var(--ink);text-transform:none;letter-spacing:0}
 .rr-filters .text-button{height:38px}
+/* Run reports: filters sit in the toolbar row, right of the month picker, labelled by their first option */
+.rr-nav{flex-wrap:wrap;gap:8px}
+.rr-nav .rr-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 0 8px}
+.rr-nav .rr-filters label>span{display:none}
+.rr-nav .rr-filters select{height:42px;min-width:130px}
+.rr-nav .rr-filters .text-button{height:42px}
