@@ -1463,3 +1463,8 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .tf-grid.tf-row-end{align-items:end}
 .tf-field:has([data-f="patientEmail"]){grid-column:span 2}@media(max-width:900px){.tf-field:has([data-f="patientEmail"]){grid-column:1/-1}}
 .tf-field:has([data-g="consentRelation"]){flex-direction:row;align-items:center;gap:14px;flex-wrap:wrap}
+/* Consent card: narrow first column (patient is / age / dates), wide second column */
+.tf-grid.tf-grid-consent{grid-template-columns:minmax(0,.7fr) minmax(0,1.5fr)}
+.tf-grid-consent .tf-wide{grid-column:1/-1}
+.tf-grid-consent .tf-field input[type=date]{max-width:210px}
+@media(max-width:900px){.tf-grid.tf-grid-consent{grid-template-columns:1fr}}
