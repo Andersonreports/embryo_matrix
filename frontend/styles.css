@@ -1403,3 +1403,7 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 #genericHeaderLeft:has(#openImageVault){flex:1 1 100%;width:100%;display:flex;justify-content:center}
 #openImageVault{background:linear-gradient(135deg,#6d4bd1,#8a63ea)!important;color:#fff!important;border:0!important;font-weight:800!important;font-size:14px;padding:0 26px;height:40px;box-shadow:0 4px 12px rgba(109,75,209,.3)}
 #openImageVault:hover{filter:brightness(1.08)}
+#genericHeaderLeft:has(#openProtocols){flex:1 1 100%;width:100%}
+#genericHeaderTitle:has(#openProtocols){display:flex;align-items:center;justify-content:space-between;width:100%}
+#openProtocols{background:linear-gradient(135deg,#0a7180,#08a4a2)!important;color:#fff!important;border:0!important;font-weight:800!important;font-size:14px;padding:0 26px;height:40px;box-shadow:0 4px 12px rgba(10,113,128,.3)}
+#openProtocols:hover{filter:brightness(1.08)}
