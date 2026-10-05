@@ -1478,3 +1478,7 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .tf-grid-consent .tf-wide{grid-column:span 1}
 .tf-grid-consent textarea{min-height:44px}
 @media(max-width:900px){.tf-grid-consent .tf-wide{grid-column:1/-1}}
+.rr-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin:0 0 14px}.rr-filters.hidden{display:none}
+.rr-filters label{display:flex;flex-direction:column;gap:4px;font:600 11px "Inter";color:#5d6c66;text-transform:uppercase;letter-spacing:.6px}
+.rr-filters select{height:38px;min-width:150px;border:1px solid #cfdcd8;border-radius:999px;padding:0 14px;font:500 13px "Inter";background:#fff;color:var(--ink);text-transform:none;letter-spacing:0}
+.rr-filters .text-button{height:38px}
