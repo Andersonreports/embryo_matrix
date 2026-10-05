@@ -62,6 +62,19 @@ def readings(d, mo, y):
     return [x for x in out if x]
 
 
+def cand_dates(d, mo, y, tab):
+    """Readings that are possible for this sheet: the live sheet only holds 2026 (its January tab also holds December 2025
+    samples). A date typed with another year (e.g. 04-08-2025 in the April sheet) is a typo for 2026, so 2026 is tried too."""
+    years = [y] if y == 2026 else [y, 2026]
+    out = []
+    for yy in years:
+        for c in readings(d, mo, yy):
+            ok = c.year == 2026 or (c.year == 2025 and c.month == 12 and tab == (2026, 1))
+            if ok and c not in out:
+                out.append(c)
+    return out
+
+
 def _fits_tab(dt, tab):
     diff = (tab[0] - dt.year) * 12 + (tab[1] - dt.month)
     return diff in (0, 1)   # received in the sheet's month, or the month before
@@ -106,7 +119,7 @@ def normalize_row(row, today=None):
         new_text, last, changed, bad = str(text), None, False, False
         pieces, pos = [], 0
         for m, d, mo, y in toks:
-            cands = readings(d, mo, y)
+            cands = cand_dates(d, mo, y, tab) or readings(d, mo, y)
             pick = None
             if len(cands) == 1:
                 pick = cands[0]                                   # cannot be flipped
@@ -148,13 +161,13 @@ def normalize_row(row, today=None):
         # both / neither reading fit the tab: try the sample's own later, unambiguous dates as anchors
         for later in ("wga done on", "seq date", "attune upload", "ngs report"):
             toks = _tokens(row.get(later))
-            sure = [readings(d, mo, y)[0] for _, d, mo, y in toks if len(readings(d, mo, y)) == 1]
+            sure = [cand_dates(d, mo, y, tab)[0] for _, d, mo, y in toks if len(cand_dates(d, mo, y, tab)) == 1]
             if sure:
                 anchor_date = min(sure)
                 rtoks = _tokens(row.get(RECEIVED))
                 if rtoks:
                     _, d, mo, y = rtoks[0]
-                    pick = _pick(readings(d, mo, y), lambda c: -2 <= (anchor_date - c).days <= 120)
+                    pick = _pick(cand_dates(d, mo, y, tab), lambda c: -2 <= (anchor_date - c).days <= 120)
                     if pick:
                         resolved["received"] = pick
                         unclear.remove(RECEIVED)
