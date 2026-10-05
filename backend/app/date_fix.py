@@ -69,7 +69,8 @@ def cand_dates(d, mo, y, tab):
     out = []
     for yy in years:
         for c in readings(d, mo, yy):
-            ok = c.year == 2026 or (c.year == 2025 and c.month == 12 and tab == (2026, 1))
+            # Samples received in Q4 2025 legitimately sit in the January / February 2026 tabs (and in tabs without a month).
+            ok = c.year == 2026 or (c.year == 2025 and c.month >= 10 and (tab is None or tab <= (2026, 2)))
             if ok and c not in out:
                 out.append(c)
     return out
