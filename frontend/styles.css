@@ -1462,3 +1462,4 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .tf-grid-2 .tf-wide.tf-full{grid-column:1/-1}
 .tf-grid.tf-row-end{align-items:end}
 .tf-field:has([data-f="patientEmail"]){grid-column:span 2}@media(max-width:900px){.tf-field:has([data-f="patientEmail"]){grid-column:1/-1}}
+.tf-field:has([data-g="consentRelation"]){flex-direction:row;align-items:center;gap:14px;flex-wrap:wrap}
