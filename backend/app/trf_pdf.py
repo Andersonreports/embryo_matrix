@@ -80,10 +80,11 @@ def _panel(*sections: str) -> str:
     return f'<div class="td-panel">{"".join(sections)}</div>'
 
 
-def _footer(n: int) -> str:
-    # Services strip cropped from the paper template; page number sits below its right corner.
-    return (f'<div class="td-footer"><img class="td-footer-img" src="file://{FRONTEND_DIR}/trf-footer.png" alt="">'
-            f'<span class="td-pagenum">Pg.{n} of 3</span></div>')
+def _footer(n: int, is_m: bool = False) -> str:
+    # Bottom of the page exactly as on the paper template (arch, services strip, page number, and
+    # on page 1 the storage / confidentiality notes; on page 2 the contact line).
+    name = {1: "1m" if is_m else "1a", 2: "2m" if is_m else "2a"}.get(n, "3")
+    return f'<img class="td-footer-img" src="file://{FRONTEND_DIR}/trf-footer-{name}.png" alt="">'
 
 
 def _logo_row(is_m: bool = False) -> str:
@@ -155,16 +156,11 @@ def _page1(d: dict, meta: dict) -> str:
         ),
     )
     return (
-        f'<div class="td-page td-hdr">{CURVE_BOTTOM}{_logo_row(is_m)}'
+        f'<div class="td-page td-hdr">{_logo_row(is_m)}'
         + _title_row("Test Requisition Form", '<p class="td-note-strong">ALL Sections of this form must be completed.</p>', ref_box + barcode_box)
         + f'<div class="td-grid">{left_panel}{right_panel}</div>'
         + '<div class="td-sign"><div>Patient Signature: <span></span></div><div>Clinician Signature: <span></span><br>Clinician Seal:</div></div>'
-        + ('<p class="td-small">Only ICSI embryos to be used</p>' if is_m else "")
-        + '<p class="td-small">Storage and Transport: Store and ship refrigerated at -20ºC</p>'
-        + '<p class="td-tiny">CONFIDENTIAL WHEN COMPLETED. The personal health information is collected for the purpose of clinical '
-        + "laboratory testing only. Specimen processing at Central processing Lab at 150 PH Road, No. 150, Poonamallee High Road, "
-        + "(Opp to Dasaprakash Hotel) Chennai – 600 084.</p>"
-        + _footer(1)
+        + _footer(1, is_m)
         + "</div>"
     )
 
@@ -194,7 +190,7 @@ def _page2(d: dict) -> str:
         f"<tbody>{rows_html}</tbody></table>"
     )
     return (
-        f'<div class="td-page td-hdr">{CURVE_BOTTOM}{_logo_row(is_m)}'
+        f'<div class="td-page td-hdr">{_logo_row(is_m)}'
         + _title_row("Biopsy worksheet", "", '<div class="td-barcode"><i>Affix barcode label here</i></div>')
         + meta_table + embryo_table
         + '<p class="td-small">• All negative controls should be labeled NC1, NC2, etc. If sending multiple negative '
@@ -207,8 +203,7 @@ def _page2(d: dict) -> str:
             + '<div>Embryologist Signature: <span class="td-signline"></span></div></div>'
             + _line(d, "Embryologist email address:", "embryologistEmail")
         )
-        + '<p class="td-small">Contact Anderson Diagnostics and Labs with any questions at enquiries@andersondiagnostics.com</p>'
-        + _footer(2)
+        + _footer(2, is_m)
         + "</div>"
     )
 
