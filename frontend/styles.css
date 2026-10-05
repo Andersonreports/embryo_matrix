@@ -1407,3 +1407,5 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 #genericHeaderTitle:has(#openProtocols){display:flex;align-items:center;justify-content:space-between;width:100%}
 #openProtocols{background:linear-gradient(135deg,#0a7180,#08a4a2)!important;color:#fff!important;border:0!important;font-weight:800!important;font-size:14px;padding:0 26px;height:40px;box-shadow:0 4px 12px rgba(10,113,128,.3)}
 #openProtocols:hover{filter:brightness(1.08)}
+.stage-dialog[open]{width:100vw;height:100vh;max-width:100vw;max-height:100vh;border-radius:0;margin:0;display:flex;flex-direction:column}
+.stage-dialog .sd-wrap{flex:1;max-height:none;min-height:0}
