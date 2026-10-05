@@ -140,3 +140,16 @@ label.td-check{cursor:pointer}
 .td-hdr .td-sign{margin:8px 0 4px}
 .td-body>div:not(.td-row)>.td-check{font-size:12px}
 .td-section h3{padding:3px 12px}
+/* Form G page: spacing and type follow the paper original (roomy, left-aligned legal text, signature block spread down the page). */
+.td-page-g{font-size:16px;line-height:1.55}
+.td-page-g .td-formg-title{margin:22px 0 26px}
+.td-page-g .td-formg-title h2{font-size:26px}
+.td-page-g .td-formg-title p{font-size:15px}
+.td-page-g .td-legal{margin:0 0 22px;text-align:left}
+.td-page-g .td-legal:first-of-type{text-indent:48px}
+.td-page-g>.td-grid-tight{margin:48px 0 10px}
+.td-page-g>.td-line{margin:14px 0}
+.td-page-g .td-legal-label{margin:0;font-size:17px;padding-left:50px}
+.td-page-g .td-legal+.td-legal-label{margin-top:52px}
+.td-page-g .td-legal-label~.td-grid-tight{margin:14px 0}
+.td-page-g .td-legal-label~.td-line{margin:14px 0}

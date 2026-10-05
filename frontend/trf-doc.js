@@ -88,7 +88,7 @@ function trfPagesHtml(d,meta={},opts={}){
  const relationInline=edit
   ?`${box('consentRelation','Wife','Wife',d.consentRelation==='Wife',true)}${box('consentRelation','Daughter','Daughter',d.consentRelation==='Daughter',true)}`
   :`<b>${d.consentRelation?esc(d.consentRelation.toLowerCase()):'wife/daughter'}</b>`;
- const page3=`<div class="td-page">${curves}
+ const page3=`<div class="td-page td-page-g">${curves}
   <div class="td-formg-title"><h2>FORM G – FORM OF CONSENT</h2><p>[See Rule 10]</p></div>
   <p class="td-legal">I, ${mirror('patientName')}, ${relationInline} of ${blank('consentGuardianName',22)}. Age ${blank('consentAge',4)} years residing at ${blank('patientAddress',42)}, hereby state that I have been explained fully the probable side effects and after effects of the pre-natal diagnostic procedures. I wish to undergo the pre-natal diagnostic procedures in my interest to find out the possibility of any abnormality (i.e. deformity or disorder) in the child I am carrying.</p>
   <p class="td-legal">I undertake not to terminate the pregnancy if the pre-natal procedure and any pre-natal tests conducted show the absence of deformity or disorders. I understand that the sex of the fetus will not be disclosed to me.</p>

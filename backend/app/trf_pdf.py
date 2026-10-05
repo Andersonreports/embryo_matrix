@@ -213,7 +213,7 @@ def _page3(d: dict) -> str:
     relation = d.get("consentRelation")
     relation_html = f"<b>{esc(relation.lower())}</b>" if relation else "<b>wife/daughter</b>"
     return (
-        f'<div class="td-page">{CURVES}<div class="td-formg-title"><h2>FORM G – FORM OF CONSENT</h2><p>[See Rule 10]</p></div>'
+        f'<div class="td-page td-page-g">{CURVES}<div class="td-formg-title"><h2>FORM G – FORM OF CONSENT</h2><p>[See Rule 10]</p></div>'
         f'<p class="td-legal">I, {_mirror(d, "patientName")}, {relation_html} of {_blank(d, "consentGuardianName")}. '
         f'Age {_blank(d, "consentAge")} years residing at {_blank(d, "patientAddress")}, hereby state that I have been '
         "explained fully the probable side effects and after effects of the pre-natal diagnostic procedures. I wish to "
