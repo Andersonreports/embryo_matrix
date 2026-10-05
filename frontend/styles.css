@@ -1440,3 +1440,4 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .trf-suggest.hidden{display:none}
 .trf-suggest button{display:block;width:100%;text-align:left;border:0;background:none;padding:9px 12px;border-radius:8px;font:500 13px "Inter";color:#20302a;cursor:pointer}
 .trf-suggest button:hover,.trf-suggest button.on{background:#e3f3f1;color:#0a7180}
+@media(min-width:721px){.topbar .brand{margin-right:28px}}
