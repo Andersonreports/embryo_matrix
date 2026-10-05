@@ -720,7 +720,7 @@ function homeCards(){if(homeCardsMemo&&homeCardsMemo.cases===cases&&homeCardsMem
  cards.sort((a,b)=>b.sortKey.localeCompare(a.sortKey));
  homeCardsMemo={cases,files:resultFilesCache,cards};return cards}
 // Home: the run-search bar spans the same width as the Samples-through-Protocols nav range.
-function alignHomeSearch(){const wrap=$('#runSearchWrap'),toolbar=document.querySelector('.home-toolbar'),from=document.querySelector('.nav-item[data-view="overview"]'),to=document.querySelector('.nav-item[data-view="protocols"]');if(!wrap||!toolbar||!from||!to)return;const tRect=toolbar.getBoundingClientRect(),fRect=from.getBoundingClientRect(),eRect=to.getBoundingClientRect();wrap.classList.add('search-aligned');wrap.style.left=`${fRect.left-tRect.left}px`;wrap.style.width=`${eRect.right-fRect.left}px`}
+function alignHomeSearch(){}
 window.addEventListener('load',()=>alignHomeSearch());document.fonts?.ready.then(()=>alignHomeSearch());
 window.addEventListener('resize',()=>{if(!$('#homeView')?.classList.contains('hidden')){alignHomeSearch();capStatusColumns()}});
 // Cards vary in height (a completed card's QC row, a pending card's shorter meta line, ...),

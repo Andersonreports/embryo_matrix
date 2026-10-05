@@ -1399,3 +1399,4 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .import-topbar{display:flex;justify-content:flex-end;margin-bottom:12px}
 .rr-actions{display:flex;gap:8px;align-items:center}
 .rr-actions .compact{height:42px}
+.home-toolbar #runSearchWrap{max-width:none;width:100%;justify-self:stretch}
