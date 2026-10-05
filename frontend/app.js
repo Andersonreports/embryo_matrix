@@ -132,7 +132,7 @@ function withCellEdits(r){
 }
 // PGT-M tab: the Samples table limited to PGT-M and HLA-C typing tests (PGT-A+M is not included).
 let samplesScope='';
-const isPgtmSample=e=>/(^|[^A-Z])PGT-?M|HLA/.test(String(field(e,['test name','test'])||'').toUpperCase());
+const isPgtmSample=e=>/(^|[^A-Z])PGT-?M|HLA|HLC/.test(String(field(e,['test name','test'])||'').toUpperCase());
 // Samples and PGT-M tabs: one button per sheet tab (Pending, month tabs, NOT REPORTING...) above the table, driving the month/sheet filter.
 let pgtmSavedMonth=null;
 function renderSheetTabs(){let bar=$('#sheetTabs');const table=$('#caseTable');if(!table)return;if(!bar){bar=document.createElement('div');bar.id='sheetTabs';bar.className='prep-segments sheet-tabs';table.parentNode.insertBefore(bar,table);bar.onclick=e=>{const b=e.target.closest('[data-sheet]');if(!b)return;const sms=$('#samplesMonthFilter');if(sms)sms.value=b.dataset.sheet;renderCases()}}
