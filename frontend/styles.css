@@ -1397,3 +1397,5 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .qc-patient-chip:hover{background:#efcfc6}
 
 .import-topbar{display:flex;justify-content:flex-end;margin-bottom:12px}
+.rr-actions{display:flex;gap:8px;align-items:center}
+.rr-actions .compact{height:42px}
