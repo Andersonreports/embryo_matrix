@@ -83,3 +83,5 @@ label.td-check{cursor:pointer}
 .td-remove:hover{color:#c0392b;background:#fdecea}
 .td-add{border:1px dashed #6cbf6c;background:#f6fbf6;color:#2e7d32;font:600 12.5px Arial,Helvetica,sans-serif;padding:7px 14px;border-radius:6px;cursor:pointer;margin-bottom:6px}
 .td-ref i{color:#888;font-size:11px}
+.td-radio{border-radius:50%}.td-biopsy-by{margin:14px 0 6px;font-size:17px;font-weight:600}
+.td-kicker{text-align:right;line-height:1.25}.td-meta td{white-space:nowrap}.td-row .td-check{white-space:nowrap}

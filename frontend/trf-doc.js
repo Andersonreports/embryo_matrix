@@ -12,9 +12,9 @@ const TRF_TEST_LABELS={
 };
 // PGT-M requisition form (mutation testing): its own test list.
 const TRF_TEST_LABELS_M={
- 'PGT-M':'Mutation only',
- 'PGT-A+M':'Aneuploidies + Mutation (PGT-A+M)',
- 'PGT-A+M+HLA':'Aneuploidies + Mutation + HLA matching (PGT-A+M + HLA)'
+ 'PGT-M':'Preimplantation Genetic Testing - Mutation only',
+ 'PGT-A+M':'Preimplantation Genetic Testing - Aneuploidies + Mutation (PGT-A+ M)',
+ 'PGT-A+M+HLA':'Preimplantation Genetic Testing - Aneuploidies + Mutation + HLA matching (PGT-A+ M + HLA)'
 };
 const trfLabelsFor=type=>type==='PGT-M'?TRF_TEST_LABELS_M:TRF_TEST_LABELS;
 // Required to submit (marked * on the form); the server checks the same list.
@@ -34,7 +34,7 @@ function trfPagesHtml(d,meta={},opts={}){
  // Checkbox (group = array field) or radio (single-value field).
  const box=(group,value,label,on,radio=false)=>edit
   ?`<label class="td-check"><input type="${radio?'radio':'checkbox'}" ${radio?`name="trf-${group}"`:''} data-g="${group}" value="${esc(value)}"${on?' checked':''}>${esc(label)}</label>`
-  :`<span class="td-check"><span class="td-box${on?' on':''}">${on?'✓':''}</span>${esc(label)}</span>`;
+  :`<span class="td-check"><span class="td-box${radio?' td-radio':''}${on?' on':''}">${on?'✓':''}</span>${esc(label)}</span>`;
  // A blank filled in *inline*, mid-sentence (Form G's fill-in-the-blank legal wording).
  const blank=(key,ch=16)=>edit
   ?`<input class="td-input td-inline" data-f="${key}" style="width:${ch}ch" value="${esc(d[key])}">`
@@ -46,7 +46,7 @@ function trfPagesHtml(d,meta={},opts={}){
  const panel=(...sections)=>`<div class="td-panel">${sections.join('')}</div>`;
  const curves=`<div class="td-curve-top"></div><div class="td-curve-bottom"></div>`;
  const footer=n=>`<div class="td-footer"><p class="td-services">PGT-A, PGT-M &amp; PGT-SR | Clinical Exome Sequencing | Microarray | Male Infertility | Recurrent Pregnancy Loss | Carrier Screening | Amniotic Fluid Testing | POC Analysis | NIPS<br>Fertility Genetics | Genetic Counseling | Oncogenetics | Neurogenetics | Infectious Genetics | New Born Screening</p><span class="td-pagenum">Pg.${n} of 3</span></div>`;
- const logoRow=`<div class="td-logorow"><img src="/static/anderson-logo.png" alt="Anderson Diagnostics &amp; Labs"><div class="td-kicker">Preimplantation Genetic Testing${isM?' Mutation (PGT-M)':''}</div></div>`;
+ const logoRow=`<div class="td-logorow"><img src="/static/anderson-logo.png" alt="Anderson Diagnostics &amp; Labs"><div class="td-kicker">Preimplantation Genetic Testing${isM?'<br>Mutation (PGT-M)':''}</div></div>`;
  const titleRow=(title,noteHtml,boxHtml)=>`<div class="td-titlerow"><div><h2 class="td-title">${title}</h2>${noteHtml||''}</div><div class="td-titlebox">${boxHtml||''}</div></div>`;
  const refInfo=meta.ref?`TRF ref: <b>${esc(meta.ref)}</b>`:(edit?'<i>Reference number is given on submit</i>':'');
  const refBox=`<div class="td-refbox"><div>${line('Date of Biopsy:','biopsyDate','date')}</div>${(refInfo||meta.submittedAt)?`<div class="td-ref">${refInfo}${meta.submittedAt?`<span>Submitted ${esc(new Date(meta.submittedAt).toLocaleString())}</span>`:''}</div>`:''}</div>`;
@@ -67,6 +67,7 @@ function trfPagesHtml(d,meta={},opts={}){
    )}
   </div>
   <div class="td-sign"><div>Patient Signature: <span></span></div><div>Clinician Signature: <span></span><br>Clinician Seal:</div></div>
+  ${isM?'<p class="td-small">Only ICSI embryos to be used</p>':''}
   <p class="td-small">Storage and Transport: Store and ship refrigerated at -20ºC</p>
   <p class="td-tiny">CONFIDENTIAL WHEN COMPLETED. The personal health information is collected for the purpose of clinical laboratory testing only. Specimen processing at Central processing Lab at 150 PH Road, No. 150, Poonamallee High Road, (Opp to Dasaprakash Hotel) Chennai – 600 084.</p>
   ${footer(1)}</div>`;
@@ -74,17 +75,18 @@ function trfPagesHtml(d,meta={},opts={}){
  const cellSel=(k,v,choices)=>`<select class="td-cell" data-e="${k}"><option value=""></option>${choices.map(c=>`<option${v===c?' selected':''}>${c}</option>`).join('')}</select>`;
  const embryoRow=(e,i)=>edit
   ?`<tr><td class="td-n">${i+1}</td><td>${cellIn('label',e.label)}</td><td>${cellIn('grade',e.grade)}</td><td>${cellIn('cells',e.cells)}</td>${isM?'':`<td>${cellSel('day',e.day,['Day 5','Day 6'])}</td>`}<td>${cellSel('intact',e.intact,['Yes','No'])}</td><td>${cellIn('comments',e.comments)}</td><td class="td-x"><button type="button" class="td-remove" aria-label="Remove this embryo">×</button></td></tr>`
-  :`<tr><td>${embryos.length?i+1:''}</td><td>${esc(e.label)}</td><td>${esc(e.grade)}</td><td>${esc(e.cells)}</td>${isM?'':`<td>${esc(e.day)}</td>`}<td>${esc(e.intact)}</td><td>${esc(e.comments)}</td></tr>`;
- const rows=embryos.length?embryos:(edit?[{},{},{}]:[{}]);
+  :`<tr><td>${i<embryos.length?i+1:''}</td><td>${esc(e.label)}</td><td>${esc(e.grade)}</td><td>${esc(e.cells)}</td>${isM?'':`<td>${esc(e.day)}</td>`}<td>${esc(e.intact)}</td><td>${esc(e.comments)}</td></tr>`;
+ const rows=edit?(embryos.length?embryos:[{},{},{}]):[...embryos,...Array(Math.max(0,11-embryos.length)).fill({})];
  const page2=`<div class="td-page">${curves}${logoRow}
   ${titleRow('Biopsy worksheet','',barcodeBox)}
   <table class="td-meta"><tr><td><div class="td-line"><span class="td-label">Patient name:</span><span class="td-value td-mirror">${esc(d.patientName)||'&nbsp;'}</span></div></td><td><div class="td-line"><span class="td-label">Date of Biopsy:</span><span class="td-value td-mirror-date">${d.biopsyDate?fmtDate(d.biopsyDate):'&nbsp;'}</span></div></td></tr><tr><td>${line('IVF Lab contact No.:','ivfLabContact','tel')}</td><td><span class="td-label">Re-biopsy included in this case:</span> ${box('rebiopsy','Yes','Yes',d.rebiopsy==='Yes',true)}${box('rebiopsy','No','No',d.rebiopsy==='No',true)}</td></tr></table>
   <table class="td-embryos"><thead><tr><th>Sl No.</th><th>${isM?'Embryo tags':'Embryo label'}${edit?' <b class="td-req">*</b>':''}</th><th>Embryo Grade</th><th>No. of cells biopsied</th>${isM?'':'<th>Day 5/ Day 6</th>'}<th>Intact cells observed (Yes/No)</th><th>Comments</th>${edit?'<th></th>':''}</tr></thead><tbody class="td-embryo-rows">${rows.map(embryoRow).join('')}</tbody></table>
   ${edit?'<button type="button" class="td-add">＋ Add embryo row</button>':''}
   <p class="td-small">• All negative controls should be labeled NC1, NC2, etc. If sending multiple negative controls, please specify which embryo samples correspond to each NC.</p>
-  <p>${box('dryRun','yes','Embryo Biopsy dry run',!!d.dryRun)}</p>
+  ${isM?`<p class="td-biopsy-by">Biopsy performed by</p><div class="td-line"><span class="td-label">Embryologist Signature</span><span class="td-signline"></span></div>${line('Email address:','embryologistEmail','email')}`
+  :`<p>${box('dryRun','yes','Embryo Biopsy dry run',!!d.dryRun)}</p>
   <div class="td-grid td-grid-tight"><div>${line('Embryologist Name:','embryologistName')}</div><div>Embryologist Signature: <span class="td-signline"></span></div></div>
-  ${line('Embryologist email address:','embryologistEmail','email')}
+  ${line('Embryologist email address:','embryologistEmail','email')}`}
   <p class="td-small">Contact Anderson Diagnostics and Labs with any questions at enquiries@andersondiagnostics.com</p>
   ${footer(2)}</div>`;
  const relationInline=edit
@@ -138,7 +140,7 @@ function trfFormHtml(d={}){
   <div class="tf-table-wrap"><table class="tf-table"><thead><tr><th>Sl No.</th><th>${isM?'Embryo tags':'Embryo label'} <b class="td-req">*</b></th><th>Embryo grade</th><th>No. of cells biopsied</th>${isM?'':'<th>Day 5 / Day 6</th>'}<th>Intact cells observed</th><th>Comments</th><th></th></tr></thead><tbody class="td-embryo-rows">${embryos.map((e,i)=>trfEmbryoRowHtml(e,i,type)).join('')}</tbody></table></div>
   <button type="button" class="td-add tf-add">＋ Add embryo</button>
   <p class="tf-hint">Label negative controls NC1, NC2, etc. If sending several, say in Comments which embryos each NC belongs to.</p>
-  <div class="tf-grid">${opt('dryRun','yes','Embryo Biopsy dry run',!!d.dryRun)}<span></span>${f('embryologistName','Embryologist Name')}${f('embryologistEmail','Embryologist email address','email')}</div>`,'One row per embryo biopsied.')}
+  <div class="tf-grid">${isM?'':opt('dryRun','yes','Embryo Biopsy dry run',!!d.dryRun)+'<span></span>'+f('embryologistName','Embryologist Name')}${f('embryologistEmail',isM?'Biopsy performed by — email address':'Embryologist email address','email')}</div>`,'One row per embryo biopsied.')}
  ${card(7,'Consent (Form G)',`<div class="tf-grid">
   <div class="tf-field"><span>Patient is</span><div class="tf-opts">${opt('consentRelation','Wife','Wife',d.consentRelation==='Wife',true)}${opt('consentRelation','Daughter','Daughter',d.consentRelation==='Daughter',true)}</div></div>
   ${f('consentGuardianName','Name of husband / father')}
@@ -173,7 +175,7 @@ function trfProblems(d){const p=Object.entries(TRF_REQUIRED).filter(([k])=>!d[k]
 function printTrf(d,meta={}){
  const w=window.open('','_blank');if(!w){alert('Allow pop-ups for this site to print the TRF.');return}
  const title=`TRF ${meta.ref||''} ${d?.patientName||''}`.trim();
- w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/static/trf-doc.css"></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
+ w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/static/trf-doc.css?v=20261006c"></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
  w.document.close();
  const go=()=>{w.focus();w.print()};
  const img=w.document.querySelector('img');if(img&&!img.complete){img.onload=go;img.onerror=go}else setTimeout(go,300);
