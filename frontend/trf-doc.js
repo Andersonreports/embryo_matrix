@@ -171,13 +171,17 @@ function trfProblems(d){const p=Object.entries(TRF_REQUIRED).filter(([k])=>!d[k]
 function printTrf(d,meta={}){
  const w=window.open('','_blank');if(!w){alert('Allow pop-ups for this site to print the TRF.');return}
  const title=`TRF ${meta.ref||''} ${d?.patientName||''}`.trim();
- w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link rel="stylesheet" href="/static/trf-doc.css?v=20261006u"></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
- w.document.close();
- // Print only once the stylesheet and every image (header / footer artwork) have loaded - otherwise the
- // browser prints an unstyled page.
- let done=false;const go=()=>{if(done)return;done=true;w.focus();w.print()};
- const waits=[...w.document.querySelectorAll('link[rel=stylesheet],img')].map(el=>new Promise(r=>{const ready=el.tagName==='IMG'?el.complete:!!el.sheet;if(ready)r();else{el.onload=r;el.onerror=r}}));
- Promise.all(waits).then(()=>setTimeout(go,200));setTimeout(go,6000);
+ w.document.write('<!doctype html><title>Preparing…</title><p style="font:14px Arial;padding:24px">Preparing the TRF…</p>');
+ // The stylesheet is embedded (not linked) so the print window can never render before it has loaded;
+ // <base> lets its relative artwork URLs resolve against the app.
+ fetch('/static/trf-doc.css?v=20261006v').then(r=>r.text()).catch(()=>'').then(css=>{
+  w.document.open();
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><base href="${location.origin}/static/"><title>${esc(title)}</title><style>${css}</style></head><body class="td-print">${trfPagesHtml(d,meta)}</body></html>`);
+  w.document.close();
+  let done=false;const go=()=>{if(done)return;done=true;w.focus();w.print()};
+  const imgs=[...w.document.querySelectorAll('img')].map(el=>new Promise(r=>{if(el.complete)r();else{el.onload=r;el.onerror=r}}));
+  Promise.all(imgs).then(()=>setTimeout(go,300));setTimeout(go,8000);
+ });
 }
 Object.assign(global,{TRF_TEST_LABELS,TRF_TEST_LABELS_M,TRF_REQUIRED,trfPagesHtml,trfFormHtml,trfCollect,trfWire,trfProblems,printTrf});
 })(window);
