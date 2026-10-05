@@ -1427,3 +1427,12 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .filter-field:has(#samplesMonthFilter){display:none!important}
 .transfer-cards{grid-template-columns:repeat(4,minmax(0,1fr))!important}.transfer-cards .stat-card.stat-active{box-shadow:0 0 0 2px var(--c),0 6px 18px -10px rgba(20,60,50,.35)}
 @media(max-width:900px){.transfer-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+/* TRF: mode tabs, form picker, note and actions share one row */
+.trf-tabbar{position:sticky;top:0;z-index:3;flex-wrap:nowrap!important;gap:14px;padding:10px 14px;margin-bottom:12px;border:1px solid #d5ebe7;border-radius:12px;background:#eef8f6}
+.trf-tabbar .trf-newbar{flex:1;display:flex;align-items:center;gap:12px;min-width:0}
+.trf-tabbar .trf-newbar.hidden{display:none}
+.trf-tabbar .trf-formbar-note{flex:1;min-width:0}
+.trf-tabbar .trf-formbar-actions{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.trf-tabbar .trf-formbar-actions button,.trf-tabbar .trf-type-pick select{height:40px;display:inline-flex;align-items:center;justify-content:center;margin:0;white-space:nowrap}
+.trf-tabbar .trf-type-pick{display:flex;align-items:center;gap:8px;margin:0}
+.trf-tabbar .trf-type-pick.hidden{display:none}
