@@ -132,7 +132,9 @@ function withCellEdits(r){
 }
 // PGT-M tab: the Samples table limited to PGT-M and HLA-C typing tests (PGT-A+M is not included).
 let samplesScope='';
-const isPgtmSample=e=>/(^|[^A-Z])PGT-?M|HLA|HLC/.test(String(field(e,['test name','test'])||'').toUpperCase());
+const pgtmTestKey=e=>String(field(e,['test name','test'])||'').toUpperCase().replace(/[^A-Z+]/g,'');
+const hasPgtM=e=>/PGTM|PGTA\+M/.test(pgtmTestKey(e)),hasHlaC=e=>/HLA|HLC/.test(pgtmTestKey(e));
+const isPgtmSample=e=>hasPgtM(e)||hasHlaC(e);
 // Samples and PGT-M tabs: one button per sheet tab (Pending, month tabs, NOT REPORTING...) above the table, driving the month/sheet filter.
 let pgtmSavedMonth=null;
 function renderSheetTabs(){let bar=$('#sheetTabs');const table=$('#caseTable');if(!table)return;if(!bar){bar=document.createElement('div');bar.id='sheetTabs';bar.className='prep-segments sheet-tabs';table.parentNode.insertBefore(bar,table);bar.onclick=e=>{const b=e.target.closest('[data-sheet]');if(!b)return;const sms=$('#samplesMonthFilter');if(sms)sms.value=b.dataset.sheet;renderCases()}}
@@ -144,7 +146,7 @@ function refreshTestFilterOptions(){const sel=$('#testFilter');if(!sel)return;co
 // PGT-M tab: these samples are not reported by the PGT-A team - PGT-M goes to the Microarray team, HLA-C typing to the HLA team.
 // The cards count, per team, how many were handed over and how many are still to transfer; a card click filters the table.
 let pgtmCard=null;
-const teamsOf=e=>{const t=String(field(e,['test name','test'])||'').toUpperCase(),a=[];if(/(^|[^A-Z])PGT-?M/.test(t))a.push('Microarray');if(/HLA|HLC/.test(t))a.push('HLA');return a};
+const teamsOf=e=>{const a=[];if(hasPgtM(e))a.push('Microarray');if(hasHlaC(e))a.push('HLA');return a};
 const isTransferred=e=>transferInfo(e).status==='Transferred';
 const pgtmCardOk=e=>!pgtmCard||(teamsOf(e).includes(pgtmCard.team)&&isTransferred(e)===(pgtmCard.status==='done'));
 function renderTransferCards(){const old=$('#samplesView .stats-3col:not(#transferCards)'),host=old?.parentNode;if(!host)return;let el=$('#transferCards');if(!samplesScope){el?.classList.add('hidden');old.classList.remove('hidden');return}
