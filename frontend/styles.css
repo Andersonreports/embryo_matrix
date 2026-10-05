@@ -1513,3 +1513,4 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .rr-emb-right{margin-left:0;width:100%;padding-top:10px;border-top:1px solid var(--line);justify-content:flex-start}
 .rr-emb-right .prep-search{flex:1 1 280px;max-width:460px}
 .rr-emb-right .prep-search input{width:100%}
+.rr-emb-tools>.rr-min{flex:0 0 auto;padding-left:12px;border-left:1px solid var(--line)}
