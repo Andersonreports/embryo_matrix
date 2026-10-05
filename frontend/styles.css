@@ -1452,3 +1452,9 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .trf-submit-row{display:flex;justify-content:flex-end;padding:18px 0 6px}.trf-submit-row .primary{height:44px;padding:0 34px;font-size:15px}
 .trf-submit-row{justify-content:center!important}
 .trf-row-actions .trf-del{background:#fff!important;color:#a02f23!important;border:1px solid #e3b8b2!important;font-weight:700}.trf-row-actions .trf-del:hover{background:#fdecea!important}
+/* TRF entry form: three fields per row on wide screens, two on mid, one on phones; long fields span two columns */
+.tf-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-flow:row dense}
+.tf-wide{grid-column:span 2}
+.tf-field textarea{min-height:56px}
+@media(max-width:1250px){.tf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.tf-grid{grid-template-columns:1fr}.tf-wide{grid-column:1/-1}}
