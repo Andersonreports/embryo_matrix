@@ -1504,3 +1504,12 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .rr-min{white-space:nowrap}
 .rr-top-emb .rr-stats{max-width:none}
 @media(max-width:900px){.rr-emb-right{margin-left:0;flex-wrap:wrap;width:100%}.rr-emb-right .prep-search{flex:1;min-width:200px}}
+/* Run reports toolbar, second pass: kill stray margins so every control shares one centre line; tools bar uses two clean rows */
+.rr-bar{align-items:center}
+.rr-bar select,.rr-bar label,.rr-bar .rr-filters,.rr-bar .rr-actions,.rr-bar .rr-nav>*{margin-top:0!important;margin-bottom:0!important;align-self:center}
+.rr-nav{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.rr-nav select,.rr-nav .rr-filters select,.rr-actions .rr-export{height:42px;box-sizing:border-box;line-height:1}
+.rr-nav .rr-filters label{display:flex;flex-direction:row;align-items:center;gap:0;padding:0}
+.rr-emb-right{margin-left:0;width:100%;padding-top:10px;border-top:1px solid var(--line);justify-content:flex-start}
+.rr-emb-right .prep-search{flex:1 1 280px;max-width:460px}
+.rr-emb-right .prep-search input{width:100%}
