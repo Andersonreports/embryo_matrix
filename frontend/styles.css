@@ -1442,3 +1442,7 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .trf-suggest button:hover,.trf-suggest button.on{background:#e3f3f1;color:#0a7180}
 @media(min-width:721px){.topbar .brand{margin-right:28px}}
 @media(min-width:721px){.topbar .topnav{flex:1;justify-content:space-evenly;padding:0 12px}}
+button[data-set="Received"]{background:#1f8a52!important;border:0!important;color:#fff!important;font-weight:700!important}
+button[data-set="Received"]:hover{background:#18723f!important}
+button[data-set="Rejected"]{background:#c0392b!important;border:0!important;color:#fff!important;font-weight:700!important}
+button[data-set="Rejected"]:hover{background:#a02f23!important}
