@@ -134,6 +134,13 @@ def normalize_row(row, today=None):
                         pick = _pick(cands, lambda c: _within(c, anchor, t_lo, t_hi))
                 if pick is None and len(cands) == 1:
                     pick = cands[0]
+                if pick is None:
+                    # No evidence either way. Confirmed by the lab: such dates are the month-first (mm-dd-yyyy) ones - the cell is a
+                    # real date that kept its US display format after the sheet locale was changed to India - so take the
+                    # day/month-swapped reading.
+                    flipped = [c for c in cands if (c.month, c.day) == (d, mo)]
+                    if flipped:
+                        pick = flipped[0]
             if pick is None:
                 bad = True
                 pick_text = m.group(0)
