@@ -1425,3 +1425,5 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .stats.stats-3col article.stat-card{background:#fff;transform:none}
 .stats.stats-3col article.stat-card::before{display:none}
 .filter-field:has(#samplesMonthFilter){display:none!important}
+.transfer-cards{grid-template-columns:repeat(4,minmax(0,1fr))!important}.transfer-cards .stat-card.stat-active{box-shadow:0 0 0 2px var(--c),0 6px 18px -10px rgba(20,60,50,.35)}
+@media(max-width:900px){.transfer-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
