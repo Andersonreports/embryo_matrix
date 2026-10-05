@@ -98,9 +98,16 @@ def _pick(cands, test):
     return ok[0] if len(ok) == 1 else None
 
 
+# Sheets whose date columns were set to dd-mm-yyyy by hand: their dates are already right and are never touched.
+# (Add a tab's name here once its format has been fixed in the sheet itself.)
+TRUSTED_TABS = {"pending", "october 2026"}
+
+
 def normalize_row(row, today=None):
     """-> (fixes {field: new text}, unclear [field, ...]). The row itself is not modified."""
     today = today or date.today()
+    if str(row.get("_importSource") or "").strip().lower() in TRUSTED_TABS:
+        return {}, []
     tab = tab_month(row.get("_importSource"))
     fixes, unclear = {}, []
     resolved = {}      # step name -> chosen date (single, the latest when a cell holds several)
