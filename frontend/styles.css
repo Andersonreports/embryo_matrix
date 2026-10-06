@@ -1548,3 +1548,4 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .vault-upload{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 14px}.vault-upload input:not([type=file]){flex:1 1 200px;min-width:0;padding:9px 14px;border:1px solid var(--line);border-radius:999px;font:inherit;background:transparent;color:inherit}.vu-btn{cursor:pointer}
 body.role-member .vault-del-btn,body.role-member .vg-actions,body.role-member .vault-heading button{display:none!important}
 body.role-embryologist #trfModeSeg{display:none}
+.nav-item[hidden],.session-menu-item[hidden]{display:none!important}
