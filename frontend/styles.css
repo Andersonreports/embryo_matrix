@@ -1549,3 +1549,10 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 body.role-member .vault-del-btn,body.role-member .vg-actions,body.role-member .vault-heading button{display:none!important}
 body.role-embryologist #trfModeSeg{display:none}
 .nav-item[hidden],.session-menu-item[hidden]{display:none!important}
+
+.vault-upload{display:block;border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 16px}.vu-title{font-weight:600;margin-bottom:10px}
+.vu-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}.vu-f{display:flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;min-width:130px}.vu-f select,.vu-f input{padding:8px 12px;border:1px solid var(--line);border-radius:999px;font:inherit;font-weight:400;background:transparent;color:inherit}.vu-search{flex:1 1 200px}
+.vu-count{font-size:12px;color:#76868a;margin:10px 0 6px}.vu-list{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.vu-row{display:grid;grid-template-columns:1.4fr 1fr .8fr 1.2fr 1.4fr;gap:10px;width:100%;text-align:left;padding:8px 12px;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;font:inherit;font-size:12px;cursor:pointer}.vu-row:hover{background:#eef6f5}.vu-row.on{background:#d9efec}.vu-row span{color:#5c6e6c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vu-pick{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:12px}.vu-chosen{flex:1 1 100%;font-size:13px}
+@media(max-width:700px){.vu-row{grid-template-columns:1fr 1fr}}
