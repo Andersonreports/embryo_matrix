@@ -1570,3 +1570,4 @@ body.role-embryologist #trfModeSeg{display:none}
 .sheet-tabs{gap:6px;padding:5px;border-radius:14px}.sheet-tabs .prep-seg{padding:9px 16px;font-size:14.5px;font-weight:600}.sheet-tabs .prep-seg b{font-size:13px;margin-left:6px}
 .images-view .vault-upload{padding:12px;margin-bottom:14px}.vault-upload .vu-count{margin:8px 0 6px}.vault-upload .vu-list{max-height:max(300px,calc(100vh - 330px))}
 .vault-upload .vu-head{position:sticky;top:0;z-index:1;background:#e9f1f0;cursor:default;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}.vault-upload .vu-head:hover{background:#e9f1f0}.vault-upload .vu-head span{color:#35504d}
+.sheet-tabs{flex-wrap:nowrap;gap:2px;padding:3px;overflow-x:auto;scrollbar-width:thin}.sheet-tabs .prep-seg{flex:0 0 auto;white-space:nowrap;padding:6px clamp(4px,.35vw,8px);font-size:clamp(11px,.66vw,12.5px);font-weight:600}.sheet-tabs .prep-seg b{font-size:clamp(10px,.6vw,11.5px);margin-left:4px}
