@@ -895,6 +895,7 @@ function showView(view){if(!viewAllowed(view))view=roleHomeView();
  $('#registrySearchWrap')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#registryHeaderActions')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#embryologistSortOrder')?.classList.toggle('hidden',view!=='embryologists');
+ $('#embSearchWrap')?.classList.toggle('hidden',view!=='embryologists');
  $('#clientsToolbar')?.classList.toggle('hidden',view!=='clients');
  $('#regionSortHeader')?.classList.toggle('hidden',view!=='regions');
  if(view==='home'){ $('#homeView').classList.remove('hidden');$('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');$('#genericView').classList.add('hidden');requestAnimationFrame(()=>{alignHomeSearch();capStatusColumns()});return }
@@ -918,7 +919,7 @@ function showView(view){if(!viewAllowed(view))view=roleHomeView();
  if(!$('#embMonthTabs')){const t=document.createElement('div');t.id='embMonthTabs';t.className='prep-segments sheet-tabs';$('#allQualityChart').parentNode.insertBefore(t,$('#allQualityChart'));t.onclick=ev=>{const b=ev.target.closest('[data-m]');if(!b)return;month=b.dataset.m;drawTabs();render()}}
  const drawTabs=()=>{const cnt={};allEmbryos().forEach(e=>{const m=recordMonth(e);if(m)cnt[m]=(cnt[m]||0)+Math.max(1,Math.round(embryoUnits(e)))});const ms=[...Object.keys(cnt).filter(isDateMonth).sort(),...Object.keys(cnt).filter(k=>!isDateMonth(k))];$('#embMonthTabs').innerHTML=[['','All']].concat(ms.map(m=>[m,mLabel(m)])).map(([m,l])=>`<button type="button" class="prep-seg${m===month?' active':''}" data-m="${escapeHtml(m)}">${escapeHtml(l)}${m?`<b>${cnt[m].toLocaleString()}</b>`:''}</button>`).join('')};
  drawTabs();
- const render=()=>{const stats=embryologistQcStats(allEmbryos().filter(e=>!month||recordMonth(e)===month));stats.sort((a,b)=>(order==='asc'?a.total-b.total:b[order]-a[order])||b.total-a.total||a.name.localeCompare(b.name));renderEmbryologistRankList('#allQualityChart',stats)};render();if(sortEl)sortEl.onclick=ev=>{const b=ev.target.closest('[data-sort]');if(!b)return;order=b.dataset.sort;sortEl.querySelectorAll('.prep-seg').forEach(x=>x.classList.toggle('active',x===b));render()}}
+ const render=()=>{const nq=($('#embSearch')?.value||'').trim().toLowerCase(),stats=embryologistQcStats(allEmbryos().filter(e=>!month||recordMonth(e)===month)).filter(q=>!nq||q.name.toLowerCase().includes(nq));stats.sort((a,b)=>(order==='asc'?a.total-b.total:b[order]-a[order])||b.total-a.total||a.name.localeCompare(b.name));renderEmbryologistRankList('#allQualityChart',stats)};{const si=$('#embSearch');if(si){si.value='';si.oninput=()=>render()}}render();if(sortEl)sortEl.onclick=ev=>{const b=ev.target.closest('[data-sort]');if(!b)return;order=b.dataset.sort;sortEl.querySelectorAll('.prep-seg').forEach(x=>x.classList.toggle('active',x===b));render()}}
  if(view==='regions'){setupRegionsView()}
  if(view==='tests'){const testCounts=countBy(allEmbryos(),testNameOf);const sortedTests=Object.entries(testCounts).sort((a,b)=>a[0].localeCompare(b[0]));renderTestNameGrid('#allTestList',sortedTests)}
  if(view==='clients'){setupAllClientsView()}
