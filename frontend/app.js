@@ -427,19 +427,20 @@ function renderEmbryologistBarChart(id,stats,limit=10){
  const el=$(id);if(!el)return;
  const shown=limit?stats.slice(0,limit):stats;
  if(!shown.length){el.innerHTML=`<div class="chart-empty">No ${unitWord()} in this period.</div>`;return}
- const series=[['pass',QUALITY_GOOD,'QC Pass'],['fail',QUALITY_CRITICAL,'QC Fail']];
+ const series=[['pass',QUALITY_GOOD,'QC Pass'],['fail','#e11d2e','QC Fail']];
  const stackTotal=d=>d.pass+d.fail;
  const fitW=Math.max(320,el.clientWidth||760),w=fitW,height=300;
- const padL=48,padR=16,padT=24,padB=76,innerW=w-padL-padR,innerH=height-padT-padB,n=shown.length,slot=innerW/n;
+ const padL=48,padR=16,padT=44,padB=76,innerW=w-padL-padR,innerH=height-padT-padB,n=shown.length,slot=innerW/n;
  const barW=Math.max(24,Math.min(64,slot*0.55));
- const max=Math.max(1,...shown.map(stackTotal)),niceMax=niceMaxOf(max);
+ const max=Math.max(1,...shown.map(stackTotal)),niceMax=Math.ceil((max+50)/40)*40;
  const yFor=v=>padT+innerH-(v/niceMax)*innerH;
  const ticks=[0,0.25,0.5,0.75,1].map(t=>Math.round(niceMax*t));
  const grid=ticks.map(t=>{const gy=yFor(t).toFixed(1);return `<line x1="${padL}" y1="${gy}" x2="${w-padR}" y2="${gy}" stroke="#edf1ee" stroke-width="1"/><text x="${padL-8}" y="${(Number(gy)+3).toFixed(1)}" font-size="11" fill="#8b968f" text-anchor="end">${t.toLocaleString()}</text>`}).join('');
  const bars=shown.map((d,i)=>{const sx=padL+slot*i,cx=sx+slot/2,bx=(cx-barW/2).toFixed(1),labelY=height-padB+14;
   let cursor=padT+innerH;
-  const segs=series.map(([key,color])=>{const v=d[key];if(!v)return'';const segH=Math.max(0,(v/niceMax)*innerH),top=cursor-segH,rect=`<rect class="ch-bar" x="${bx}" y="${top.toFixed(1)}" width="${barW.toFixed(1)}" height="${segH.toFixed(1)}" fill="${color}"/>`;cursor=top;return rect}).join('');
-  return `<g class="ch-col" data-col="${i}"><rect class="ch-band" x="${(sx+2).toFixed(1)}" y="${padT-8}" width="${Math.max(0,slot-4).toFixed(1)}" height="${(innerH+8).toFixed(1)}" rx="8"/>${segs}<text class="ch-axis" x="0" y="0" transform="translate(${cx.toFixed(1)},${labelY}) rotate(-40)" text-anchor="end" font-size="11" fill="#6b7d76">${escapeHtml(truncateLabel(d.name,16))}</text></g>`}).join('');
+  const segs=series.map(([key,color])=>{const v=d[key];if(!v)return'';const segH=Math.max(3,(v/niceMax)*innerH),top=cursor-segH,rect=`<rect class="ch-bar" x="${bx}" y="${top.toFixed(1)}" width="${barW.toFixed(1)}" height="${segH.toFixed(1)}" fill="${color}"/>`;cursor=top;return rect}).join('');
+  const tot=stackTotal(d),ty=(yFor(tot)).toFixed(1),lbl=`<text x="${cx.toFixed(1)}" y="${(Number(ty)-(d.fail?15:5)).toFixed(1)}" font-size="12" font-weight="700" fill="#17302f" text-anchor="middle">${tot.toLocaleString()}</text>${d.fail?`<text x="${cx.toFixed(1)}" y="${(Number(ty)-4).toFixed(1)}" font-size="10.5" font-weight="700" fill="#e11d2e" text-anchor="middle">${d.fail} fail</text>`:''}`;
+  return `<g class="ch-col" data-col="${i}"><rect class="ch-band" x="${(sx+2).toFixed(1)}" y="${padT-8}" width="${Math.max(0,slot-4).toFixed(1)}" height="${(innerH+8).toFixed(1)}" rx="8"/>${segs}${lbl}<text class="ch-axis" x="0" y="0" transform="translate(${cx.toFixed(1)},${labelY}) rotate(-40)" text-anchor="end" font-size="11" fill="#6b7d76">${escapeHtml(truncateLabel(d.name,16))}</text></g>`}).join('');
  const hits=shown.map((d,i)=>{const sx=padL+slot*i,top=yFor(stackTotal(d)),total=stackTotal(d);return `<rect class="ch-hit" data-col="${i}" x="${sx.toFixed(1)}" y="0" width="${slot.toFixed(1)}" height="${height}" fill="transparent" data-x="${(sx+slot/2).toFixed(1)}" data-y="${top.toFixed(1)}" data-tip="${chartTipAttr({t:d.name,r:series.map(([key,color,label])=>[color,label,`${d[key].toLocaleString()} (${total?Math.round(d[key]/total*100):0}%)`]),n:d.successRate!==null&&d.successRate!==undefined?`QC pass rate ${d.successRate}% · ${d.total.toLocaleString()} tests`:`No QC results yet · ${d.total.toLocaleString()} tests`})}"/>`}).join('');
  const baseline=`<line x1="${padL}" y1="${(padT+innerH).toFixed(1)}" x2="${w-padR}" y2="${(padT+innerH).toFixed(1)}" stroke="#c9d3ce" stroke-width="1"/>`;
  const legend=`<div style="display:flex;gap:16px;font-size:11px;color:#52625a;margin-bottom:6px">${series.map(([,color,label])=>`<span style="display:inline-flex;align-items:center;gap:6px"><i style="width:10px;height:10px;border-radius:2px;background:${color};display:inline-block"></i>${label}</span>`).join('')}</div>`;
