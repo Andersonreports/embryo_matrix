@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     # Repair day/month-swapped dates in the dashboard's copy of the sheet rows (never written back to the Google Sheet).
     # Off until the dry-run report has been checked: set DATE_FIX_ENABLED=true in .env.
     date_fix_enabled: bool = False
+    # Interim built-in login (users table + signed cookie). Off = trust X-Auth-User/X-Auth-Role from a proxy.
+    builtin_login: bool = False
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", extra="ignore")
 
 settings = Settings()

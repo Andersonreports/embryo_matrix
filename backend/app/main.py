@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File, Form
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy.orm import Session
@@ -15,10 +15,10 @@ from sqlalchemy import func
 from .config import settings
 from .database import Base, engine, get_db, SessionLocal
 from .placement import Placement, safe as _safe_name
-from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment
+from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment, User
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn
 from .sheet_sync import parse_sources, sync_sources
-from . import cell_edits, edits_sheet, storage, trf_fill, trf_pdf
+from . import auth, cell_edits, edits_sheet, storage, trf_fill, trf_pdf
 from sqlalchemy import inspect, text
 import mimetypes
 
@@ -96,6 +96,7 @@ def serve_upload(path: str):
 # role -> unix time of that role's most recent identified request. In-memory
 # only: resets when the server restarts.
 _last_seen: dict[str, float] = {}
+_login_fails: dict[str, list[float]] = {}
 ACTIVE_WINDOW_SECONDS = 5 * 60
 
 def log_activity(db: Session, action: str, detail: str = "", user: dict | None = None, request: Request | None = None):
@@ -117,9 +118,20 @@ async def identify_user(request: Request, call_next):
             request.state.user = {"username": "File sync", "role": "sync"}
             return await call_next(request)
         return JSONResponse({"detail": "Invalid sync key"}, status_code=401)
-    username = request.headers.get("x-auth-user", "")
-    role = request.headers.get("x-auth-role", "")
-    request.state.user = {"username": username, "role": role} if username else {}
+    if settings.builtin_login:
+        # Own login: identity comes only from the signed session cookie; the X-Auth headers are ignored.
+        sess = auth.read_token(request.cookies.get(auth.COOKIE, ""))
+        request.state.user = sess or {}
+        if not sess and path not in ("/login", "/api/login", "/api/health") and not path.startswith("/static/login"):
+            if path.startswith("/api/"):
+                return JSONResponse({"detail": "Sign in required"}, status_code=401)
+            if path == "/":
+                return RedirectResponse("/login")
+        username, role = (sess or {}).get("username", ""), (sess or {}).get("role", "")
+    else:
+        username = request.headers.get("x-auth-user", "")
+        role = request.headers.get("x-auth-role", "")
+        request.state.user = {"username": username, "role": role} if username else {}
     if username:
         _last_seen[role or ""] = time.time()
     response = await call_next(request)
@@ -127,6 +139,33 @@ async def identify_user(request: Request, call_next):
     if path == "/" or path.startswith("/static/"):
         response.headers["Cache-Control"] = "no-cache"
     return response
+
+@app.get("/login")
+def login_page():
+    return FileResponse(STATIC / "login.html")
+
+@app.post("/api/login")
+async def login(request: Request, db: Session = Depends(get_db)):
+    ip = (request.client.host if request.client else "")
+    now = time.time()
+    recent = [t for t in _login_fails.get(ip, []) if now - t < 600]
+    if len(recent) >= 10:
+        raise HTTPException(429, "Too many attempts - try again in a few minutes")
+    body = await request.json()
+    u = db.query(User).filter(User.username == str(body.get("username", "")).strip().lower()).first()
+    if not u or not auth.verify_password(str(body.get("password", "")), u.password_hash):
+        _login_fails[ip] = recent + [now]
+        raise HTTPException(401, "Wrong username or password")
+    log_activity(db, "login", "", user={"username": u.username, "role": u.role})
+    resp = JSONResponse({"ok": True})
+    resp.set_cookie(auth.COOKIE, auth.make_token(u.username, u.role), max_age=auth.SESSION_SECONDS, httponly=True, samesite="lax")
+    return resp
+
+@app.post("/api/logout")
+def logout():
+    resp = JSONResponse({"ok": True})
+    resp.delete_cookie(auth.COOKIE)
+    return resp
 
 @app.get("/")
 def home():
@@ -139,7 +178,7 @@ def health():
 @app.get("/api/whoami")
 def whoami(request: Request):
     user = request.state.user or {}
-    return {"username": user.get("username") or "", "role": user.get("role") or ""}
+    return {"username": user.get("username") or "", "role": user.get("role") or "", "signedIn": settings.builtin_login}
 
 def _iso_utc(dt: datetime | None) -> str | None:
     return dt.replace(tzinfo=timezone.utc).isoformat() if dt else None

@@ -22,3 +22,4 @@ Pgs Results/
 backend/embryomatrix.db.bak-*
 Embryosure (2)/
 NIPGS Results/
+backend/.session_secret

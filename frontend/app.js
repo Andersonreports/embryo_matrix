@@ -14,6 +14,7 @@ async function loadWhoAmI(){
     if(r.ok)currentUser=await r.json();
   }catch(e){}
   renderSessionUser(currentUser.username,currentUser.role);
+  const lo=document.getElementById('logoutBtn');if(lo&&currentUser.username&&currentUser.signedIn){lo.hidden=false;lo.onclick=async()=>{await fetch('/api/logout',{method:'POST'});location.href='/login'}}
 }
 (function sessionMenu(){
   const btn=document.getElementById('sessionUsername'),menu=document.getElementById('sessionMenu');
