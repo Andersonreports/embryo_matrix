@@ -953,7 +953,7 @@ function vaultUploadBar(el){if($('#vaultUpload'))return;const bar=document.creat
  let chosen=null;const g=id=>$('#'+id).value,LIMIT=100;
  const draw=()=>{const q=g('vuSearch').trim().toLowerCase(),m=g('vuMonth'),r=g('vuRun'),cl=g('vuClient'),t=g('vuTest'),em=g('vuEmbryologist');
   const hits=info.filter(x=>(!m||x.months.includes(m))&&(!r||x.runs.includes(r))&&(!cl||x.c.client===cl)&&(!t||x.c.test===t)&&(!em||x.c.embryologist===em)&&(!q||x.hay.includes(q)));
-  $('#vuCount').textContent=hits.length?`${hits.length} patient${hits.length===1?'':'s'} match${hits.length>LIMIT?` — showing the first ${LIMIT}, narrow the filters to see others`:''}`:'No patients match these filters';
+  $('#vuCount').textContent=hits.length?'':'No patients match these filters';
   $('#vuList').innerHTML=(hits.length?'<div class="vu-row vu-head"><span>Patient</span><span>Sample ID</span><span>Test</span><span>Client</span><span>Month / run</span></div>':'')+hits.slice(0,LIMIT).map(x=>`<button type="button" class="vu-row${chosen===x.c.id?' on':''}" data-id="${escapeHtml(x.c.id)}"><strong>${escapeHtml(x.c.patient)}</strong><span>${escapeHtml(x.c.id)}</span><span>${escapeHtml(x.c.test||'')}</span><span>${escapeHtml(x.c.client||'')}</span><span>${escapeHtml(x.months.map(mName).join(', '))}${x.runs.length?' · Run '+escapeHtml(x.runs.join(', ')):''}</span></button>`).join('')};
  bar.addEventListener('input',e=>{if(e.target.id!=='vuEmbryo'&&e.target.id!=='vuFiles')draw()});
  $('#vuReset').onclick=()=>{bar.querySelectorAll('select').forEach(s=>{if(s.id!=='vuEmbryo')s.value=''});$('#vuSearch').value='';draw()};
