@@ -1588,3 +1588,7 @@ body.role-embryologist #trfModeSeg{display:none}
 .sheet-tabs .prep-seg.active{background:#0a7180;border-color:#0a7180;color:#fff;box-shadow:0 2px 8px rgba(10,113,128,.28)}
 .sheet-tabs .prep-seg.active b{background:rgba(255,255,255,.22);color:#fff}
 .prep-segments.sheet-tabs{gap:8px;padding:10px 12px}.prep-segments.sheet-tabs .prep-seg{padding:8px 16px;font-size:14px}
+#allQualityChart .emb-row:not(.emb-head){cursor:pointer}#allQualityChart .emb-row:not(.emb-head):hover{background:#eef6f5}
+.emb-list-tabs{margin-bottom:12px}.emb-list-wrap{max-height:62vh;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.emb-list-table{width:100%;border-collapse:collapse;font-size:13px}.emb-list-table th{position:sticky;top:0;background:#e9f1f0;text-align:left;padding:9px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#35504d;white-space:nowrap}.emb-list-table td{padding:8px 12px;border-top:1px solid var(--line)}.emb-list-table td.strong{font-weight:600}
+.emb-q{padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600}.emb-q.pass{background:#dff3e6;color:#17803d}.emb-q.fail{background:#fbe1e1;color:#b3261e}.emb-q.wait{background:#ece9e3;color:#6b6a63}
