@@ -106,6 +106,25 @@ def log_activity(db: Session, action: str, detail: str = "", user: dict | None =
     db.add(ActivityLog(username=user.get("username") or "", role=user.get("role") or "", action=action, detail=detail))
     db.commit()
 
+FULL_ACCESS_ROLES = {"admin", "team_lead"}
+# Role -> (method, path regex) pairs it may call. admin and team_lead may call everything;
+# a role not listed here can only sign in/out and ask who it is.
+_ROLE_RULES = {
+    "member": [
+        ("GET", r"/api/(store/.+|cases|cases/[^/]+/images|images|case-runs|dashboard|cell-edits|edits-sheet|result-file-months|sync-sheet/status)"),
+        ("GET", r"/uploads/.+"), ("POST", r"/api/sync-sheet"), ("POST", r"/api/cases/[^/]+/images"),
+    ],
+    "embryologist": [
+        ("POST", r"/api/(trf|trf-image|trf/preview-pdf)"), ("GET", r"/api/trf-image/[^/]+"),
+    ],
+}
+_ALWAYS_OK = {("GET", "/api/whoami"), ("POST", "/api/logout")}
+
+def role_allows(role: str, method: str, path: str) -> bool:
+    if role in FULL_ACCESS_ROLES or (method, path) in _ALWAYS_OK:
+        return True
+    return any(m == method and re.fullmatch(rx, path) for m, rx in _ROLE_RULES.get(role, []))
+
 @app.middleware("http")
 async def identify_user(request: Request, call_next):
     path = request.url.path
@@ -127,6 +146,8 @@ async def identify_user(request: Request, call_next):
                 return JSONResponse({"detail": "Sign in required"}, status_code=401)
             if path == "/":
                 return RedirectResponse("/login")
+        if sess and path.startswith(("/api/", "/uploads/")) and not role_allows(sess["role"], request.method, path):
+            return JSONResponse({"detail": "Your role does not have access to this"}, status_code=403)
         username, role = (sess or {}).get("username", ""), (sess or {}).get("role", "")
     else:
         username = request.headers.get("x-auth-user", "")

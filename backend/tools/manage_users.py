@@ -1,5 +1,5 @@
 """Manage dashboard logins.
-  python tools/manage_users.py add <username> [--role admin|lab_user] [--password XXXX]
+  python tools/manage_users.py add <username> [--role admin|team_lead|member|embryologist] [--password XXXX]
   python tools/manage_users.py passwd <username> [--password XXXX]
   python tools/manage_users.py remove <username>
   python tools/manage_users.py list
@@ -14,7 +14,7 @@ from app.auth import hash_password
 ap = argparse.ArgumentParser()
 ap.add_argument("cmd", choices=["add", "passwd", "remove", "list"])
 ap.add_argument("username", nargs="?")
-ap.add_argument("--role", default="lab_user")
+ap.add_argument("--role", default="member", choices=["admin", "team_lead", "member", "embryologist"])
 ap.add_argument("--password")
 a = ap.parse_args()
 Base.metadata.create_all(bind=engine)
