@@ -890,6 +890,7 @@ function showView(view){if(!viewAllowed(view))view=roleHomeView();
  $('#genericHeaderLeft')?.classList.toggle('hidden',view==='overview'||view==='home'||view==='cases'||view==='samples');
  $('#rebiopsyHeaderSearch')?.classList.toggle('hidden',view!=='rebiopsy');
  $('#rebiopsyHeaderActions')?.classList.toggle('hidden',view!=='rebiopsy');
+ $('#vaultHeaderActions')?.classList.toggle('hidden',view!=='images');
  $('#rebiopsyViewToggle')?.classList.toggle('hidden',view!=='rebiopsy');
  $('#registrySearchWrap')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#registryHeaderActions')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
@@ -948,7 +949,7 @@ function vaultUploadBar(el){if($('#vaultUpload'))return;const bar=document.creat
  const opts=(f)=>[...new Set(info.flatMap(f).filter(Boolean))];
  const months=opts(x=>x.months).sort((p,q)=>isDateMonth(q)-isDateMonth(p)||String(q).localeCompare(String(p))),runs=opts(x=>x.runs).sort((p,q)=>(parseInt(q)||0)-(parseInt(p)||0)),clients=opts(x=>[x.c.client]).sort(),tests=opts(x=>[x.c.test]).sort(),embs=opts(x=>[x.c.embryologist]).sort();
  const sel=(id,label,vals,fmt=v=>v)=>`<label class="vu-f"><span>${label}</span><select id="${id}"><option value="">All</option>${vals.map(v=>`<option value="${escapeHtml(v)}">${escapeHtml(fmt(v))}</option>`).join('')}</select></label>`;
- bar.innerHTML=`<div class="vu-top"><button type="button" class="primary compact" id="vuOpenVault">🖼 Image vault</button><span class="vu-hint">Click a patient to add or view their embryo images</span></div><div class="vu-filters">${sel('vuMonth','Month / sheet',months,mName)}${sel('vuRun','Run',runs,v=>'Run '+v)}${sel('vuClient','Client',clients)}${sel('vuTest','Test',tests)}${sel('vuEmbryologist','Embryologist',embs)}<label class="vu-f vu-search"><span>Search</span><input id="vuSearch" placeholder="Patient name or sample ID" autocomplete="off"></label><button type="button" class="secondary compact" id="vuReset">Clear</button></div><div class="vu-count" id="vuCount"></div><div class="vu-list" id="vuList"></div>`;
+ bar.innerHTML=`<div class="vu-filters">${sel('vuMonth','Month / sheet',months,mName)}${sel('vuRun','Run',runs,v=>'Run '+v)}${sel('vuClient','Client',clients)}${sel('vuTest','Test',tests)}${sel('vuEmbryologist','Embryologist',embs)}<label class="vu-f vu-search"><span>Search</span><input id="vuSearch" placeholder="Patient name or sample ID" autocomplete="off"></label><button type="button" class="secondary compact" id="vuReset">Clear</button></div><div class="vu-count" id="vuCount"></div><div class="vu-list" id="vuList"></div>`;
  el.parentNode.insertBefore(bar,el);
  let chosen=null;const g=id=>$('#'+id).value,LIMIT=100;
  const draw=()=>{const q=g('vuSearch').trim().toLowerCase(),m=g('vuMonth'),r=g('vuRun'),cl=g('vuClient'),t=g('vuTest'),em=g('vuEmbryologist');
@@ -960,7 +961,7 @@ function vaultUploadBar(el){if($('#vaultUpload'))return;const bar=document.creat
  const host=el.parentNode,vd=document.createElement('dialog');vd.id='vaultDialog';vd.className='vu-dialog vu-dialog-wide';vd.innerHTML='<div class="vu-dhead"><h3>Image vault · run-wise, patient-wise</h3><button type="button" class="secondary compact" data-close>Close</button></div><div class="vu-dbody" id="vaultDialogBody"></div>';
  const pd=document.createElement('dialog');pd.id='vuDialog';pd.className='vu-dialog';pd.innerHTML='<div class="vu-dhead"><h3 id="vuDTitle"></h3><button type="button" class="secondary compact" data-close>Close</button></div><div class="vu-dbody"><div class="vu-upload-row"><label class="vu-f"><span>Embryo</span><select id="vuEmbryo"></select></label><label class="primary compact vu-btn">📷 Take photo<input id="vuCam" type="file" accept="image/*" capture="environment" hidden></label><label class="primary compact vu-btn">🖼 Upload images<input id="vuFiles" type="file" accept="image/*" multiple hidden></label></div><div class="vu-images" id="vuImages"></div></div>';
  host.append(vd,pd);[vd,pd].forEach(d=>d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-close]'))d.close()}));
- $('#vuOpenVault').onclick=()=>{$('#vaultDialogBody').append(el);vd.showModal()};
+ {const vb=$('#vuOpenVault');if(vb)vb.onclick=()=>{$('#vaultDialogBody').append(el);vd.showModal()}}
  vd.addEventListener('close',()=>host.append(el));
  const showImgs=async c=>{const imgs=await patientImages(c.id);$('#vuImages').innerHTML=imgs.length?imgs.map(x=>`<figure><a href="${x.url}" target="_blank" rel="noopener"><img src="${x.url}" alt="${escapeHtml(x.embryo||'General')}" loading="lazy"></a><figcaption>${escapeHtml(x.embryo||'General / patient')}</figcaption></figure>`).join(''):'<div class="chart-empty">No images for this patient yet.</div>'};
  $('#vuList').onclick=e=>{const b=e.target.closest('.vu-row:not(.vu-head)');if(!b)return;const c=cases.find(x=>x.id===b.dataset.id);if(!c)return;chosen=c.id;
