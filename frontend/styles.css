@@ -1542,3 +1542,5 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .trf-remark-dialog textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px!important;padding:10px;font:500 14px "Inter";resize:vertical}
 .trf-remark-err{color:#b83a2e;font-size:12px;margin:6px 0 0}
 .trf-remark-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+
+.tf-photo-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.tf-photo-btns .tf-photo-btn{padding:6px 10px}
