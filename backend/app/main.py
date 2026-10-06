@@ -978,8 +978,13 @@ def sync_sheet_now(request: Request, db: Session = Depends(get_db)):
         return {**last.value, "changed": False, "cached": True}
     _last_manual_sync = time.time()
     result = sync_sources(db, sources)
-    log_activity(db, "sheet_sync", "Manual Google Sheets sync", request=request)
     return result
+
+@app.post("/api/log-export")
+def log_export(payload: KVValue, request: Request, db: Session = Depends(get_db)):
+    name = str((payload.value or {}).get("file", ""))[:200] if isinstance(payload.value, dict) else ""
+    log_activity(db, "export", name or "Data export", request=request)
+    return {"ok": True}
 
 @app.get("/api/sync-sheet/status")
 def sync_sheet_status(db: Session = Depends(get_db)):
