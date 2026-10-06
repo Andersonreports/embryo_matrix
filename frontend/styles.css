@@ -1556,3 +1556,4 @@ body.role-embryologist #trfModeSeg{display:none}
 .vu-row{display:grid;grid-template-columns:1.4fr 1fr .8fr 1.2fr 1.4fr;gap:10px;width:100%;text-align:left;padding:8px 12px;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;font:inherit;font-size:12px;cursor:pointer}.vu-row:hover{background:#eef6f5}.vu-row.on{background:#d9efec}.vu-row span{color:#5c6e6c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vu-pick{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:12px}.vu-chosen{flex:1 1 100%;font-size:13px}
 @media(max-width:700px){.vu-row{grid-template-columns:1fr 1fr}}
+.sheet-tabs{gap:6px;padding:5px;border-radius:14px}.sheet-tabs .prep-seg{padding:9px 16px;font-size:14.5px;font-weight:600}.sheet-tabs .prep-seg b{font-size:13px;margin-left:6px}
