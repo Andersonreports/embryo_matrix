@@ -1211,7 +1211,7 @@ function resolvedEmbryos(c){if(!c.embryos?.length)return[];const idxMap=new Map,
 function embryoDisplayId(r){const id=resultIdentity(r);return id.patient?`${id.patient}-${id.embryo}`:id.embryo}
 // "VV-1.1,1.2" means biopsy 1 / embryo 1, embryo 2; sample names write it "VV1-1", i.e. tag "VV11". The dotted tags are therefore also
 // listed in joined form (VV11, VV12). The older split reading (VV1, VV2) is kept so earlier stored results still line up.
-function expandEmbryoTags(embryo,dottedOnly){return [...new Set(String(embryo||'').split(/[,;/]+/).flatMap((part,i,a)=>{const lead=x=>String(x||'').match(/^[^0-9]*/)[0].replace(/[^A-Za-z]/g,''),prefix=lead(part)||lead(a[0]),nums=part.match(/\d+/g)||[],dotted=(part.match(/\d+\.\d+/g)||[]).map(n=>cleanId(prefix+n));return dottedOnly&&dotted.length?dotted:[...nums.map(n=>cleanId(prefix+n)),...dotted]}).filter(Boolean))]}
+function expandEmbryoTags(embryo,dottedOnly){return [...new Set(String(embryo||'').split(/[,;/]+/).flatMap((part,i,a)=>{const lead=x=>String(x||'').match(/^[^0-9]*/)[0].replace(/[^A-Za-z]/g,''),prefix=lead(part)||lead(a[0]),nums=part.match(/\d+/g)||[],dotted=(part.match(/\d+\.\d+/g)||[]).map(n=>cleanId(prefix+n));if(!nums.length)return/[A-Za-z]/.test(part)?[cleanId(part)]:[];return dottedOnly&&dotted.length?dotted:[...nums.map(n=>cleanId(prefix+n)),...dotted]}).filter(Boolean))]}
 function matchKeys(r){const patient=field(r,['patient name','patient']),embryo=field(r,['embryo name','embryo id','embryo']);if(field(r,['sample name'])){const x=resultIdentity(r);return [`${cleanId(x.patient)}|${cleanId(x.embryo)}`]}return expandEmbryoTags(embryo).map(e=>`${cleanId(patient)}|${e}`)}
 let xlsxLibPromise=null;
 function loadXlsxLib(){if(window.XLSX)return Promise.resolve();if(!xlsxLibPromise)xlsxLibPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s)});return xlsxLibPromise}
@@ -1332,6 +1332,9 @@ function buildAndersonIndex(detailsRows){
 // (e.g. "ARADHANA" vs "V ARADHANA"). If the tag is ambiguous (shared by more
 // than one patient this run) and the name doesn't clearly pick one, no match
 // is returned rather than guessing.
+// The sequencing lab sometimes names an embryo with different letters than the tracker ("MGM1" in the result file, "MGE-1,2" in the tracker).
+// Only when the exact tag is unknown for this run, the patient name matches exactly and exactly one of that patient's tags ends in the same number, that tag is used.
+function aliasEmbryoTag(patient,tag,andersonIndex){const pc=cleanId(patient),num=(String(tag).match(/\d+$/)||[])[0];if(!pc||!num||andersonIndex.has(tag))return tag;const hits=[...andersonIndex.entries()].filter(([t,l])=>t!==tag&&(t.match(/\d+$/)||[])[0]===num&&l.some(c=>c.patientClean===pc)).map(([t])=>t);return hits.length===1?hits[0]:tag}
 function resolveAndersonId(patientPrefix,tag,andersonIndex){
   const prefixClean=cleanId(patientPrefix);
   if(!prefixClean)return null;
@@ -1447,8 +1450,8 @@ async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
  const splitsOf=raw=>{const clean=String(raw||'').replace(/(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$/i,'').trim(),out=[];for(let i=clean.length-1;i>0;i--)if(clean[i]==='-'){const embryo=cleanId(clean.slice(i+1)),patient=clean.slice(0,i).replace(/[^a-z0-9]/gi,'');if(embryo&&patient)out.push({patient,embryo})}return out};
  resultRows.forEach(r=>{
   const raw=field(r,['sample name']);let firstDet=null,done=false,why='';
-  for(const id of splitsOf(raw)){
-   const inc=inconclusiveIndex.get(`${cleanId(id.patient)}|${id.embryo}`),row={...r,...inc,_computedResult:computeEmbryoResult(r,!!inc)},match=resolveAndersonId(id.patient,id.embryo,andersonIndex);
+  for(const id0 of splitsOf(raw)){
+   const id={...id0,embryo:aliasEmbryoTag(id0.patient,id0.embryo,andersonIndex)},inc=inconclusiveIndex.get(`${cleanId(id0.patient)}|${id0.embryo}`),row={...r,...inc,_computedResult:computeEmbryoResult(r,!!inc)},match=resolveAndersonId(id.patient,id.embryo,andersonIndex);
    if(match){used.add(`${match.di}|${id.embryo}`);let tr=matchTrackerRow(match.row,tix,fileDate);if(!tr&&!why)why=lastMatchWhy;
     if(tr&&hasTag(tr,id.embryo)){setKey(trKey(tr,id.embryo),row,raw,'details',tr,match.row,id.patient,id.embryo);done=true;break}
     if(!firstDet)firstDet={id,match,row}
