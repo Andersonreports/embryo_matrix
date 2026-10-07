@@ -1866,3 +1866,7 @@ html,body{overflow-x:clip!important;overflow-y:visible!important}
 
 .db-three{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))!important}
 .dn svg text,.dn text{max-width:100%}
+
+.cc{display:flex;gap:10px;align-items:flex-end;justify-content:space-around;padding:6px 4px 0}.cc-col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.cc-col b{font:600 24px "Lora",serif;color:#17302f;line-height:1}.cc-track{width:100%;max-width:64px;height:120px;display:flex;align-items:flex-end;background:#f1f5f4;border-radius:12px;overflow:hidden}.cc-track i{display:block;width:100%;border-radius:12px 12px 0 0;transition:height .3s}
+.cc-col span{font-size:12px;font-weight:600;color:#35504d;line-height:1.2;min-height:30px;display:flex;align-items:flex-start;justify-content:center}.cc-col em{font-style:normal;font-size:11.5px;color:#8a9a97}.cc-col.zero b,.cc-col.zero span{opacity:.45}
