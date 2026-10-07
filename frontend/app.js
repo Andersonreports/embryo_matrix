@@ -918,7 +918,7 @@ function showView(view){if(!viewAllowed(view))view=roleHomeView();
  let scope='';if(view==='pgtm'){view='samples';scope='pgtm'}if(!scope)pgtmCard=null;
  if(view==='samples'||view==='cases'){const changed=samplesScope!==scope;samplesScope=scope;const h=$('#registryHeaderLeft h2');if(h?.firstChild)h.firstChild.nodeValue=scope?'PGT-M & HLA-C samples':'Patient & embryo registry';$('#registryHeaderLeft')?.classList.toggle('no-title',!scope);if(changed){refreshTestFilterOptions();const sms=$('#samplesMonthFilter');if(sms){if(scope){pgtmSavedMonth=sms.value;sms.value=allEmbryos().some(e=>isPgtmSample(e)&&recordMonth(e)==='Pending')?'Pending':''}else if(pgtmSavedMonth!==null){sms.value=pgtmSavedMonth;pgtmSavedMonth=null}}renderCases()}}
  const navView=scope?'pgtm':view;
- $('#mainHeader')?.classList.toggle('hidden',view==='home');
+ $('#mainHeader')?.classList.toggle('hidden',view==='home');$('#overviewTitle')?.classList.toggle('hidden',view!=='overview');
  $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===navView||(!scope&&['cases','reportprep','rebiopsy'].includes(view)&&n.dataset.view==='samples')||(n.id==='runStatusNav'&&canEditData()&&!scope&&['samples','cases','reportprep','rebiopsy','overdue','run','overview'].includes(view))));
  $('#registryViewToggle')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#registryHeaderLeft')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));

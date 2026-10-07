@@ -1978,3 +1978,4 @@ button.ft{cursor:pointer;text-align:left;font:inherit;position:relative;transiti
 /* Admin / team lead: the Image vault page opens straight on the run-wise stacked gallery; the patient list + upload flow is for team members */
 body.vault-staff .images-view>#imageVaultGroups{display:block!important}
 body.vault-staff #vaultUpload{display:none!important}
+.overview-title{margin:0;font:600 26px "Lora",serif;color:#102432}.overview-title.hidden{display:none}
