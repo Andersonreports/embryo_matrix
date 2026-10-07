@@ -220,7 +220,7 @@ function dashHtml(){
  const inSet=l=>rows.filter(r=>l.includes(r.status)),tr=inSet(TRANSFERRED),im=inSet(IMPLANTED),cp=inSet(CLINICAL),mc=inSet(['Miscarriage']),lb=inSet(['Live birth']),recorded=rows.filter(r=>r.status).length;
  const patients=new Set(rows.map(r=>r.f.caseKey)).size,filtersOn=Object.values(flt).some(Boolean);
  const LBL={month:'Month',clinic:'Clinic',region:'Region',embryologist:'Embryologist',test:'Test',age:'Age',result:'Result'},nOn=Object.values(flt).filter(Boolean).length,chips=Object.entries(flt).filter(([,v])=>v).map(([k,v])=>`<span class="db-chip">${LBL[k]}: <b>${esc(k==='month'?monthLabel(v):v)}</b><button type="button" data-x="${k}" aria-label="Remove filter">×</button></span>`).join('');
- const rate=(label,n,d,color,sub,help)=>`<article class="db-rate">${ring(n,d,color)}<div><h4>${label}</h4><p><b>${n}</b> of ${d} ${sub}</p><small>${help}</small></div></article>`;
+ const rate=(label,n,d,color,sub,help)=>`<article class="db-rate">${ring(n,d,color)}<div><h4>${label}</h4><p><b>${n}</b> of ${d} ${sub}</p></div></article>`;
  const stages=[['Embryos tracked',rows.length,IC('stages-results__total-embryos'),'#0a7180'],['Transferred',tr.length,IC('tests-transfers__transferred-to-transfer'),'#3b8fd0'],['Implantation positive',im.length,IC('stages-results__normal'),'#14b8a6'],['Clinical pregnancy',cp.length,IC('navigation__patient'),'#7c5cbf'],['Live birth',lb.length,SVG.heart,'#1f8a52']];
  const journey=stages.map(([l,n,ic,col],i)=>`<div class="jy" style="--c:${col}"><div class="jy-ic">${ic}</div><strong>${n}</strong><span>${l}</span>${i?`<em>${pct(n,stages[i-1][1])} of ${stages[i-1][0].toLowerCase()}</em>`:`<em>${patients} patient${patients===1?'':'s'}</em>`}</div>${i<stages.length-1?'<div class="jy-arrow">›</div>':''}`).join('');
  const order=[...STATUSES,''],mix=order.map(s=>[s,rows.filter(r=>r.status===s).length]);
@@ -245,8 +245,7 @@ function dashHtml(){
   ${rate('Live-birth rate',lb.length,tr.length,'#1f8a52','transferred embryos led to a live birth','Live births ÷ transferred')}
  </div>
  <div class="db-two"><article class="db-card"><h3>What happened to each embryo</h3>${stack}</article>${furtherCard('tera','TERA')}${furtherCard('nips','NIPS')}</div>
- <div class="db-two db-two-eq">${table('By clinic',clinics,'Clinic')}${table('By month',months,'Month')}</div>
- <p class="fu-note">"Outcome unknown" and "Not transferred" embryos count only in the embryos tracked. Patients who declined follow-up are left out.</p>`}
+ <div class="db-two db-two-eq">${table('By clinic',clinics,'Clinic')}${table('By month',months,'Month')}</div>`}
 function wireDash(root,redraw){
  const gr=root.querySelector('#goRunStatus');if(gr)gr.onclick=()=>showView('home');
  root.querySelectorAll('[data-flt]').forEach(s=>s.onchange=()=>{flt[s.dataset.flt]=s.value;redraw()});
