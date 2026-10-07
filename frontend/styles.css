@@ -2050,3 +2050,7 @@ body.vault-staff #vaultUpload{display:none!important}
 #homeView #homeStats .stat-icon{margin:0 0 4px!important;flex:0 0 auto}
 #homeView #homeStats article>div{flex:0 0 auto}
 #homeView #homeStats .stat-icon{transform:none!important;top:auto!important;right:auto!important;left:auto!important}
+/* Run status cards — final: a plain stacked layout, icon inside the card (no absolute / translated positioning anywhere) */
+#homeView #homeStats article{display:grid!important;grid-template-columns:1fr!important;grid-template-rows:auto auto!important;grid-template-areas:"ic" "txt"!important;justify-items:center!important;align-content:center!important;row-gap:4px!important;padding:16px 12px 14px!important;overflow:hidden!important}
+#homeView #homeStats .stat-icon{grid-area:ic!important;position:static!important;inset:auto!important;transform:none!important;margin:0!important;width:46px!important;height:46px!important}
+#homeView #homeStats article>div{grid-area:txt!important;width:100%}
