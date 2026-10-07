@@ -1825,3 +1825,8 @@ html,body{overflow-x:clip!important;overflow-y:visible!important}
 .rr-leg{position:relative}.rr-leg-ic{width:30px;height:30px;display:block;margin-bottom:4px}
 .rr-groups th{text-align:center}
 #rrBody th .rr-ic{width:16px;height:16px;margin-right:4px}
+
+.oe-status{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin:4px 0 8px}.oe-status .fu-f{flex:0 1 360px}.oe-status .fu-f small{font-weight:400;color:#8a9a97}.oe-sel{height:40px!important;border-width:2px!important;font-weight:600!important}.oe-now{padding-bottom:6px}
+
+.db-h-row{position:relative;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 10px}.db-h-row .db-h{margin:0}.db-h-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.db-h-row .db-pop{top:48px!important;left:auto!important;right:0!important}

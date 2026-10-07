@@ -63,13 +63,13 @@ function editorHtml(embryos,om){
  if(!embryos.length)return'<div class="chart-empty">No embryos are listed for this patient.</div>';
  return `<div class="oe-list" data-uid="${uid}">${embryos.map((e,i)=>{const o=om[norm(e.label)]||{};
   return `<div class="oe-card" data-label="${esc(e.label)}"><div class="oe-head"><strong>${esc(e.label)}</strong>${resChip(e.result)}<button type="button" class="oe-clear" title="Clear this embryo's outcome">Clear</button></div>
-  <div class="oe-groups">${GROUPS.map(([g,list])=>`<div class="oe-group"><small>${g}</small><div class="oe-opts">${list.map(s=>`<label class="oe-chip fu-os-${norm(s).toLowerCase()}"><input type="radio" name="${uid}-${i}" value="${esc(s)}"${o.status===s?' checked':''}><span>${esc(s)}</span></label>`).join('')}</div></div>`).join('')}</div>
+  <div class="oe-status"><label class="fu-f"><span>Current status <small>(choose one)</small></span><select class="oe-sel">${`<option value="">— Not recorded —</option>`+GROUPS.map(([g,list])=>`<optgroup label="${g}">${list.map(s=>`<option${o.status===s?' selected':''}>${esc(s)}</option>`).join('')}</optgroup>`).join('')}</select></label><span class="oe-now">${statusChip(o.status||'')}</span></div>
   <div class="oe-extra"><label class="fu-f"><span>Date of this outcome</span><input class="oe-date" type="date" value="${esc(o.date||'')}"></label><label class="fu-f"><span>Note</span><input class="oe-note" value="${esc(o.note||'')}" placeholder="Optional"></label></div>${testsHtml(o.tests||{})}</div>`}).join('')}</div>`}
 const readTests=c=>{const t={};c.querySelectorAll('.oe-test').forEach(b=>{t[b.dataset.t]={where:b.querySelector('.ot-where').value,lab:b.querySelector('.ot-lab').value,date:b.querySelector('.ot-date').value,result:b.querySelector('.ot-result').value,note:b.querySelector('.ot-note').value}});return t};
-const readEditor=root=>[...root.querySelectorAll('.oe-card')].map(c=>({embryo:c.dataset.label,status:c.querySelector('input[type=radio]:checked')?.value||'',date:c.querySelector('.oe-date').value,note:c.querySelector('.oe-note').value,tests:readTests(c)}));
+const readEditor=root=>[...root.querySelectorAll('.oe-card')].map(c=>({embryo:c.dataset.label,status:c.querySelector('.oe-sel')?.value||'',date:c.querySelector('.oe-date').value,note:c.querySelector('.oe-note').value,tests:readTests(c)}));
 function wireEditor(root,onChange){
- root.addEventListener('change',e=>{const w=e.target.closest('.ot-where');if(w){const b=w.closest('.oe-test'),v=w.value;b.querySelector('.ot-lab-wrap').hidden=v!=='Other lab';b.querySelector('.ot-done').hidden=!(v==='Anderson'||v==='Other lab')}onChange&&onChange()});
- root.addEventListener('click',e=>{const b=e.target.closest('.oe-clear');if(!b)return;const c=b.closest('.oe-card');c.querySelectorAll('input[type=radio]').forEach(r=>r.checked=false);onChange&&onChange()})}
+ root.addEventListener('change',e=>{const sl=e.target.closest('.oe-sel');if(sl){const c=sl.closest('.oe-card');c.querySelector('.oe-now').innerHTML=statusChip(sl.value)}const w=e.target.closest('.ot-where');if(w){const b=w.closest('.oe-test'),v=w.value;b.querySelector('.ot-lab-wrap').hidden=v!=='Other lab';b.querySelector('.ot-done').hidden=!(v==='Anderson'||v==='Other lab')}onChange&&onChange()});
+ root.addEventListener('click',e=>{const b=e.target.closest('.oe-clear');if(!b)return;const c=b.closest('.oe-card');c.querySelector('.oe-sel').value='';c.querySelector('.oe-now').innerHTML=statusChip('');onChange&&onChange()})}
 const sumCards=(out)=>{const n=out.length,c=l=>out.filter(x=>l.includes(x.status)).length,rec=out.filter(x=>x.status).length;
  return [['Embryos',n],['Transferred',c(TRANSFERRED)],['Implantation +',c(IMPLANTED)],['Clinical pregnancy',c(CLINICAL)],['Live birth',c(['Live birth'])],['Not recorded',n-rec]].map(([l,v])=>`<div class="fu-sc"><strong>${v}</strong><small>${l}</small></div>`).join('')};
 
@@ -231,9 +231,9 @@ function dashHtml(){
  const grp=(keyFn)=>{const m=new Map();rows.forEach(r=>{const k=keyFn(r)||'—',x=m.get(k)||{k,patients:new Set(),n:0,t:0,i:0,p:0,l:0};x.patients.add(r.f.caseKey);x.n++;if(TRANSFERRED.includes(r.status))x.t++;if(IMPLANTED.includes(r.status))x.i++;if(CLINICAL.includes(r.status))x.p++;if(r.status==='Live birth')x.l++;m.set(k,x)});return[...m.values()]};
  const table=(title,list,first)=>`<article class="db-card"><h3>${title}</h3><div class="fu-table-wrap fu-clinics"><table class="fu-table"><thead><tr><th>${first}</th><th>Patients</th><th>Embryos</th><th>Transferred</th><th>Implant.</th><th>Clin. preg.</th><th>Live birth</th></tr></thead><tbody>${list.map(x=>`<tr><td class="strong">${esc(first==='Month'?monthLabel(x.k):x.k)}</td><td>${x.patients.size}</td><td>${x.n}</td><td>${x.t}</td><td>${pct(x.i,x.t)}</td><td>${pct(x.p,x.t)}</td><td>${pct(x.l,x.t)}</td></tr>`).join('')||'<tr><td colspan="7" class="chart-empty">No data for these filters.</td></tr>'}</tbody></table></div></article>`;
  const clinics=grp(r=>r.f.clinic).sort((a,b)=>b.n-a.n),months=grp(r=>r.f.month).sort((a,b)=>String(b.k).localeCompare(String(a.k)));
- return `<div class="db-fbar db-toolbar"><button type="button" class="db-ftoggle${filtersOpen?' on':''}" id="fuFToggle" aria-expanded="${filtersOpen}">${IC('navigation__filter')}<span>Filters</span>${nOn?`<b>${nOn}</b>`:''}<i>${filtersOpen?'▴':'▾'}</i></button>${chips}${nOn?'<button type="button" class="db-fclear" id="fuClear">Clear all</button>':''}</div>
+ return `<div class="db-h-row"><h3 class="db-h">The journey of the embryos</h3><div class="db-h-tools">${chips}${nOn?'<button type="button" class="db-fclear" id="fuClear">Clear all</button>':''}<button type="button" class="db-ftoggle${filtersOpen?' on':''}" id="fuFToggle" aria-expanded="${filtersOpen}">${IC('navigation__filter')}<span>Filters</span>${nOn?`<b>${nOn}</b>`:''}<i>${filtersOpen?'▴':'▾'}</i></button></div>
  <div class="db-pop"${filtersOpen?'':' hidden'}><div class="db-pop-head"><b>Filter the dashboard</b><button type="button" class="secondary compact" id="fuFClose">Done</button></div><div class="db-pop-grid">${sel('month','Month',monthLabel)}${sel('clinic','Clinic')}${sel('region','Region')}${sel('embryologist','Embryologist')}${sel('test','Test')}${sel('age','Age group')}${sel('result','Embryo result')}</div>${nOn?'<button type="button" class="db-fclear" id="fuClear2">Clear all filters</button>':''}</div>
- <h3 class="db-h">The journey of the embryos</h3>
+</div>
  <div class="journey">${journey}</div>
  <h3 class="db-h">Success rates</h3>
  <div class="db-rates">
@@ -308,7 +308,7 @@ function wireMonitor(root,redraw){
 window.renderFollowupView=async function(g,view){
  const title={followup:'Clinical follow-up',fuTasks:'Follow-up tasks',fuDash:'Outcomes',dashboard:'Home'}[view];
  const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent=title;
- const mh=document.getElementById('mainHeader');if(mh)mh.classList.toggle('hidden',view==='dashboard');
+ const mh=document.getElementById('mainHeader');if(mh)mh.classList.toggle('hidden',view==='dashboard'||view==='fuDash');
  g.innerHTML='<div class="generic-card wide-card fu-view"><div class="chart-empty">Loading follow-up data…</div></div>';
  await loadFollowups(true);
  const card=g.querySelector('.fu-view');
