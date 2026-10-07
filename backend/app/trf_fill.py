@@ -1,4 +1,5 @@
-"""Fills the lab's original paper TRF templates (PGT-A / PGT-M, 3 pages each) with a submission's data.
+"""Fills the lab's original paper TRF templates (PGT-A / PGT-M, 3 pages each) with a submission's data,
+then adds a 4th page for the outcome follow-up consent (not on the paper forms).
 
 The templates are the real PDFs (backend/app/data/trf_template_{a,m}.pdf), so every label, line, box,
 logo, header and footer is exactly the paper form. The submission is typed on top: an overlay page
@@ -255,6 +256,53 @@ def _page3(d: dict, kind: str) -> Overlay:
     return o
 
 
+# Page 4 (both forms): the outcome follow-up consent. The paper templates have no such page, so it
+# is drawn whole, in Form G's style, with the same top curve, corner arch and footer artwork.
+STATIC_DIR = Path(__file__).resolve().parents[2] / "frontend"
+FOLLOWUP_CSS = f"""
+@page {{ size: {PAGE_W}pt {PAGE_H}pt; margin: 0 }}
+html, body {{ margin: 0; padding: 0 }}
+.fp {{ position: relative; width: {PAGE_W}pt; height: {PAGE_H}pt; overflow: hidden; color: #222;
+      font: 12pt/1.55 'Liberation Sans', Arial, Helvetica, sans-serif }}
+.fp-top {{ position: absolute; left: 0; top: 0; width: 100%; height: 41.7pt }}
+.fp-foot {{ position: absolute; left: 0; bottom: 0; width: 100% }}
+.fp-pg {{ position: absolute; right: 14pt; bottom: 0; width: 80pt; height: 30pt; padding-top: 6pt; box-sizing: border-box; background: #fff; text-align: right; font-size: 8pt; color: #444 }}
+.fp-body {{ position: absolute; left: 46pt; right: 46pt; top: 84pt }}
+h2 {{ margin: 0 0 4pt; text-align: center; font-size: 19pt; font-weight: 800; letter-spacing: .3pt }}
+h2 + p {{ margin-top: 30pt }}
+p {{ margin: 0 0 18pt; line-height: 1.8 }}
+.fp-first {{ text-indent: 36pt }}
+.fp-blank {{ display: inline-block; border-bottom: 1pt solid #555; padding: 0 4pt; text-align: center; font-weight: 700; color: {INK}; line-height: 1.3; text-indent: 0 }}
+.fp-opt {{ display: inline-block; margin-right: 22pt; font-weight: 700 }}
+.fp-box {{ display: inline-block; width: 11pt; height: 11pt; border: 1.2pt solid #222; margin-right: 7pt; vertical-align: -1.5pt;
+          text-align: center; font-size: 10pt; line-height: 11pt }}
+.fp-line {{ display: flex; margin: 0 0 20pt }}
+.fp-line b {{ white-space: nowrap; margin-right: 8pt }}
+.fp-val {{ flex: 1; border-bottom: 1pt solid #555; min-height: 15pt; font-weight: 700; color: {INK} }}
+.fp-sign {{ display: flex; gap: 40pt; margin-top: 46pt }}
+.fp-sign .fp-line {{ flex: 1 }}
+"""
+
+
+def _followup_page_html(d: dict) -> str:
+    consent = str(d.get("followupConsent") or "")
+    box = lambda v, label: f'<span class="fp-opt"><span class="fp-box">{"&#10003;" if consent == v else ""}</span>{label}</span>'
+    blank = lambda v, w: f'<span class="fp-blank" style="min-width:{w}pt">{esc(v)}</span>'
+    return (f'<div class="fp"><img class="fp-top" src="trf-top.png">'
+            f'<img class="fp-foot" src="trf-footer-3.png"><span class="fp-pg">Pg.4</span><div class="fp-body">'
+            '<h2>OUTCOME FOLLOW-UP CONSENT</h2>'
+            f'<p class="fp-first">I, {blank(d.get("patientName"), 150)}, hereby give my consent to Anderson Diagnostics &amp; Labs to obtain '
+            'information on the embryo transfer and the pregnancy outcome following this Preimplantation Genetic Testing from my treating clinic.</p>'
+            '<p>I understand that only my consent and the clinic&#39;s contact details are recorded in this form. The outcome itself will be '
+            'collected later by the laboratory and will be kept confidential.</p>'
+            f'<p>{box("Yes", "I agree")}{box("No", "I do not agree")} to this outcome follow-up.</p>'
+            f'<p>The clinic may be contacted through {blank(d.get("followupContact"), 130)} at {blank(d.get("followupPhoneEmail"), 150)}. '
+            f'The expected period of embryo transfer, if known, is {blank(str(d.get("followupExpected") or "").lower(), 90)}.</p>'
+            '<div class="fp-sign"><div class="fp-line"><b>Patient Signature:</b><span class="fp-val"></span></div>'
+            '<div class="fp-line"><b>Date:</b><span class="fp-val"></span></div></div>'
+            '</div></div>')
+
+
 OVERLAY_CSS = f"""
 @page {{ size: {PAGE_W}pt {PAGE_H}pt; margin: 0 }}
 html, body {{ margin: 0; padding: 0; background: transparent }}
@@ -288,6 +336,9 @@ def render_trf_filled_pdf(data: dict, meta: dict | None = None) -> bytes:
         page = PdfReader(str(TEMPLATES[kind])).pages[1]
         page.merge_page(PdfReader(io.BytesIO(ex_pdf)).pages[0])
         out.add_page(page)
+    fu_pdf = HTML(string=f"<!doctype html><html><head><meta charset='utf-8'><style>{FOLLOWUP_CSS}</style></head><body>{_followup_page_html(d)}</body></html>",
+                  base_url=str(STATIC_DIR) + "/").write_pdf()
+    out.add_page(PdfReader(io.BytesIO(fu_pdf)).pages[0])
     buf = io.BytesIO()
     out.write(buf)
     return buf.getvalue()

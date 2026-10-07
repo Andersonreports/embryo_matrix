@@ -103,7 +103,18 @@ function trfPagesHtml(d,meta={},opts={}){
   <div class="td-grid td-grid-tight">${line('Name:','geneticClinicName')}${line('Registration No.:','geneticClinicRegNo')}</div>
   ${line('Address:','geneticClinicAddress')}
   ${footer(3)}</div>`;
- return page1+page2+page3;
+ // Page 4 (both forms): outcome follow-up consent, worded like Form G with the values in inline blanks.
+ const FU_PERIODS=['Within 1 month','1–3 months','3–6 months','6–12 months','Not known'];
+ const fuPeriod=edit?`<select class="td-input td-inline" data-f="followupExpected"><option value=""></option>${FU_PERIODS.map(x=>`<option${d.followupExpected===x?' selected':''}>${x}</option>`).join('')}</select>`:`<span class="td-blank">${d.followupExpected?esc(d.followupExpected.toLowerCase()):''}</span>`;
+ const page4=`<div class="td-page td-page-g td-page-fu">${curves}
+  <div class="td-formg-title"><h2>OUTCOME FOLLOW-UP CONSENT</h2></div>
+  <p class="td-legal">I, ${mirror('patientName')}, hereby give my consent to Anderson Diagnostics &amp; Labs to obtain information on the embryo transfer and the pregnancy outcome following this Preimplantation Genetic Testing from my treating clinic.</p>
+  <p class="td-legal">I understand that only my consent and the clinic's contact details are recorded in this form. The outcome itself will be collected later by the laboratory and will be kept confidential.</p>
+  <p class="td-legal td-fu-opts">${box('followupConsent','Yes','I agree',d.followupConsent==='Yes',true)}${box('followupConsent','No','I do not agree',d.followupConsent==='No',true)} to this outcome follow-up.</p>
+  <p class="td-legal">The clinic may be contacted through ${blank('followupContact',22)} at ${blank('followupPhoneEmail',26)}. The expected period of embryo transfer, if known, is ${fuPeriod}.</p>
+  <div class="td-grid td-grid-tight"><div>Patient Signature: <span class="td-signline"></span></div><div>Date: <span class="td-signline"></span></div></div>
+  ${footer(3)}<span class="td-fu-pg">Pg.4</span></div>`;
+ return page1+page2+page3+page4;
 }
 // Reads an editable template back into the same data shape the server stores.
 function trfCollect(root){const d={};

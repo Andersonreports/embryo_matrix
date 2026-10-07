@@ -159,3 +159,8 @@ label.td-check{cursor:pointer}
 .td-hdr .td-body{padding:5px 12px}
 .td-hdr .td-sign{margin:6px 0 0}
 .td-hdr .td-check{gap:5px}
+/* Page 4: outcome follow-up consent (same look as Form G); the footer art's "Pg.3 of 3" is covered by "Pg.4" */
+.td-page-fu .td-formg-title p{font-size:14px}
+.td-page-fu>.td-line{margin:18px 0}
+.td-fu-opts .td-check{font-weight:700;margin-right:28px}
+.td-fu-pg{position:absolute;right:5mm;bottom:0;min-width:28mm;height:10mm;padding-top:2mm;box-sizing:border-box;background:#fff;text-align:right;font-size:10px;color:#444}
