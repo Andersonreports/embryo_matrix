@@ -282,7 +282,6 @@ function dashHtml(){
  ${gauges}
  <div class="mk2"><article class="db-card"><h3>Month by month <small>${filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>
  <article class="db-card"><h3>Needs attention <small>most embryos still waiting for an outcome</small></h3>${attention}</article></div>
- <article class="db-card"><div class="cl-head"><h3>Clients <small>${clients.length} in total</small></h3><div class="search-wrap fu-search"><span>⌕</span><input id="clQ" type="search" placeholder="Find a client…" value="${esc(clQ)}"></div></div>${clientTable}</article>
  <div class="ft-strip">${ftChip('tera','TERA')}${ftChip('nips','NIPS')}</div>`}
 function breakdownHtml(){
  const rows=embryoRows();
