@@ -276,9 +276,9 @@ window.renderFollowupView=async function(g,view){
  await loadFollowups(true);
  const card=g.querySelector('.fu-view');
  const draw=()=>{
-  const tab=view==='followup'?subTab:view==='fuTasks'?'tasks':'dash';
+  const tab=(view==='followup'||view==='fuTasks')?'tasks':'dash';
   dashHome=view==='dashboard';
-  const seg=view==='followup'?`<div class="fu-switch" id="fuSub"><button type="button" class="${tab==='tasks'?'on':''}" data-t="tasks">${IC('navigation__patient')}<span><b>Follow-up tasks</b><small>Who to call, what to record</small></span></button><button type="button" class="${tab==='dash'?'on':''}" data-t="dash">${IC('navigation__embryo-results')}<span><b>Outcomes dashboard</b><small>Rates, counts and trends</small></span></button></div>`:'';
+  const seg='';
   card.innerHTML=seg+`<div class="fu-pane">${tab==='tasks'?tasksHtml():dashHtml()}</div>`;
   const sub=card.querySelector('#fuSub');if(sub)sub.onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;subTab=b.dataset.t;draw()};
   if(tab==='tasks')wireTasks(card,draw);else wireDash(card,draw)};
