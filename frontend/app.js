@@ -918,8 +918,8 @@ function showView(view){if(!viewAllowed(view))view=roleHomeView();
  let scope='';if(view==='pgtm'){view='samples';scope='pgtm'}if(!scope)pgtmCard=null;
  if(view==='samples'||view==='cases'){const changed=samplesScope!==scope;samplesScope=scope;const h=$('#registryHeaderLeft h2');if(h?.firstChild)h.firstChild.nodeValue=scope?'PGT-M & HLA-C samples':'Patient & embryo registry';$('#registryHeaderLeft')?.classList.toggle('no-title',!scope);if(changed){refreshTestFilterOptions();const sms=$('#samplesMonthFilter');if(sms){if(scope){pgtmSavedMonth=sms.value;sms.value=allEmbryos().some(e=>isPgtmSample(e)&&recordMonth(e)==='Pending')?'Pending':''}else if(pgtmSavedMonth!==null){sms.value=pgtmSavedMonth;pgtmSavedMonth=null}}renderCases()}}
  const navView=scope?'pgtm':view;
- $('#mainHeader')?.classList.toggle('hidden',view==='overview'||view==='home');
- $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===navView||(!scope&&['cases','reportprep','rebiopsy'].includes(view)&&n.dataset.view==='samples')||(n.id==='runStatusNav'&&canEditData()&&!scope&&['samples','cases','reportprep','rebiopsy','overdue','run'].includes(view))));
+ $('#mainHeader')?.classList.toggle('hidden',view==='home');
+ $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===navView||(!scope&&['cases','reportprep','rebiopsy'].includes(view)&&n.dataset.view==='samples')||(n.id==='runStatusNav'&&canEditData()&&!scope&&['samples','cases','reportprep','rebiopsy','overdue','run','overview'].includes(view))));
  $('#registryViewToggle')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#registryHeaderLeft')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#genericHeaderLeft')?.classList.toggle('hidden',view==='overview'||view==='home'||view==='cases'||view==='samples');
@@ -1860,7 +1860,7 @@ function setupRunReportsView(){const sel=$('#rrMonth'),body=$('#rrBody');if(!sel
 // Back button on every inner page: returns to the page you came from (Run status when there is no history).
 (function(){
  const orig=showView;let cur=null;const stack=[];
- const TOP=['dashboard','home','overview','pgtm','runreports','followup','trfs','fuTasks','fuDash'];
+ const TOP=['dashboard','home','pgtm','runreports','followup','trfs','fuTasks','fuDash'];
  const topLevel=v=>TOP.includes(v)||(!canEditData()&&['samples','cases','images'].includes(v));
  window.showView=function(view,backing){
   if(!backing&&cur&&cur!==view){if(topLevel(view))stack.length=0;else stack.push(cur)}
