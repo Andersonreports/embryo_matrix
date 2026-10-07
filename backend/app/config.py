@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     date_fix_enabled: bool = False
     # Interim built-in login (users table + signed cookie). Off = trust X-Auth-User/X-Auth-Role from a proxy.
     builtin_login: bool = False
+    # Where the "Edits sheet" button in the registry opens. Blank = the sheet the Apps Script created. Kept in .env (not in git: the sheet is link-readable).
+    edits_sheet_url: str = ""
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", extra="ignore")
 
 settings = Settings()

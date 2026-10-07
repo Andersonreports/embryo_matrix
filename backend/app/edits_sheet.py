@@ -206,7 +206,7 @@ def merged_edits(local: list) -> list:
 
 
 def status() -> dict:
-    return {"configured": configured(), "url": _read_json(STATE_PATH, {}).get("url", ""), "pending": len(_read_json(PENDING_PATH, [])),
+    return {"configured": configured(), "url": settings.edits_sheet_url.strip() or _read_json(STATE_PATH, {}).get("url", ""), "pending": len(_read_json(PENDING_PATH, [])),
             "error": _last_error["text"]}
 
 
