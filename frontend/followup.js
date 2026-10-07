@@ -47,6 +47,16 @@ const AGE_ORDER=['Under 30','30–34','35–37','38–40','41 and over','Unknown
 
 // ---------------- Per-embryo outcome editor (shared by the dialog and the patient page) ----------------
 const GROUPS=[['Before transfer',['Not transferred','Transfer planned']],['Transfer',['Transferred']],['Implantation',['Implantation successful','Implantation unsuccessful']],['Pregnancy',['Clinical pregnancy','Ongoing pregnancy','Miscarriage','Live birth']],['Other',['Outcome unknown']]];
+const FURTHER=[['tera','TERA'],['nips','NIPS']];
+const WHERE=[['','— Not recorded —'],['Not done','Not done'],['Anderson','Done at Anderson'],['Other lab','Done at another lab']];
+function testsHtml(t){
+ return `<div class="oe-tests"><small class="oe-tests-title">Further testing after PGT-A</small><div class="oe-tests-grid">${FURTHER.map(([k,label])=>{const v=t[k]||{},done=v.where==='Anderson'||v.where==='Other lab';
+  return `<div class="oe-test" data-t="${k}"><h5>${label}</h5>
+   <label class="fu-f"><span>Status</span><select class="ot-where">${WHERE.map(([val,l])=>`<option value="${esc(val)}"${(v.where||'')===val?' selected':''}>${l}</option>`).join('')}</select></label>
+   <label class="fu-f ot-lab-wrap"${v.where==='Other lab'?'':' hidden'}><span>Lab name</span><input class="ot-lab" value="${esc(v.lab||'')}" placeholder="Name of the other lab"></label>
+   <div class="ot-done"${done?'':' hidden'}><label class="fu-f"><span>Date done</span><input class="ot-date" type="date" value="${esc(v.date||'')}"></label>
+   <label class="fu-f"><span>Result</span><input class="ot-result" value="${esc(v.result||'')}" placeholder="Result"></label>
+   <label class="fu-f"><span>Other details</span><input class="ot-note" value="${esc(v.note||'')}" placeholder="Report no., remarks…"></label></div></div>`}).join('')}</div></div>`}
 let editorSeq=0;
 function editorHtml(embryos,om){
  const uid='oe'+(++editorSeq);
@@ -54,10 +64,11 @@ function editorHtml(embryos,om){
  return `<div class="oe-list" data-uid="${uid}">${embryos.map((e,i)=>{const o=om[norm(e.label)]||{};
   return `<div class="oe-card" data-label="${esc(e.label)}"><div class="oe-head"><strong>${esc(e.label)}</strong>${resChip(e.result)}<button type="button" class="oe-clear" title="Clear this embryo's outcome">Clear</button></div>
   <div class="oe-groups">${GROUPS.map(([g,list])=>`<div class="oe-group"><small>${g}</small><div class="oe-opts">${list.map(s=>`<label class="oe-chip fu-os-${norm(s).toLowerCase()}"><input type="radio" name="${uid}-${i}" value="${esc(s)}"${o.status===s?' checked':''}><span>${esc(s)}</span></label>`).join('')}</div></div>`).join('')}</div>
-  <div class="oe-extra"><label class="fu-f"><span>Date of this outcome</span><input class="oe-date" type="date" value="${esc(o.date||'')}"></label><label class="fu-f"><span>Note</span><input class="oe-note" value="${esc(o.note||'')}" placeholder="Optional"></label></div></div>`}).join('')}</div>`}
-const readEditor=root=>[...root.querySelectorAll('.oe-card')].map(c=>({embryo:c.dataset.label,status:c.querySelector('input[type=radio]:checked')?.value||'',date:c.querySelector('.oe-date').value,note:c.querySelector('.oe-note').value}));
+  <div class="oe-extra"><label class="fu-f"><span>Date of this outcome</span><input class="oe-date" type="date" value="${esc(o.date||'')}"></label><label class="fu-f"><span>Note</span><input class="oe-note" value="${esc(o.note||'')}" placeholder="Optional"></label></div>${testsHtml(o.tests||{})}</div>`}).join('')}</div>`}
+const readTests=c=>{const t={};c.querySelectorAll('.oe-test').forEach(b=>{t[b.dataset.t]={where:b.querySelector('.ot-where').value,lab:b.querySelector('.ot-lab').value,date:b.querySelector('.ot-date').value,result:b.querySelector('.ot-result').value,note:b.querySelector('.ot-note').value}});return t};
+const readEditor=root=>[...root.querySelectorAll('.oe-card')].map(c=>({embryo:c.dataset.label,status:c.querySelector('input[type=radio]:checked')?.value||'',date:c.querySelector('.oe-date').value,note:c.querySelector('.oe-note').value,tests:readTests(c)}));
 function wireEditor(root,onChange){
- root.addEventListener('change',()=>onChange&&onChange());
+ root.addEventListener('change',e=>{const w=e.target.closest('.ot-where');if(w){const b=w.closest('.oe-test'),v=w.value;b.querySelector('.ot-lab-wrap').hidden=v!=='Other lab';b.querySelector('.ot-done').hidden=!(v==='Anderson'||v==='Other lab')}onChange&&onChange()});
  root.addEventListener('click',e=>{const b=e.target.closest('.oe-clear');if(!b)return;const c=b.closest('.oe-card');c.querySelectorAll('input[type=radio]').forEach(r=>r.checked=false);onChange&&onChange()})}
 const sumCards=(out)=>{const n=out.length,c=l=>out.filter(x=>l.includes(x.status)).length,rec=out.filter(x=>x.status).length;
  return [['Embryos',n],['Transferred',c(TRANSFERRED)],['Implantation +',c(IMPLANTED)],['Clinical pregnancy',c(CLINICAL)],['Live birth',c(['Live birth'])],['Not recorded',n-rec]].map(([l,v])=>`<div class="fu-sc"><strong>${v}</strong><small>${l}</small></div>`).join('')};
@@ -126,7 +137,7 @@ function wireTasks(root,redraw){
 function embryoRows(){
  const out=[];
  FU.items.forEach(f=>{if(f.consent==='No'||f.state==='not_applicable')return;const om=outcomeMap(f);
-  (f.embryos||[]).forEach(e=>out.push({f,label:e.label,result:e.result||'No result',status:om[norm(e.label)]?.status||'',age:ageGroup(f.age)}))});
+  (f.embryos||[]).forEach(e=>out.push({f,label:e.label,result:e.result||'No result',status:om[norm(e.label)]?.status||'',tests:om[norm(e.label)]?.tests||{},age:ageGroup(f.age)}))});
  return out}
 const pct=(n,d)=>d?`${(n/d*100).toFixed(1)}%`:'—';
 function dashHtml(){
@@ -137,6 +148,7 @@ function dashHtml(){
  const rows=all.filter(r=>(!flt.month||r.f.month===flt.month)&&(!flt.clinic||r.f.clinic===flt.clinic)&&(!flt.region||r.f.region===flt.region)&&(!flt.embryologist||r.f.embryologist===flt.embryologist)&&(!flt.test||r.f.test===flt.test)&&(!flt.age||r.age===flt.age)&&(!flt.result||r.result===flt.result));
  const inSet=l=>rows.filter(r=>l.includes(r.status)),tr=inSet(TRANSFERRED),im=inSet(IMPLANTED),cp=inSet(CLINICAL),mc=inSet(['Miscarriage']),lb=inSet(['Live birth']),recorded=rows.filter(r=>r.status).length;
  const patients=new Set(rows.map(r=>r.f.caseKey)).size;
+ const further=(k,label)=>{const done=rows.filter(r=>['Anderson','Other lab'].includes(r.tests?.[k]?.where)),an=done.filter(r=>r.tests[k].where==='Anderson').length;return count(label+' done',done.length,`${an} at Anderson · ${done.length-an} other lab`,'slate')};
  const count=(label,n,sub,tone)=>`<article class="fu-cnt fu-k-${tone}"><strong>${n.toLocaleString()}</strong><small>${label}</small><p>${sub}</p></article>`;
  const kpi=(label,n,d,sub,tone)=>`<article class="fu-kpi fu-k-${tone}"><small>${label}</small><strong>${pct(n,d)}</strong><p>${sub}</p></article>`;
  // funnel: how many embryos reach each stage
@@ -149,7 +161,7 @@ function dashHtml(){
  const peak=Math.max(1,...dist.map(x=>x[1]));
  return `<div class="fu-filters">${sel('month','Month',monthLabel)}${sel('clinic','Clinic')}${sel('region','Region')}${sel('embryologist','Embryologist')}${sel('test','Test')}${sel('age','Age group')}${sel('result','Embryo result')}<button type="button" class="secondary compact" id="fuClear">Clear filters</button></div>
  <h4 class="fu-h">Counts</h4>
- <div class="fu-cnts">${count('Patients followed',patients,`${rows.length} embryos`,'teal')}${count('Embryos with an outcome',recorded,`${rows.length-recorded} not recorded yet`,'slate')}${count('Transferred',tr.length,'embryos','blue')}${count('Implantation positive',im.length,'embryos','blue')}${count('Clinical pregnancies',cp.length,'embryos','violet')}${count('Miscarriages',mc.length,'embryos','red')}${count('Live births',lb.length,'embryos','green')}</div>
+ <div class="fu-cnts">${count('Patients followed',patients,`${rows.length} embryos`,'teal')}${count('Embryos with an outcome',recorded,`${rows.length-recorded} not recorded yet`,'slate')}${count('Transferred',tr.length,'embryos','blue')}${count('Implantation positive',im.length,'embryos','blue')}${count('Clinical pregnancies',cp.length,'embryos','violet')}${count('Miscarriages',mc.length,'embryos','red')}${count('Live births',lb.length,'embryos','green')}${further('tera','TERA')}${further('nips','NIPS')}</div>
  <h4 class="fu-h">Rates</h4>
  <div class="fu-kpis">
   ${kpi('Transfer rate',tr.length,rows.length,`${tr.length} of ${rows.length} embryos tracked`,'teal')}

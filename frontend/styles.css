@@ -1676,3 +1676,9 @@ body.role-embryologist #trfModeSeg{display:none}
 .fu-fn{display:grid;grid-template-columns:150px 1fr 44px 110px;gap:10px;align-items:center;margin:10px 0;font-size:13px}.fu-fn-bar{height:16px;background:#eef2f1;border-radius:999px;overflow:hidden}.fu-fn-bar i{display:block;height:100%;background:linear-gradient(90deg,#0a7180,#14b8a6);border-radius:999px}.fu-fn b{text-align:right}.fu-fn em{font-style:normal;color:#8a9a97;font-size:11.5px}
 .fu-two-eq{grid-template-columns:1fr 1fr!important;margin-top:14px}@media(max-width:900px){.fu-two-eq{grid-template-columns:1fr!important}}
 .fu-tasks tbody tr{cursor:pointer}.fu-tasks tbody tr:hover{background:#eef6f5}
+
+.oe-tests{margin-top:12px;border-top:1px dashed var(--line);padding-top:10px}.oe-tests-title{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a9a97;margin-bottom:8px}
+.oe-tests-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:900px){.oe-tests-grid{grid-template-columns:1fr}}
+.oe-test{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;display:grid;gap:8px}.oe-test h5{margin:0;font-size:13px;color:#0a7180}.oe-test .ot-done{display:grid;grid-template-columns:150px 1fr 1fr;gap:8px}@media(max-width:700px){.oe-test .ot-done{grid-template-columns:1fr}}
+.oe-test [hidden]{display:none!important}
+.oe-test{align-content:start}

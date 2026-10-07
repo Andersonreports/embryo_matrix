@@ -45,6 +45,14 @@ def _migrate_added_columns():
 
 _migrate_added_columns()
 
+def _migrate_outcome_tests():
+    insp = inspect(engine)
+    if "embryo_outcomes" in insp.get_table_names() and "tests" not in {c["name"] for c in insp.get_columns("embryo_outcomes")}:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE embryo_outcomes ADD COLUMN tests JSON"))
+
+_migrate_outcome_tests()
+
 def _seed_activity_from_upload_log():
     db = SessionLocal()
     try:
@@ -989,6 +997,28 @@ def _create_followup_from_trf(db: Session, t: TrfSubmission):
         db.rollback()
         print(f"Follow-up record for {t.ref} failed: {exc}")
 
+FURTHER_TESTS = ("tera", "nips")
+TEST_WHERE = ("", "Not done", "Anderson", "Other lab")
+
+def _clean_further_tests(raw) -> dict:
+    """TERA / NIPS done on an embryo after PGT-A: where it was done, the lab (if not Anderson), date, result and details."""
+    out = {}
+    if not isinstance(raw, dict):
+        return out
+    for k in FURTHER_TESTS:
+        t = raw.get(k)
+        if not isinstance(t, dict):
+            continue
+        where = str(t.get("where") or "")
+        if where not in TEST_WHERE:
+            where = ""
+        date = str(t.get("date") or "").strip()[:10]
+        item = {"where": where, "lab": str(t.get("lab") or "").strip()[:120] if where == "Other lab" else "",
+                "date": date if len(date) == 10 else "", "result": str(t.get("result") or "").strip()[:300], "note": str(t.get("note") or "").strip()[:1000]}
+        if any(item.values()):
+            out[k] = item
+    return out
+
 def _rekey_followup(db: Session, old: str, new: str):
     f = db.query(Followup).filter(Followup.case_key == old).first()
     if not f or db.query(Followup.id).filter(Followup.case_key == new).first():
@@ -1004,7 +1034,7 @@ def _fu_out(f: Followup, outs: list) -> dict:
         "consent": f.consent, "contactName": f.contact_name, "contactDetail": f.contact_detail, "expectedPeriod": f.expected_period,
         "dueDate": f.due_date, "state": f.state, "note": f.note, "updatedBy": f.updated_by, "updatedAt": _iso_utc(f.updated_at),
         "createdAt": _iso_utc(f.created_at),
-        "outcomes": [{"embryo": o.embryo_label, "status": o.status, "date": o.event_date, "note": o.note, "by": o.updated_by, "at": _iso_utc(o.updated_at)} for o in outs],
+        "outcomes": [{"embryo": o.embryo_label, "status": o.status, "date": o.event_date, "note": o.note, "tests": o.tests or {}, "by": o.updated_by, "at": _iso_utc(o.updated_at)} for o in outs],
     }
 
 @app.get("/api/followups")
@@ -1064,13 +1094,16 @@ def save_followup(payload: dict, request: Request, db: Session = Depends(get_db)
         row = db.query(EmbryoOutcome).filter(EmbryoOutcome.case_key == key, EmbryoOutcome.embryo_label == label).first()
         date = s(o.get("date"), 10)
         date = date if len(date) == 10 else None
-        if not status and not row:
+        tests = _clean_further_tests(o.get("tests"))
+        if not status and not tests and not row:
             continue
         if not row:
             row = EmbryoOutcome(case_key=key, embryo_label=label); db.add(row)
         if row.status != status:
             changes.append(f"{label}: {row.status or '—'} → {status or '—'}")
         row.status, row.event_date, row.note = status, date, s(o.get("note"), 1000)
+        if "tests" in o:
+            row.tests = tests
         row.updated_at, row.updated_by = datetime.utcnow(), user.get("username") or ""
     db.commit()
     log_activity(db, "followup_save", f"{f.patient or key} · " + ("; ".join(changes) if changes else (f.state or "details updated")), request=request)

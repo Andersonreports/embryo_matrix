@@ -161,5 +161,7 @@ class EmbryoOutcome(Base):
     status: Mapped[str] = mapped_column(String(40), default="")
     event_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
     note: Mapped[str] = mapped_column(Text, default="")
+    # Further tests on this embryo after PGT-A: {"tera": {"where","lab","date","result","note"}, "nips": {...}}
+    tests: Mapped[Any] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_by: Mapped[str] = mapped_column(String(120), default="")
