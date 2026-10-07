@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&family=DM+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/styles.css?v=20261007zw" />
-  <link rel="stylesheet" href="/static/trf-doc.css?v=20261007zw" />
+  <link rel="stylesheet" href="/static/styles.css?v=20261007zx" />
+  <link rel="stylesheet" href="/static/trf-doc.css?v=20261007zx" />
 </head>
 <body>
   <div class="app-shell">
@@ -23,16 +23,16 @@
       <div class="topbar">
         <div class="brand"><span class="brand-mark">EM</span><span><span class="brand-title">EmbryoMatrix</span><small>PGT INTELLIGENCE</small></span></div>
         <nav class="topnav" aria-label="Main navigation">
-          <button class="nav-item nav-color-teal active" data-view="home"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 3l9 6.5"/><path d="M5 9.5V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9.5"/><path d="M9 21V12h6v9"/></svg></span> Home</button>
-          <button class="nav-item nav-color-teal" data-view="overview"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg></span> Overview</button>
-          <button class="nav-item nav-color-blue" data-view="samples"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/></svg></span> Samples <b id="caseCount">0</b></button>
-          <button class="nav-item nav-color-violet" data-view="pgtm"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4c4 2 12 2 16 0"/><path d="M4 20c4-2 12-2 16 0"/><path d="M6 8c3 1.5 9 1.5 12 0"/><path d="M6 16c3-1.5 9-1.5 12 0"/><path d="M8 12h8"/></svg></span> PGT-M <b id="pgtmCount">0</b></button>
-          <button class="nav-item nav-color-amber" data-view="runreports"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/></svg></span> Run reports</button>
-          <button class="nav-item nav-color-blue" data-view="trfs"><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 13h6"/><path d="M9 17h3"/><path d="m9 9 1 1 2-2"/></svg></span> TRFs <b id="trfNavCount">0</b></button>
-          <button class="nav-item nav-color-teal" data-view="images" id="vaultNav" hidden><span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg></span> Image vault</button>
+          <button class="nav-item nav-color-teal active" data-view="home"><span><img class="ico" src="/static/icons/navigation__home.png" alt=""></span> Home</button>
+          <button class="nav-item nav-color-teal" data-view="overview"><span><img class="ico" src="/static/icons/navigation__overview.png" alt=""></span> Overview</button>
+          <button class="nav-item nav-color-blue" data-view="samples"><span><img class="ico" src="/static/icons/navigation__samples.png" alt=""></span> Samples <b id="caseCount">0</b></button>
+          <button class="nav-item nav-color-violet" data-view="pgtm"><span><img class="ico" src="/static/icons/navigation__pgt-m.png" alt=""></span> PGT-M <b id="pgtmCount">0</b></button>
+          <button class="nav-item nav-color-amber" data-view="runreports"><span><img class="ico" src="/static/icons/navigation__run-reports.png" alt=""></span> Run reports</button>
+          <button class="nav-item nav-color-blue" data-view="trfs"><span><img class="ico" src="/static/icons/navigation__digital-trfs.png" alt=""></span> TRFs <b id="trfNavCount">0</b></button>
+          <button class="nav-item nav-color-teal" data-view="images" id="vaultNav" hidden><span><img class="ico" src="/static/icons/navigation__image-vault.png" alt=""></span> Image vault</button>
         </nav>
         <div class="qc-alerts" id="qcAlerts">
-          <button type="button" id="qcBell" class="qc-bell" aria-haspopup="true" aria-expanded="false" title="QC fail notifications"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><b id="qcBadge" class="qc-badge hidden">0</b></button>
+          <button type="button" id="qcBell" class="qc-bell" aria-haspopup="true" aria-expanded="false" title="QC fail notifications"><img class="ico bell-ico" src="/static/icons/navigation__notifications.png" alt=""><b id="qcBadge" class="qc-badge hidden">0</b></button>
           <div class="qc-panel hidden" id="qcPanel" role="dialog" aria-label="QC fail notifications"></div>
         </div>
         <div class="session-info" id="sessionInfo">
@@ -56,7 +56,7 @@
         </div>
         <div class="registry-header-actions hidden" id="rebiopsyHeaderActions">
           <button class="toolbar-btn" id="rebiopsyFreezeToggle"><span>⇤</span> <span id="rebiopsyFreezeLabel">Freeze columns</span></button>
-          <button class="toolbar-btn" id="rebiopsyFiltersToggle"><span>▽</span> Filters <b class="filters-badge" id="rebiopsyFiltersBadge">0</b></button>
+          <button class="toolbar-btn" id="rebiopsyFiltersToggle"><span class="btn-ico"><img class="ico" src="/static/icons/navigation__filter.png" alt=""></span> Filters <b class="filters-badge" id="rebiopsyFiltersBadge">0</b></button>
         </div>
         <div class="prep-segments header-center-toggle hidden" id="registryViewToggle" role="tablist" aria-label="Row grouping">
           <button type="button" class="prep-seg" data-mode="patient" role="tab" aria-selected="false">Patient view</button>
@@ -83,19 +83,19 @@
         </div>
         <div class="registry-header-actions hidden" id="registryHeaderActions">
           <button class="toolbar-btn" id="sortToggle"><span>⇅</span> <span id="sortToggleLabel">Sheet order</span></button>
-          <button class="toolbar-btn" id="filtersToggle"><span>▽</span> Filters <b class="filters-badge" id="filtersBadge">0</b></button>
+          <button class="toolbar-btn" id="filtersToggle"><span class="btn-ico"><img class="ico" src="/static/icons/navigation__filter.png" alt=""></span> Filters <b class="filters-badge" id="filtersBadge">0</b></button>
           <a class="toolbar-btn edits-sheet-link hidden" id="editsSheetLink" target="_blank" rel="noopener" href="#">▦ Edits sheet ↗<b class="filters-badge hidden"></b></a>
-          <div class="export-wrap"><button class="secondary compact" id="downloadCsv">↓ Export data</button><div class="export-menu hidden" id="exportMenu"><button data-format="csv">CSV</button><button data-format="excel">Excel</button><button data-format="json">JSON</button><button data-format="pdf">PDF</button><button data-format="excel-all" class="export-menu-divider">Excel — all rows, unfiltered</button></div></div>
+          <div class="export-wrap"><button class="secondary compact" id="downloadCsv"><span class="btn-ico"><img class="ico" src="/static/icons/navigation__download-export.png" alt=""></span> Export data</button><div class="export-menu hidden" id="exportMenu"><button data-format="csv">CSV</button><button data-format="excel">Excel</button><button data-format="json">JSON</button><button data-format="pdf">PDF</button><button data-format="excel-all" class="export-menu-divider">Excel — all rows, unfiltered</button></div></div>
         </div>
       </header>
 
       <section class="content" id="homeView">
-        <div class="home-toolbar"><h2 class="home-title">Batches <small class="run-filter-note" id="runFilterNote"></small></h2><div class="search-wrap" id="runSearchWrap"><span>⌕</span><input id="runSearch" placeholder="Search run, platform or patient…"></div><button class="nav-item import-data-btn" data-view="import" title="Upload result"><span>↥</span> <span class="nav-label">Upload result</span></button></div>
+        <div class="home-toolbar"><h2 class="home-title">Batches <small class="run-filter-note" id="runFilterNote"></small></h2><div class="search-wrap" id="runSearchWrap"><span>⌕</span><input id="runSearch" placeholder="Search run, platform or patient…"></div><button class="nav-item import-data-btn" data-view="import" title="Upload result"><span><img class="ico" src="/static/icons/navigation__upload-result.png" alt=""></span> <span class="nav-label">Upload result</span></button></div>
         <div class="stats" id="homeStats">
-          <article data-run-filter="all" tabindex="0" role="button"><div><small>TOTAL RUNS</small><strong id="homeBatchesStat">0</strong><p id="homeBatchesSub">Sequencing runs in the batch record</p></div><span class="stat-icon blue">📦</span></article>
-          <article><div><small>TOTAL EMBRYOS</small><strong id="homeEmbryosStat">0</strong><p>Across every sample</p></div><span class="stat-icon green">🧬</span></article>
-          <article data-stage="wga" tabindex="0" role="button" title="List samples awaiting sequencing"><div><small>SEQUENCING</small><strong id="homeSeqStat">0</strong><p>Awaiting sequencing · click to list</p></div><span class="stat-icon amber">⏳</span></article>
-          <article data-stage="released" tabindex="0" role="button" title="List samples with a released report"><div><small>REPORT RELEASED</small><strong id="homeReleasedStat">0</strong><p>NGS report + Attune upload · click to list</p></div><span class="stat-icon green">✔</span></article>
+          <article data-run-filter="all" tabindex="0" role="button"><div><small>TOTAL RUNS</small><strong id="homeBatchesStat">0</strong><p id="homeBatchesSub">Sequencing runs in the batch record</p></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/run-summary__runs.png" alt=""></span></article>
+          <article><div><small>TOTAL EMBRYOS</small><strong id="homeEmbryosStat">0</strong><p>Across every sample</p></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/stages-results__total-embryos.png" alt=""></span></article>
+          <article data-stage="wga" tabindex="0" role="button" title="List samples awaiting sequencing"><div><small>SEQUENCING</small><strong id="homeSeqStat">0</strong><p>Awaiting sequencing · click to list</p></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/stages-results__sequencing.png" alt=""></span></article>
+          <article data-stage="released" tabindex="0" role="button" title="List samples with a released report"><div><small>REPORT RELEASED</small><strong id="homeReleasedStat">0</strong><p>NGS report + Attune upload · click to list</p></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/stages-results__report-sent.png" alt=""></span></article>
           <article id="overdueCard" class="overdue-card" tabindex="0" role="button" title="Open the overdue samples list"><div><small>OVERDUE SAMPLES</small><strong id="overdueStat">0</strong><p>Past TAT date, no report sent · click to list</p></div><span class="stat-icon red">⏰</span></article>
         </div>
         <section class="panel run-list-panel">
@@ -123,9 +123,9 @@
 
       <section class="content hidden" id="samplesView">
         <div class="stats stats-3col">
-          <article class="stat-card tone-blue" id="samplesEmbryoCard"><div class="stat-top"><small>TOTAL EMBRYOS</small><span class="stat-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="9.5" cy="10" r="2.2"/><circle cx="14.5" cy="10" r="2.2"/><circle cx="12" cy="14.8" r="2.2"/></svg></span></div><strong id="samplesEmbryoStat">0</strong><p id="samplesEmbryoSub">Across the currently filtered samples</p></article>
-          <article class="stat-card tone-violet stat-card-link" id="reportPrepCard" role="button" tabindex="0" title="Open the Report preparation list"><div class="stat-top"><small>REPORT PREPARATION</small><span class="stat-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 13H8"/><path d="M16 17H8"/><path d="m13.5 12.5 1.5 1.5 3-3"/></svg></span></div><strong id="reportPrepStat">0</strong><p id="reportPrepSub">Attune upload &amp; NGS report pending</p></article>
-          <article class="stat-card tone-red stat-card-link" id="rebiopsyCard" role="button" tabindex="0" title="Open the Re-biopsy list"><div class="stat-top"><small>RE-BIOPSY</small><span class="stat-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg></span></div><strong id="rebiopsyNavCount">0</strong><p>Patients with more than one sample</p></article>
+          <article class="stat-card tone-blue" id="samplesEmbryoCard"><div class="stat-top"><small>TOTAL EMBRYOS</small><span class="stat-icon"><img class="ico" src="/static/icons/stages-results__total-embryos.png" alt=""></span></div><strong id="samplesEmbryoStat">0</strong><p id="samplesEmbryoSub">Across the currently filtered samples</p></article>
+          <article class="stat-card tone-violet stat-card-link" id="reportPrepCard" role="button" tabindex="0" title="Open the Report preparation list"><div class="stat-top"><small>REPORT PREPARATION</small><span class="stat-icon"><img class="ico" src="/static/icons/stages-results__report-preparation.png" alt=""></span></div><strong id="reportPrepStat">0</strong><p id="reportPrepSub">Attune upload &amp; NGS report pending</p></article>
+          <article class="stat-card tone-red stat-card-link" id="rebiopsyCard" role="button" tabindex="0" title="Open the Re-biopsy list"><div class="stat-top"><small>RE-BIOPSY</small><span class="stat-icon"><img class="ico" src="/static/icons/tests-transfers__repeat-biopsy.png" alt=""></span></div><strong id="rebiopsyNavCount">0</strong><p>Patients with more than one sample</p></article>
         </div>
         <section class="panel cases-panel">
           <div class="filters-inline hidden" id="filtersPanel">
@@ -173,7 +173,7 @@
 
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="/static/clients.js"></script>
-  <script src="/static/trf-doc.js?v=20261007zw"></script>
-  <script src="/static/app.js?v=20261007zw"></script>
+  <script src="/static/trf-doc.js?v=20261007zx"></script>
+  <script src="/static/app.js?v=20261007zx"></script>
 </body>
 </html>

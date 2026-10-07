@@ -1600,3 +1600,12 @@ body.role-embryologist #trfModeSeg{display:none}
 #embListDialog{height:88vh;max-height:88vh;overflow:hidden}#embListDialog[open]{display:flex;flex-direction:column}
 #embListDialog .vu-dbody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;max-height:none;overflow:hidden}
 #embListDialog .emb-list-wrap{flex:1 1 auto;min-height:0;max-height:none;overflow:auto}
+/* Icon library (frontend/icons) */
+.ico{display:block;object-fit:contain;flex-shrink:0}
+.nav-item span:has(>.ico){width:30px;height:30px;display:grid;place-items:center;border-radius:9px}.nav-item .ico{width:28px;height:28px}
+.nav-item.active span:has(>.ico){background:#fff}
+.import-data-btn span:has(>.ico){width:26px;height:26px}.import-data-btn .ico{width:24px;height:24px}
+.qc-bell .bell-ico{width:26px;height:26px}
+.stat-icon:has(>.ico){background:#f1f7f6!important;box-shadow:none!important;display:grid;place-items:center}.stat-icon>.ico{width:80%;height:80%}
+.btn-ico{display:inline-flex;vertical-align:middle;margin-right:2px}.btn-ico .ico{width:18px;height:18px}
+.transfer-cards .stat-top .ico{width:34px;height:34px}
