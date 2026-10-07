@@ -1844,3 +1844,25 @@ html,body{overflow-x:clip!important;overflow-y:visible!important}
 /* Run status toolbar: Overview button (moved out of the top bar) before Embryo registry and Upload result */
 #homeView .home-toolbar{grid-template-columns:minmax(0,1fr) auto auto auto!important}
 #homeView .home-toolbar .home-overview-btn{justify-self:end;padding:9px 16px;font-size:15px;white-space:nowrap}
+/* ===== Screen-fit pass: nothing may push the page wider than the screen ===== */
+.content,.generic-card,.fu-view,.fu-pane,.db-card,.tk,main{min-width:0;max-width:100%}
+.db-two,.db-two-eq{grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))!important}
+.db-two>*{min-width:0}.db-card .fu-table-wrap{max-width:100%}
+.tk-list{grid-template-columns:repeat(auto-fill,minmax(min(100%,360px),1fr))!important}
+.db-rates,.journey,.mon-tiles,.mon-groups,.st-tiles{min-width:0}
+.fu-table-wrap{max-width:100%;overflow-x:auto}
+.prep-segments{max-width:100%;overflow-x:auto;scrollbar-width:thin}
+.trf-newbar,.trf-tabbar,.trf-formbar-actions{flex-wrap:wrap}.trf-type-pick{max-width:100%}.trf-type-pick select{max-width:100%}
+#genericHeaderTitle{min-width:0;max-width:100%;flex-wrap:wrap}.od-source{white-space:normal}
+@media(max-width:700px){
+ #homeView .home-toolbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important}
+ #homeView .home-toolbar #runSearchWrap{grid-column:1/-1;order:-1;min-width:0;width:100%;position:static!important;transform:none!important}
+ #homeView .home-toolbar .samples-go,#homeView .home-toolbar .import-data-btn{justify-self:stretch;min-width:0;justify-content:center}
+ .db-h-row{align-items:flex-start}.db-h-row .db-pop{width:100%}
+ .dn-wrap{justify-content:center}.dn-leg{min-width:0;flex-basis:100%}
+ .fu-switch{grid-template-columns:1fr}
+}
+.st-teal{--sc:#0a7180;--sb:#eaf7f6}
+
+.db-three{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))!important}
+.dn svg text,.dn text{max-width:100%}

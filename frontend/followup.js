@@ -122,25 +122,30 @@ const IC=n=>`<img class="ico" src="/static/icons/${n}.png" alt="">`;
 const SVG={heart:'<svg viewBox="0 0 24 24" width="30" height="30" fill="#e0457b"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.7 5 6 5c2 0 3.4 1 4 2.2h4C14.600 6 16 5 18 5c3.300 0 5.100 3.400 3.600 6.800C19.500 16.400 12 21 12 21z"/></svg>'};
 const relDue=(due)=>{if(!due)return'';const d=Math.round((new Date(due+'T00:00:00')-new Date(today()+'T00:00:00'))/864e5);return d<0?`Overdue by ${-d} day${d===-1?'':'s'}`:d===0?'Due today':d===1?'Due tomorrow':`Due in ${d} days`};
 const TILES=[
- ['all','All tasks','navigation__patient','Everything in the queue','slate'],
- ['due','Follow-up due','navigation__notifications','Contact the clinic soon','amber'],
- ['overdue','Overdue','stages-results__qc-fail','Past the due date','red'],
- ['awaiting','Awaiting clinic update','navigation__internal-transfer','Clinic has been asked','blue'],
- ['completed','Completed','stages-results__qc-pass','All outcomes known','green'],
- ['na','Not applicable','stages-results__na-result','No consent / not needed','grey']];
+ ['all','Total embryos','stages-results__total-embryos','Every embryo in your list','slate'],
+ ['consent','With consent','navigation__notifications','Patient agreed to follow-up','amber'],
+ ['recorded','Outcomes recorded','stages-results__qc-pass','Embryos with a status entered','green'],
+ ['pending','Still to record','navigation__internal-transfer','No outcome entered yet','blue'],
+ ['completed','Completed','stages-results__normal','Final outcome known','teal'],
+ ['na','No consent','stages-results__na-result','Not followed up','grey']];
 let filtersOpen=false,dashHome=false,taskSort='due',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
 
 // ---------------- Tasks (card queue) ----------------
 function tasksHtml(){
  const mine=currentUser&&currentUser.role==='embryologist';if(mine&&!viewChosen)taskView='embryo';
  const embs=[...new Set(FU.items.map(f=>f.embryologist).filter(Boolean))].sort();
- const items=FU.items.filter(f=>!taskEmb||f.embryologist===taskEmb).map(f=>({f,s:taskStatus(f)})),cnt=k=>k==='all'?items.length:items.filter(x=>x.s===k).length;
+ const items=FU.items.filter(f=>!taskEmb||f.embryologist===taskEmb).map(f=>({f,s:taskStatus(f)}));
+ const emN=x=>(x.f.embryos||[]).length,recN=x=>{const om=outcomeMap(x.f);return(x.f.embryos||[]).filter(e=>om[norm(e.label)]?.status).length};
+ const consent=x=>x.s!=='na',sum=(arr,fn)=>arr.reduce((t,x)=>t+fn(x),0);
+ const cnt=k=>k==='all'?sum(items,emN):k==='consent'?sum(items.filter(consent),emN):k==='recorded'?sum(items.filter(consent),recN):k==='pending'?sum(items.filter(consent),x=>emN(x)-recN(x)):k==='completed'?sum(items.filter(x=>x.s==='completed'),emN):sum(items.filter(x=>x.s==='na'),emN);
+ const keep=k=>x=>k==='all'||(k==='consent'&&consent(x))||(k==='recorded'&&consent(x)&&recN(x)>0)||(k==='pending'&&consent(x)&&recN(x)<emN(x))||(k==='completed'&&x.s==='completed')||(k==='na'&&x.s==='na');
  const q=taskQuery.trim().toLowerCase();
- let list=taskFilter==='all'?items:items.filter(x=>x.s===taskFilter);
+ if(!TILES.some(t=>t[0]===taskFilter))taskFilter='all';
+ let list=items.filter(keep(taskFilter));
  if(q)list=list.filter(x=>`${x.f.patient} ${x.f.clinic} ${x.f.test} ${x.f.trfRef||''} ${x.f.contactName}`.toLowerCase().includes(q));
  const cmp={due:(a,b)=>(a.f.dueDate||'9999').localeCompare(b.f.dueDate||'9999'),patient:(a,b)=>a.f.patient.localeCompare(b.f.patient),clinic:(a,b)=>a.f.clinic.localeCompare(b.f.clinic)}[taskSort];
  list=[...list].sort(cmp);
- const attention=cnt('due')+cnt('overdue');
+ const attention=items.filter(x=>x.s==='due'||x.s==='overdue').length;
  const tiles=TILES.map(([k,l,ic,help,tone])=>`<button type="button" class="st-tile st-${tone}${k===taskFilter?' on':''}" data-k="${k}">${IC(ic)}<span class="st-n">${cnt(k)}</span><span class="st-l">${l}</span><small>${help}</small></button>`).join('');
  const card=({f,s})=>{const om=outcomeMap(f),total=(f.embryos||[]).length,rec=(f.embryos||[]).filter(e=>om[norm(e.label)]?.status).length,rel=relDue(f.dueDate),detail=f.contactDetail||'';
   const link=/@/.test(detail)?`<a href="mailto:${esc(detail)}">${esc(detail)}</a>`:/\d{6,}/.test(detail.replace(/\D/g,''))?`<a href="tel:${esc(detail.replace(/[^\d+]/g,''))}">${esc(detail)}</a>`:esc(detail);
@@ -162,7 +167,7 @@ function tasksHtml(){
  ${taskView==='embryo'?embryoTable(list):`<div class="tk-list">${list.map(card).join('')||empty}</div>`}`}
 function embryoTable(list){
  const rows=[];list.forEach(({f,s})=>{const om=outcomeMap(f);(f.embryos||[]).forEach(e=>{const o=om[norm(e.label)]||{};rows.push({f,s,e,o})})});
- const shown=rows.filter(r=>!onlyNeeds||!r.o.status);
+ const shown=rows.filter(r=>(!onlyNeeds||!r.o.status)&&(taskFilter!=='recorded'||!!r.o.status)&&(taskFilter!=='pending'||(!r.o.status&&r.s!=='na')));
  const tchip=(t,k)=>{const v=(t||{})[k];if(!v||!v.where)return'<span class="fu-os fu-os-none">—</span>';return v.where==='Not done'?'<span class="fu-os fu-os-none">Not done</span>':`<span class="fu-os">${v.where==='Anderson'?'Anderson':esc(v.lab||'Other lab')}${v.result?' · '+esc(v.result):''}</span>`};
  return `<div class="fu-table-wrap fu-tasks"><table class="fu-table"><thead><tr><th>Patient</th><th>Embryo</th><th>PGT-A result</th><th>Outcome</th><th>TERA</th><th>NIPS</th><th>Task</th><th></th></tr></thead><tbody>${shown.map(({f,s,e,o})=>`<tr data-key="${esc(f.caseKey)}" data-emb="${esc(e.label)}"><td class="strong">${esc(f.patient)}<small>${esc(f.clinic)}</small></td><td class="strong">${esc(e.label)}</td><td>${resChip(e.result)}</td><td>${statusChip(o.status)}</td><td>${tchip(o.tests,'tera')}</td><td>${tchip(o.tests,'nips')}</td><td>${chip(s)}</td><td><button type="button" class="primary compact" data-fill="1">${o.status?'Edit details':'Fill details'}</button></td></tr>`).join('')||'<tr><td colspan="8" class="chart-empty">No embryos to show.</td></tr>'}</tbody></table></div>`}
 
@@ -228,7 +233,8 @@ function dashHtml(){
  const stages=[['Embryos tracked',rows.length,IC('stages-results__total-embryos'),'#0a7180'],['Transferred',tr.length,IC('tests-transfers__transferred-to-transfer'),'#3b8fd0'],['Implantation positive',im.length,IC('stages-results__normal'),'#14b8a6'],['Clinical pregnancy',cp.length,IC('navigation__patient'),'#7c5cbf'],['Live birth',lb.length,SVG.heart,'#1f8a52']];
  const journey=stages.map(([l,n,ic,col],i)=>`<div class="jy" style="--c:${col}"><div class="jy-ic">${ic}</div><strong>${n}</strong><span>${l}</span>${i?`<em>${pct(n,stages[i-1][1])} of ${stages[i-1][0].toLowerCase()}</em>`:`<em>${patients} patient${patients===1?'':'s'}</em>`}</div>${i<stages.length-1?'<div class="jy-arrow">›</div>':''}`).join('');
  const order=[...STATUSES,''],mix=order.map(s=>[s,rows.filter(r=>r.status===s).length]);
- const mixSegs=mix.filter(([s])=>s).map(([s,n])=>[n,OS_COLOR[s],s]),mixTot=mixSegs.reduce((t,x)=>t+x[0],0),stack=`<div class="dn-wrap">${donut(mixSegs,mixTot,'with an outcome')}${dnLegend(mixSegs,mixTot,true)}</div><p class="dn-wait"><b>${rows.length-mixTot}</b> of ${rows.length} embryos have no outcome recorded yet.</p>`;
+ const cntOf=s=>rows.filter(r=>r.status===s).length,stageCard=(title,list,sub,note)=>{const segs=list.map(s=>[cntOf(s),OS_COLOR[s],s]),tot=segs.reduce((t,x)=>t+x[0],0);return `<article class="db-card"><h3>${title} <small>${sub}</small></h3><div class="dn-wrap dn-small">${donut(segs,tot,'embryos')}${dnLegend(segs,tot,false)}</div>${note?`<p class="dn-wait">${note}</p>`:''}</article>`};
+ const unknownN=cntOf('Outcome unknown'),noOutN=rows.filter(r=>!r.status).length;
  const furtherCard=(k,label)=>{const g=w=>rows.filter(r=>(r.tests?.[k]?.where||'')===w).length,an=g('Anderson'),ot=g('Other lab'),nd=g('Not done'),nr=rows.length-an-ot-nd,labs={};rows.forEach(r=>{const t=r.tests?.[k];if(t?.where==='Other lab'&&t.lab)labs[t.lab]=(labs[t.lab]||0)+1});
   const seg=[[an,'#0a7180','Done at Anderson'],[ot,'#e08a1e','Done at another lab'],[nd,'#9aa6a0','Not done']],done=an+ot,tot=an+ot+nd;
   return `<article class="db-card db-further"><h3>${label} <small>after PGT-A</small></h3><div class="dn-wrap dn-small">${donut(seg,tot,'recorded')}${dnLegend(seg,tot,false)}</div><p class="dn-wait"><b>${nr}</b> of ${rows.length} embryos not recorded yet.</p>${Object.keys(labs).length?`<p class="db-labs">Other labs: ${Object.entries(labs).sort((a,b)=>b[1]-a[1]).map(([l,n])=>`<b>${esc(l)}</b> (${n})`).join(', ')}</p>`:''}</article>`};
@@ -247,7 +253,8 @@ function dashHtml(){
   ${rate('Miscarriage rate',mc.length,cp.length,'#d12f2f','clinical pregnancies ended in miscarriage','Miscarriages ÷ clinical pregnancies')}
   ${rate('Live-birth rate',lb.length,tr.length,'#1f8a52','transferred embryos led to a live birth','Live births ÷ transferred')}
  </div>
- <div class="db-two"><article class="db-card"><h3>What happened to each embryo</h3>${stack}</article>${furtherCard('tera','TERA')}${furtherCard('nips','NIPS')}</div>
+ <div class="db-two db-three">${stageCard('Transfer',['Not transferred','Transfer planned','Transferred'],'where the embryos are',`<b>${noOutN}</b> of ${rows.length} embryos have no outcome yet.`)}${stageCard('Implantation',['Implantation successful','Implantation unsuccessful'],'result of the transfer','')}${stageCard('Pregnancy',['Clinical pregnancy','Ongoing pregnancy','Miscarriage','Live birth'],'how it progressed',unknownN?`<b>${unknownN}</b> embryo${unknownN===1?'':'s'} with outcome unknown.`:'')}</div>
+ <div class="db-two">${furtherCard('tera','TERA')}${furtherCard('nips','NIPS')}</div>
  <div class="db-two db-two-eq">${table('By clinic',clinics,'Clinic')}${table('By month',months,'Month')}</div>`}
 function wireDash(root,redraw){
  const gr=root.querySelector('#goRunStatus');if(gr)gr.onclick=()=>showView('home');
