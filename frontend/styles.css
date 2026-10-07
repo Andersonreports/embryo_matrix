@@ -2061,3 +2061,9 @@ body.vault-staff #vaultUpload{display:none!important}
 .transfer-cards .tc-row strong{font-size:40px!important;line-height:1!important;margin:0!important}
 .transfer-cards .tc-row .ico{width:46px;height:46px;flex:0 0 auto}
 .transfer-cards .tc-label{font-size:13.5px;font-weight:800;color:#102432}
+
+/* Home: trend chart smaller, TERA / NIPS counts stacked on its right */
+.mk2{grid-template-columns:minmax(0,2fr) minmax(260px,1fr)!important;align-items:stretch}.mk2-one{grid-template-columns:minmax(0,2fr) minmax(260px,1fr)!important}
+@media(max-width:1000px){.mk2,.mk2-one{grid-template-columns:1fr!important}}
+.ft-stack{display:flex;flex-direction:column;gap:14px}.ft-stack .ft{flex:1 1 0;margin:0;flex-wrap:wrap;align-content:center;width:100%}
+.tr-svg{max-height:230px}.db-trend{margin-bottom:0}

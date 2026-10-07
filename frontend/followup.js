@@ -296,9 +296,10 @@ function dashHtml(){
 </div>
  <div class="journey">${journey}</div>
  ${gauges}
- <div class="mk2 mk2-one"><article class="db-card"><h3>Month by month <small>${isEmb?'your embryos':filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>
+ <div class="mk2"><article class="db-card"><h3>Month by month <small>${isEmb?'your embryos':filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>
+ <div class="ft-stack">${ftChip('tera','TERA')}${ftChip('nips','NIPS')}</div>
 </div>
- <div class="ft-strip">${ftChip('tera','TERA')}${ftChip('nips','NIPS')}</div>`}
+`}
 function breakdownHtml(){
  const rows=embryoRows();
  const grp=(keyFn)=>{const m=new Map();rows.forEach(r=>{const k=keyFn(r)||'—',x=m.get(k)||{k,patients:new Set(),n:0,t:0,i:0,p:0,l:0};x.patients.add(r.f.caseKey);x.n++;if(TRANSFERRED.includes(r.status))x.t++;if(IMPLANTED.includes(r.status))x.i++;if(CLINICAL.includes(r.status))x.p++;if(r.status==='Live birth')x.l++;m.set(k,x)});return[...m.values()]};
