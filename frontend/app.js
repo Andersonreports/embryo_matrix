@@ -904,7 +904,7 @@ function applyRoleAccess(){
 function showView(view){if(!viewAllowed(view))view=roleHomeView();
  {const gt=$('#genericHeaderTitle');if(gt)gt.textContent=''}  // header buttons (Image vault, Protocols) belong to one view only
  let scope='';if(view==='pgtm'){view='samples';scope='pgtm'}if(!scope)pgtmCard=null;
- if(view==='samples'||view==='cases'){const changed=samplesScope!==scope;samplesScope=scope;const h=$('#registryHeaderLeft h2');if(h?.firstChild)h.firstChild.nodeValue=scope?'PGT-M & HLA-C samples':'Patient & embryo registry';if(changed){refreshTestFilterOptions();const sms=$('#samplesMonthFilter');if(sms){if(scope){pgtmSavedMonth=sms.value;sms.value=allEmbryos().some(e=>isPgtmSample(e)&&recordMonth(e)==='Pending')?'Pending':''}else if(pgtmSavedMonth!==null){sms.value=pgtmSavedMonth;pgtmSavedMonth=null}}renderCases()}}
+ if(view==='samples'||view==='cases'){const changed=samplesScope!==scope;samplesScope=scope;const h=$('#registryHeaderLeft h2');if(h?.firstChild)h.firstChild.nodeValue=scope?'PGT-M & HLA-C samples':'Patient & embryo registry';$('#registryHeaderLeft')?.classList.toggle('no-title',!scope);if(changed){refreshTestFilterOptions();const sms=$('#samplesMonthFilter');if(sms){if(scope){pgtmSavedMonth=sms.value;sms.value=allEmbryos().some(e=>isPgtmSample(e)&&recordMonth(e)==='Pending')?'Pending':''}else if(pgtmSavedMonth!==null){sms.value=pgtmSavedMonth;pgtmSavedMonth=null}}renderCases()}}
  const navView=scope?'pgtm':view;
  $('#mainHeader')?.classList.toggle('hidden',view==='overview'||view==='home');
  $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===navView||(!scope&&['cases','reportprep','rebiopsy'].includes(view)&&n.dataset.view==='samples')||(n.id==='runStatusNav'&&canEditData()&&!scope&&['samples','cases','reportprep','rebiopsy','overdue','run'].includes(view))));
@@ -1838,4 +1838,17 @@ function setupRunReportsView(){const sel=$('#rrMonth'),body=$('#rrBody');if(!sel
  go('homeReportPrepCard','reportprep');go('homeRebiopsyCard','rebiopsy');
  const src=document.getElementById('caseCount'),dst=document.getElementById('caseCount2');
  if(src&&dst){const mirror=()=>{dst.textContent=src.textContent};new MutationObserver(mirror).observe(src,{childList:true,characterData:true,subtree:true});mirror()}
+})();
+
+// Back button on every inner page: returns to the page you came from (Run status when there is no history).
+(function(){
+ const orig=showView;let cur=null;const stack=[];
+ const TOP=['dashboard','home','overview','pgtm','runreports','followup','trfs','fuTasks','fuDash'];
+ const topLevel=v=>TOP.includes(v)||(!canEditData()&&['samples','cases','images'].includes(v));
+ window.showView=function(view,backing){
+  if(!backing&&cur&&cur!==view){if(topLevel(view))stack.length=0;else stack.push(cur)}
+  cur=view;orig(view);
+  const b=document.getElementById('backBtn');if(b)b.classList.toggle('hidden',topLevel(view)||view==='run')};
+ const b=document.getElementById('backBtn');
+ if(b)b.onclick=()=>{const prev=stack.pop()||(canEditData()?'home':roleHomeView());window.showView(prev,true)};
 })();

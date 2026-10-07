@@ -15,8 +15,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&family=DM+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="/static/logo.svg" />
-  <link rel="stylesheet" href="/static/styles.css?v=20261007zzzb" />
-  <link rel="stylesheet" href="/static/trf-doc.css?v=20261007zzzb" />
+  <link rel="stylesheet" href="/static/styles.css?v=20261007zzze" />
+  <link rel="stylesheet" href="/static/trf-doc.css?v=20261007zzze" />
 </head>
 <body>
   <div class="app-shell">
@@ -51,6 +51,7 @@
 
       <header id="mainHeader" class="hidden">
         <button class="menu-button" aria-label="Toggle menu">☰</button>
+        <button type="button" class="back-btn hidden" id="backBtn" aria-label="Go back"><span>‹</span> Back</button>
         <div class="registry-header-left hidden" id="registryHeaderLeft"><h2>Patient &amp; embryo registry<span class="record-count-badge" id="registryCount"></span></h2></div>
         <div class="generic-header-left hidden" id="genericHeaderLeft"><h2 id="genericHeaderTitle"></h2></div>
         <div class="search-wrap registry-header-search hidden" id="registrySearchWrap"><span>⌕</span><input id="patientSearch" placeholder="Search patient, case ID, test, client…"></div>
@@ -95,7 +96,7 @@
       </header>
 
       <section class="content" id="homeView">
-        <div class="home-toolbar"><h2 class="home-title">Run-wise status <small class="run-filter-note" id="runFilterNote"></small></h2><div class="search-wrap" id="runSearchWrap"><span>⌕</span><input id="runSearch" placeholder="Search run, platform or patient…"></div><button class="nav-item samples-go" id="samplesGo" data-view="samples" title="Open the samples registry"><span><img class="ico" src="/static/icons/navigation__samples.png" alt=""></span> Samples <b id="caseCount2">0</b></button><button class="nav-item import-data-btn" data-view="import" title="Upload result"><span><img class="ico" src="/static/icons/navigation__upload-result.png" alt=""></span> <span class="nav-label">Upload result</span></button></div>
+        <div class="home-toolbar"><h2 class="home-title">Run-wise status <small class="run-filter-note" id="runFilterNote"></small></h2><div class="search-wrap" id="runSearchWrap"><span>⌕</span><input id="runSearch" placeholder="Search run, platform or patient…"></div><button class="nav-item samples-go" id="samplesGo" data-view="samples" title="Open the embryo registry"><span><img class="ico" src="/static/icons/navigation__samples.png" alt=""></span> Embryo registry <b id="caseCount2">0</b></button><button class="nav-item import-data-btn" data-view="import" title="Upload result"><span><img class="ico" src="/static/icons/navigation__upload-result.png" alt=""></span> <span class="nav-label">Upload result</span></button></div>
         <div class="stats" id="homeStats">
           <article><div><small>TOTAL EMBRYOS</small><strong id="homeEmbryosStat">0</strong><p>Across every sample</p></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/stages-results__total-embryos.png" alt=""></span></article>
           <article data-stage="wga" tabindex="0" role="button" title="List samples awaiting sequencing"><div><small>SEQUENCING</small><strong id="homeSeqStat">0</strong><p>Awaiting sequencing · click to list</p></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/stages-results__sequencing.png" alt=""></span></article>
@@ -179,8 +180,8 @@
 
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="/static/clients.js"></script>
-  <script src="/static/trf-doc.js?v=20261007zzzb"></script>
-  <script src="/static/app.js?v=20261007zzzb"></script>
-  <script src="/static/followup.js?v=20261007zzzb"></script>
+  <script src="/static/trf-doc.js?v=20261007zzze"></script>
+  <script src="/static/app.js?v=20261007zzze"></script>
+  <script src="/static/followup.js?v=20261007zzze"></script>
 </body>
 </html>

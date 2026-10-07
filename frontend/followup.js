@@ -257,6 +257,55 @@ function wireDash(root,redraw){
  const cl=root.querySelector('#fuClear');if(cl)cl.onclick=()=>{Object.keys(flt).forEach(k=>flt[k]='');redraw()};
  root.querySelectorAll('.db-chip [data-x]').forEach(b=>b.onclick=()=>{flt[b.dataset.x]='';redraw()})}
 
+// ---------------- Read-only state blocks (admin / team lead see what the embryologist entered) ----------------
+const stepper=status=>`<div class="stp">${STATUSES.map(s=>{const on=s===status;return `<span class="stp-i${on?' on':''}"${on?` style="background:${OS_COLOR[s]};border-color:${OS_COLOR[s]}"`:''}>${esc(s)}</span>`}).join('')}${status?'':'<span class="stp-i on stp-none">Not entered yet</span>'}</div>`;
+const WHERE_LBL={Anderson:'Done at Anderson','Other lab':'Done at another lab','Not done':'Not done'};
+const testLine=(label,t)=>{if(!t||!t.where)return`<span class="es-t"><b>${label}</b> not recorded</span>`;if(t.where==='Not done')return`<span class="es-t"><b>${label}</b> not done</span>`;
+ return `<span class="es-t"><b>${label}</b> ${t.where==='Anderson'?'done at Anderson':`done at ${esc(t.lab||'another lab')}`}${t.date?' · '+fmtDate(t.date):''}${t.result?' · result: '+esc(t.result):''}${t.note?' · '+esc(t.note):''}</span>`};
+const whoWhen=o=>o&&o.at?`Updated${o.by?' by <b>'+esc(o.by)+'</b>':''} on ${fmtDate(String(o.at).slice(0,10))}`:'Not entered yet';
+function embryoState(e,o){o=o||{};
+ return `<div class="es"><div class="es-head"><strong>${esc(e.label)}</strong>${resChip(e.result)}<span class="es-who">${whoWhen(o)}</span></div>${stepper(o.status||'')}<div class="es-meta">${o.date?`<span class="es-t"><b>Outcome date</b> ${fmtDate(o.date)}</span>`:''}${o.note?`<span class="es-t"><b>Note</b> ${esc(o.note)}</span>`:''}${testLine('TERA',o.tests?.tera)}${testLine('NIPS',o.tests?.nips)}</div></div>`}
+function openResultDialog(f){
+ const d=dlgEl(),om=outcomeMap(f);
+ d.innerHTML=`<div class="vu-dhead"><div><h3>${esc(f.patient||'Patient')}</h3><small>${esc(f.clinic||'')}${f.test?' · '+esc(f.test):''}${f.embryologist?' · embryologist '+esc(f.embryologist):''}</small></div><div>${chip(taskStatus(f))} <button type="button" class="secondary compact" data-close>Close</button></div></div>
+ <div class="vu-dbody"><div class="fu-sum">${sumCards((f.embryos||[]).map(e=>({status:om[norm(e.label)]?.status||''})))}</div>
+ <section class="fu-block"><div class="fu-block-head"><h4>Outcome follow-up</h4><small>Filled in by the embryologist</small></div>${(f.embryos||[]).map(e=>embryoState(e,om[norm(e.label)])).join('')||'<div class="chart-empty">No embryos.</div>'}</section>
+ ${f.contactName||f.contactDetail||f.note?`<section class="fu-block"><div class="fu-block-head"><h4>Clinic contact</h4></div><p style="margin:0">${esc(f.contactName)} ${esc(f.contactDetail)}</p>${f.note?`<p class="fu-note">${esc(f.note)}</p>`:''}</section>`:''}</div>`;
+ if(!d.open)d.showModal()}
+
+// ---------------- Admin / team lead: results entered by the embryologists ----------------
+let monGroupsAll=false,monQ='',monStatus='',monGroup='',monOnly='all',monLimit=100;
+function monitorHtml(){
+ const all=[];
+ FU.items.forEach(f=>{if(f.consent==='No'||f.state==='not_applicable')return;const om=outcomeMap(f);(f.embryos||[]).forEach(e=>{const o=om[norm(e.label)]||{};all.push({f,e,o,s:o.status||'',g:f.embryologist||f.clinic||'—'})})});
+ const filled=all.filter(r=>r.s).length,total=all.length;
+ const groups=new Map();all.forEach(r=>{const x=groups.get(r.g)||{g:r.g,n:0,f:0,last:null,by:''};x.n++;if(r.s)x.f++;if(r.o.at&&(!x.last||r.o.at>x.last)){x.last=r.o.at;x.by=r.o.by||''}groups.set(r.g,x)});
+ const glist=[...groups.values()].sort((a,b)=>(b.n-b.f)-(a.n-a.f));
+ const q=monQ.trim().toLowerCase();
+ let rows=all.filter(r=>(!monStatus||(monStatus==='__none'?!r.s:r.s===monStatus))&&(!monGroup||r.g===monGroup)&&(monOnly==='all'||(monOnly==='filled'?!!r.s:!r.s))&&(!q||`${r.f.patient} ${r.f.clinic} ${r.e.label} ${r.o.by||''}`.toLowerCase().includes(q)));
+ const shown=rows.slice(0,monLimit),cnt=s=>all.filter(r=>r.s===s).length;
+ const tiles=[...STATUSES,'__none'].map(s=>{const n=s==='__none'?total-filled:cnt(s),col=s==='__none'?'#dfe6e4':OS_COLOR[s];return `<button type="button" class="mt${monStatus===s?' on':''}" data-s="${esc(s)}" style="--c:${col}"><strong>${n}</strong><span>${s==='__none'?'Not entered yet':esc(s)}</span></button>`}).join('');
+ const pctF=total?Math.round(filled/total*100):0;
+ return `<div class="fu-hero"><div><h2>Results entered by the embryologists</h2><p><b>${filled}</b> of <b>${total}</b> embryos have an outcome (${pctF}%). Embryologists fill these in; you can follow them here.</p><div class="mon-bar"><i style="width:${pctF}%"></i></div></div><div class="hero-btns"><button type="button" class="hero-btn" id="fuFromSheet">＋ Add patients from the sheet</button></div></div>
+ <h3 class="db-h">Current state of the embryos</h3><div class="mon-tiles">${tiles}</div>
+ <h3 class="db-h">Progress by embryologist / centre</h3><div class="mon-groups">${glist.slice(0,monGroupsAll?glist.length:12).map(x=>`<button type="button" class="mg${monGroup===x.g?' on':''}" data-g="${esc(x.g)}"><div class="mg-top"><b>${esc(x.g)}</b><span>${x.f}/${x.n}</span></div><div class="mon-bar sm"><i style="width:${x.n?x.f/x.n*100:0}%"></i></div><small>${x.n-x.f?`${x.n-x.f} waiting`:'All entered'}${x.last?` · last update ${fmtDate(String(x.last).slice(0,10))}${x.by?' by '+esc(x.by):''}`:''}</small></button>`).join('')||'<div class="chart-empty">No follow-ups yet. Add patients from the sheet, or wait for TRFs with follow-up consent.</div>'}</div>
+ ${glist.length>12?`<div style="margin:10px 0"><button type="button" class="secondary compact" id="monGroupsToggle">${monGroupsAll?'Show fewer':`Show all ${glist.length}`}</button></div>`:''}
+ <h3 class="db-h">Embryo by embryo</h3>
+ <div class="tk-bar"><div class="seg-toggle" id="monOnly">${[['all','All'],['filled','Entered'],['waiting','Waiting']].map(([k,l])=>`<button type="button" class="${monOnly===k?'on':''}" data-v="${k}">${l}</button>`).join('')}</div><div class="search-wrap fu-search"><span>⌕</span><input id="monSearch" type="search" placeholder="Search patient, clinic or embryo…" value="${esc(monQ)}"></div>${(monStatus||monGroup)?'<button type="button" class="db-fclear" id="monClear">Clear filters</button>':''}</div>
+ <div class="fu-table-wrap fu-tasks"><table class="fu-table"><thead><tr><th>Patient</th><th>Embryo</th><th>PGT-A result</th><th>Current state</th><th>Date</th><th>TERA</th><th>NIPS</th><th>Updated by</th></tr></thead><tbody>${shown.map(({f,e,o,s})=>{const tc=k=>{const v=o.tests?.[k];return !v||!v.where?'<span class="fu-os fu-os-none">—</span>':v.where==='Not done'?'<span class="fu-os fu-os-none">Not done</span>':`<span class="fu-os">${v.where==='Anderson'?'Anderson':esc(v.lab||'Other lab')}${v.result?' · '+esc(v.result):''}</span>`};
+  return `<tr data-key="${esc(f.caseKey)}"><td class="strong">${esc(f.patient)}<small>${esc(f.clinic)}</small></td><td class="strong">${esc(e.label)}</td><td>${resChip(e.result)}</td><td>${statusChip(s)}</td><td>${fmtDate(o.date)}</td><td>${tc('tera')}</td><td>${tc('nips')}</td><td>${o.by?esc(o.by)+'<small>'+fmtDate(String(o.at||'').slice(0,10))+'</small>':'—'}</td></tr>`}).join('')||'<tr><td colspan="8" class="chart-empty">No embryos match.</td></tr>'}</tbody></table></div>
+ ${rows.length>shown.length?`<div style="text-align:center;margin:12px"><button type="button" class="secondary" id="monMore">Show more (${rows.length-shown.length} left)</button></div>`:''}`}
+function wireMonitor(root,redraw){
+ root.querySelector('.mon-tiles').onclick=e=>{const b=e.target.closest('[data-s]');if(!b)return;monStatus=monStatus===b.dataset.s?'':b.dataset.s;monLimit=100;redraw()};
+ const gp=root.querySelector('.mon-groups');if(gp)gp.onclick=e=>{const b=e.target.closest('[data-g]');if(!b)return;monGroup=monGroup===b.dataset.g?'':b.dataset.g;monLimit=100;redraw()};
+ root.querySelector('#monOnly').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;monOnly=b.dataset.v;monLimit=100;redraw()};
+ const s=root.querySelector('#monSearch');s.oninput=()=>{monQ=s.value;monLimit=100;const pos=s.selectionStart;redraw();const n=root.querySelector('#monSearch');n.focus();n.setSelectionRange(pos,pos)};
+ const c=root.querySelector('#monClear');if(c)c.onclick=()=>{monStatus='';monGroup='';redraw()};
+ const gt=root.querySelector('#monGroupsToggle');if(gt)gt.onclick=()=>{monGroupsAll=!monGroupsAll;redraw()};
+ const m=root.querySelector('#monMore');if(m)m.onclick=()=>{monLimit+=200;redraw()};
+ const fs=root.querySelector('#fuFromSheet');if(fs)fs.onclick=()=>openSheetImport(redraw);
+ root.querySelector('.fu-tasks').onclick=e=>{const tr=e.target.closest('tr[data-key]');if(!tr)return;const f=FU.items.find(x=>x.caseKey===tr.dataset.key);if(f)openResultDialog(f)}}
+
 // ---------------- Views ----------------
 window.renderFollowupView=async function(g,view){
  const title={followup:'Clinical follow-up',fuTasks:'Follow-up tasks',fuDash:'Outcomes',dashboard:'Home'}[view];
@@ -266,12 +315,12 @@ window.renderFollowupView=async function(g,view){
  await loadFollowups(true);
  const card=g.querySelector('.fu-view');
  const draw=()=>{
-  const tab=(view==='followup'||view==='fuTasks')?'tasks':'dash';
+  const tab=view==='followup'?'monitor':view==='fuTasks'?'tasks':'dash';
   dashHome=view==='dashboard';
   const seg='';
-  card.innerHTML=seg+`<div class="fu-pane">${tab==='tasks'?tasksHtml():dashHtml()}</div>`;
+  card.innerHTML=seg+`<div class="fu-pane">${tab==='monitor'?monitorHtml():tab==='tasks'?tasksHtml():dashHtml()}</div>`;
   const sub=card.querySelector('#fuSub');if(sub)sub.onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;subTab=b.dataset.t;draw()};
-  if(tab==='tasks')wireTasks(card,draw);else wireDash(card,draw)};
+  if(tab==='monitor')wireMonitor(card,draw);else if(tab==='tasks')wireTasks(card,draw);else wireDash(card,draw)};
  draw()};
 
 // ---------------- Patient page section ----------------
@@ -284,16 +333,11 @@ window.renderPatientFollowup=async function(c,resolvedAll){
  const labels=(resolvedAll||[]).map(r=>{const id=resultIdentity(r);return{label:id.patient?`${id.patient}-${id.embryo}`:id.embryo,result:RESULT_NAME[conclusionClass(r)]||'No result'}}).filter(x=>x.label);
  const list=labels.length?labels:Array.from({length:c.samples||0},(_,i)=>({label:`Embryo ${i+1}`,result:'No result'}));
  const month=(c.embryos||[]).map(recordMonth).find(m=>/^\d{4}-\d{2}$/.test(m))||'';
- const draft={_new:true,caseKey:c.id,patient:c.patient,clinic:c.client||'',region:c.region||'',embryologist:c.embryologist||'',test:c.test||'',month,age:null,embryos:list,consent:'Yes',contactName:'',contactDetail:'',expectedPeriod:'',dueDate:addDays(today(),90),state:'',note:'',outcomes:[]};
- const draw=()=>{const f=FU.items.find(x=>x.caseKey===c.id),base=f||draft,emb=(base.embryos&&base.embryos.length)?base.embryos:list;
-  sec.innerHTML=`<div class="fu-sec-head"><div class="embryo-table-title"><h3>Outcome follow-up</h3>${f?chip(taskStatus(f)):'<span class="fu-chip fu-scheduled">Not started</span>'}</div><button type="button" class="secondary compact" id="fuMore">Contact &amp; task details</button></div>
-  <div class="fu-sum" id="fuInlineSum"></div>
-  <div id="fuInlineEditor">${editorHtml(emb,f?outcomeMap(f):{})}</div>
-  <div class="fu-actions"><button type="button" class="primary" id="fuInlineSave">Save outcomes</button></div>`;
-  const ed=sec.querySelector('#fuInlineEditor'),sum=()=>{sec.querySelector('#fuInlineSum').innerHTML=sumCards(readEditor(ed))};sum();wireEditor(ed,sum);
-  sec.querySelector('#fuInlineSave').onclick=async e=>{const b=e.currentTarget;b.disabled=true;
-   try{const body={caseKey:c.id,followup:f?{}:{patient:draft.patient,clinic:draft.clinic,region:draft.region,embryologist:draft.embryologist,test:draft.test,month:draft.month,embryos:draft.embryos,consent:'Yes',dueDate:draft.dueDate},outcomes:readEditor(ed)};
-    await postSave(body);toast('Outcomes saved');draw()}catch(err){toast(err.message||'Could not save');b.disabled=false}};
-  sec.querySelector('#fuMore').onclick=()=>{const cur=FU.items.find(x=>x.caseKey===c.id)||draft;openRecordDialog(cur._new?cur:{...cur,embryos:(cur.embryos&&cur.embryos.length)?cur.embryos:list},draw)}};
+ const draw=()=>{const f=FU.items.find(x=>x.caseKey===c.id),om=f?outcomeMap(f):{},emb=(f&&f.embryos&&f.embryos.length)?f.embryos:list;
+  sec.innerHTML=`<div class="fu-sec-head"><div class="embryo-table-title"><h3>Outcome follow-up</h3>${f?chip(taskStatus(f)):'<span class="fu-chip fu-scheduled">Not started</span>'}</div>${f?'':'<button type="button" class="secondary compact" id="fuStart">Send to the embryologist</button>'}</div>
+  <p class="fu-note" style="margin:0 0 10px">${f?'The embryologist fills in what happened to each embryo. This is its current state.':'Nothing recorded yet. Send this patient to the embryologist\'s list so they can fill in the outcomes.'}</p>
+  <div class="fu-sum">${sumCards(emb.map(e=>({status:om[norm(e.label)]?.status||''})))}</div>
+  ${emb.map(e=>embryoState(e,om[norm(e.label)])).join('')}`;
+  const st=sec.querySelector('#fuStart');if(st)st.onclick=async()=>{st.disabled=true;try{await postSave({caseKey:c.id,followup:{patient:c.patient,clinic:c.client||'',region:c.region||'',embryologist:c.embryologist||'',test:c.test||'',month,embryos:list,consent:'Yes',dueDate:today()},outcomes:[]});toast('Added to the embryologist\'s list');draw()}catch(err){toast(err.message||'Could not add');st.disabled=false}}};
  draw()};
 })();
