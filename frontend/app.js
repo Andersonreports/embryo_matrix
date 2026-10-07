@@ -846,7 +846,7 @@ document.querySelectorAll('#batchKindToggle [data-kind]').forEach(b=>b.addEventL
 async function renderHomeCards(){await loadResultFiles();let hist;[seqRunsCache,wgaCache,hist,embInc]=await Promise.all([kvGet('embryomatrix-sequencing-runs'),kvGet('embryomatrix-wga-batches'),kvGet('embryomatrix-run-history'),kvGet('embryomatrix-embryologist-inconclusive')]);seqRunsCache=seqRunsCache||[];wgaCache=wgaCache||[];runHistory=hist?.runs||[];buildRunsView();syncBatchKindUi();renderEmbInc();renderHomeStats();renderRunList();if($('#rrBody'))setupRunReportsView()}
 function renderStatCards(allRows){
  const total=allRows.length,ongoing=allRows.filter(e=>e._importSource==='Pending').length,embryos=allRows.reduce((s,e)=>s+embryoRowsOf(e).length,0),completed=allRows.filter(e=>reportStatus(e)==='Completed').length;
- countUp($('#totalSamplesStat'),total);countUp($('#activeStat'),ongoing);countUp($('#trackedStat'),embryos);countUp($('#completedStat'),completed);const rebiopsyNav=$('#rebiopsyNavCount');if(rebiopsyNav)rebiopsyNav.textContent=allRows.filter(isRebiopsy).length.toLocaleString();const prepMonths=reportPrepMonths(),prep=allRows.filter(e=>isReportPrep(e,prepMonths)).length;countUp($('#reportPrepStat'),prep);const prepNav=$('#reportPrepNavCount');if(prepNav)prepNav.textContent=prep.toLocaleString();const prepSub=$('#reportPrepSub');if(prepSub)prepSub.innerHTML=`In <b>${escapeHtml(monthLabel(prepMonths[0],{month:'short'}))}</b> &amp; <b>${escapeHtml(monthLabel(prepMonths[1],{month:'short'}))}</b> · Attune &amp; NGS report pending`;
+ countUp($('#totalSamplesStat'),total);countUp($('#activeStat'),ongoing);countUp($('#trackedStat'),embryos);countUp($('#completedStat'),completed);const rebiopsyNav=$('#rebiopsyNavCount');if(rebiopsyNav)rebiopsyNav.textContent=allRows.filter(isRebiopsy).length.toLocaleString();{const hr=$('#homeRebiopsyStat');if(hr)hr.textContent=allRows.filter(isRebiopsy).length.toLocaleString()}const prepMonths=reportPrepMonths(),prep=allRows.filter(e=>isReportPrep(e,prepMonths)).length;countUp($('#reportPrepStat'),prep);{const hp=$('#homeReportPrepStat');if(hp)hp.textContent=prep.toLocaleString()}const prepNav=$('#reportPrepNavCount');if(prepNav)prepNav.textContent=prep.toLocaleString();const prepSub=$('#reportPrepSub');if(prepSub)prepSub.innerHTML=`In <b>${escapeHtml(monthLabel(prepMonths[0],{month:'short'}))}</b> &amp; <b>${escapeHtml(monthLabel(prepMonths[1],{month:'short'}))}</b> · Attune &amp; NGS report pending`;
  const months=[...new Set(allRows.map(recordMonth).filter(isDateMonth))].sort(),latest=months[months.length-1],latestCount=latest?allRows.filter(e=>recordMonth(e)===latest).length:0;
  const totalSub=$('#totalSamplesSub');if(totalSub)totalSub.innerHTML=latest?`<b>+${latestCount.toLocaleString()}</b> in ${escapeHtml(monthLabel(latest,{month:'long'}))}`:'All sample records';
 
@@ -895,6 +895,7 @@ function applyRoleAccess(){
   const r=currentUser.role;
   // Clinical follow-up: one tab for admin / team lead; the embryologist gets its two pages as separate tabs.
   const fu=document.getElementById('fuNav');if(fu)fu.hidden=!(canEditData());
+  const sn=document.getElementById('samplesNav');if(sn&&canEditData())sn.hidden=true;  // admin / team lead reach Samples from the Run status page
   if(!currentUser.signedIn||!ROLE_VIEWS[r])return;
   document.body.classList.add('role-'+r);
   document.querySelectorAll('.nav-item').forEach(n=>{n.hidden=!ROLE_VIEWS[r].includes(n.dataset.view)});
@@ -906,7 +907,7 @@ function showView(view){if(!viewAllowed(view))view=roleHomeView();
  if(view==='samples'||view==='cases'){const changed=samplesScope!==scope;samplesScope=scope;const h=$('#registryHeaderLeft h2');if(h?.firstChild)h.firstChild.nodeValue=scope?'PGT-M & HLA-C samples':'Patient & embryo registry';if(changed){refreshTestFilterOptions();const sms=$('#samplesMonthFilter');if(sms){if(scope){pgtmSavedMonth=sms.value;sms.value=allEmbryos().some(e=>isPgtmSample(e)&&recordMonth(e)==='Pending')?'Pending':''}else if(pgtmSavedMonth!==null){sms.value=pgtmSavedMonth;pgtmSavedMonth=null}}renderCases()}}
  const navView=scope?'pgtm':view;
  $('#mainHeader')?.classList.toggle('hidden',view==='overview'||view==='home');
- $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===navView||(!scope&&['cases','reportprep','rebiopsy'].includes(view)&&n.dataset.view==='samples')));
+ $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===navView||(!scope&&['cases','reportprep','rebiopsy'].includes(view)&&n.dataset.view==='samples')||(n.id==='runStatusNav'&&canEditData()&&!scope&&['samples','cases','reportprep','rebiopsy','overdue','run'].includes(view))));
  $('#registryViewToggle')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#registryHeaderLeft')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#genericHeaderLeft')?.classList.toggle('hidden',view==='overview'||view==='home'||view==='cases'||view==='samples');
@@ -1830,3 +1831,11 @@ function setupRunReportsView(){const sel=$('#rrMonth'),body=$('#rrBody');if(!sel
 
 // Every file the app saves to the user's computer (registry, overdue, run report exports...) goes in the activity log.
 (function logDownloads(){const orig=HTMLAnchorElement.prototype.click;HTMLAnchorElement.prototype.click=function(){try{if(this.download&&String(this.href).startsWith('blob:'))fetch('/api/log-export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:{file:this.download}})}).catch(()=>{})}catch(e){}return orig.apply(this,arguments)}})();
+
+// Run status page: report preparation / re-biopsy cards and the Samples button.
+(function(){
+ const go=(id,view)=>{const el=document.getElementById(id);if(!el)return;el.addEventListener('click',()=>showView(view));el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showView(view)}})};
+ go('homeReportPrepCard','reportprep');go('homeRebiopsyCard','rebiopsy');
+ const src=document.getElementById('caseCount'),dst=document.getElementById('caseCount2');
+ if(src&&dst){const mirror=()=>{dst.textContent=src.textContent};new MutationObserver(mirror).observe(src,{childList:true,characterData:true,subtree:true});mirror()}
+})();
