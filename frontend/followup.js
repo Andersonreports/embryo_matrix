@@ -137,7 +137,7 @@ const TILES=[
  ['pending','Still to record','navigation__internal-transfer','No outcome entered yet','blue'],
  ['completed','Completed','stages-results__normal','Final outcome known','teal'],
  ['na','No consent','stages-results__na-result','Not followed up','grey']];
-let filtersOpen=false,dashHome=false,taskSort='due',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
+let clQ='',clAll=false,filtersOpen=false,dashHome=false,taskSort='due',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
 
 // ---------------- Tasks (card queue) ----------------
 function tasksHtml(){
@@ -251,35 +251,36 @@ function dashHtml(){
   const seg=[[an,'#0a7180','Done at Anderson'],[ot,'#e08a1e','Done at another lab'],[nd,'#9aa6a0','Not done']],done=an+ot,tot=an+ot+nd;
   return `<article class="db-card db-further"><h3>${label} <small>after PGT-A</small></h3>${tileGrid(seg,tot)}<p class="dn-wait"><b>${nr}</b> of ${rows.length} embryos not recorded yet.</p>${Object.keys(labs).length?`<p class="db-labs">Other labs: ${Object.entries(labs).sort((a,b)=>b[1]-a[1]).map(([l,n])=>`<b>${esc(l)}</b> (${n})`).join(', ')}</p>`:''}</article>`};
  const P=(n,d)=>d?Math.round(n/d*100):null;
- const score=[['Transfer rate',tr.length,rows.length,'#3b8fd0','of embryos tracked were transferred'],['Implantation rate',im.length,tr.length,'#14b8a6','of transferred embryos implanted'],['Clinical pregnancy rate',cp.length,tr.length,'#7c5cbf','of transferred embryos'],['Miscarriage rate',mc.length,cp.length,'#d12f2f','of clinical pregnancies'],['Live-birth rate',lb.length,tr.length,'#1f8a52','of transferred embryos']];
- const scorecard=`<table class="sc"><tbody>${score.map(([l,n,d,col,sub])=>`<tr><td class="sc-l">${l}<small>${n} ${sub.startsWith('of embryos')?'of '+d:'of '+d}</small></td><td class="sc-b"><div class="sc-bar"><i style="width:${d?n/d*100:0}%;background:${col}"></i></div></td><td class="sc-v" style="color:${col}">${d?P(n,d)+'%':'—'}</td></tr>`).join('')}</tbody></table>`;
- const summary=[`<b>${rows.length}</b> embryos from <b>${patients}</b> patients are being followed; <b>${recorded}</b> have an outcome recorded and <b>${rows.length-recorded}</b> are still waiting.`,
-  tr.length?`<b>${tr.length}</b> embryo${tr.length===1?'':'s'} ${tr.length===1?'has':'have'} been transferred (<b>${P(tr.length,rows.length)}%</b> of those tracked).`:'No embryo has been transferred yet.',
-  tr.length?`Of the transferred embryos, <b>${im.length}</b> implanted (<b>${P(im.length,tr.length)}%</b>), <b>${cp.length}</b> reached a clinical pregnancy (<b>${P(cp.length,tr.length)}%</b>) and <b>${lb.length}</b> ended in a live birth (<b>${P(lb.length,tr.length)}%</b>).`:'',
-  mc.length?`<b>${mc.length}</b> miscarriage${mc.length===1?'':'s'} reported (${P(mc.length,cp.length)}% of clinical pregnancies).`:'',
-  (()=>{const t=rows.filter(r=>['Anderson','Other lab'].includes(r.tests?.tera?.where)).length,n=rows.filter(r=>['Anderson','Other lab'].includes(r.tests?.nips?.where)).length;return t||n?`Further testing recorded: TERA on <b>${t}</b> and NIPS on <b>${n}</b> embryos.`:''})()].filter(Boolean);
- const byM=new Map();rows.forEach(r=>{const m=r.f.month||'';if(!/^\d{4}-\d{2}$/.test(m))return;const x=byM.get(m)||{m,tr:0,im:0,cp:0,lb:0};if(TRANSFERRED.includes(r.status))x.tr++;if(IMPLANTED.includes(r.status))x.im++;if(CLINICAL.includes(r.status))x.cp++;if(r.status==='Live birth')x.lb++;byM.set(m,x)});
+ const byM=new Map();rows.forEach(r=>{const m=r.f.month||'';if(!/^\d{4}-\d{2}$/.test(m))return;const x=byM.get(m)||{m,n:0,tr:0,im:0,cp:0,lb:0};x.n++;if(TRANSFERRED.includes(r.status))x.tr++;if(IMPLANTED.includes(r.status))x.im++;if(CLINICAL.includes(r.status))x.cp++;if(r.status==='Live birth')x.lb++;byM.set(m,x)});
  const ms=[...byM.values()].sort((x,y)=>x.m.localeCompare(y.m));
- const trend=(()=>{if(ms.length<2)return '<div class="chart-empty">The trend appears once outcomes are recorded for two or more months.</div>';
-  const W=760,H=230,pl=36,pr=14,pt=14,pb=34,iw=W-pl-pr,ih=H-pt-pb,peak=Math.max(1,...ms.flatMap(x=>[x.tr,x.im,x.cp,x.lb])),top=Math.ceil(peak/4)*4||4,xs=i=>pl+(ms.length>1?i*iw/(ms.length-1):iw/2),ys=v=>pt+ih-v/top*ih;
-  const ser=[['tr','Transferred','#3b8fd0'],['im','Implantation +','#14b8a6'],['cp','Clinical pregnancy','#7c5cbf'],['lb','Live birth','#1f8a52']];
-  const grid=[0,.25,.5,.75,1].map(t=>`<line x1="${pl}" x2="${W-pr}" y1="${ys(top*t)}" y2="${ys(top*t)}" stroke="#edf1ee"/><text x="${pl-6}" y="${ys(top*t)+3}" font-size="10" fill="#8a9a97" text-anchor="end">${Math.round(top*t)}</text>`).join('');
-  const lines=ser.map(([k,l,col])=>`<polyline fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" points="${ms.map((x,i)=>xs(i)+','+ys(x[k])).join(' ')}"/>${ms.map((x,i)=>`<circle cx="${xs(i)}" cy="${ys(x[k])}" r="3.5" fill="${col}"><title>${l} · ${monthLabel(x.m)}: ${x[k]}</title></circle>`).join('')}`).join('');
-  const labels=ms.map((x,i)=>`<text x="${xs(i)}" y="${H-10}" font-size="10.5" fill="#6b7d76" text-anchor="middle">${monthLabel(x.m).replace(' 20',' ’')}</text>`).join('');
-  return `<div class="tr-leg">${ser.map(([,l,col])=>`<span><i style="background:${col}"></i>${l}</span>`).join('')}</div><svg viewBox="0 0 ${W} ${H}" class="tr-svg" preserveAspectRatio="xMidYMid meet">${grid}${lines}${labels}</svg>`})();
- const testRow=(k,label)=>{const g=w=>rows.filter(r=>(r.tests?.[k]?.where||'')===w).length,labs={};rows.forEach(r=>{const t=r.tests?.[k];if(t?.where==='Other lab'&&t.lab)labs[t.lab]=(labs[t.lab]||0)+1});const an=g('Anderson'),ot=g('Other lab'),nd=g('Not done'),nr=rows.length-an-ot-nd;
-  return `<tr><td class="strong">${label}</td><td>${an}</td><td>${ot}${Object.keys(labs).length?`<small>${Object.entries(labs).map(([l,n])=>esc(l)+' ('+n+')').join(', ')}</small>`:''}</td><td>${nd}</td><td class="muted">${nr}</td></tr>`};
- const testTable=`<div class="fu-table-wrap"><table class="fu-table"><thead><tr><th>Test</th><th>Done at Anderson</th><th>Done at another lab</th><th>Not done</th><th>Not recorded yet</th></tr></thead><tbody>${testRow('tera','TERA')}${testRow('nips','NIPS')}</tbody></table></div>`;
+ // headline cards with change against the previous month that has transfers
+ const withTr=ms.filter(x=>x.tr>0),cur=withTr[withTr.length-1],prv=withTr[withTr.length-2];
+ const delta=(f)=>{if(!cur||!prv)return '';const d=f(cur)-f(prv);if(!isFinite(d)||Math.abs(d)<0.5)return `<em class="dl flat">no change vs ${monthLabel(prv.m)}</em>`;return `<em class="dl ${d>0?'up':'down'}">${d>0?'▲':'▼'} ${Math.abs(Math.round(d))} pts vs ${monthLabel(prv.m)}</em>`};
+ const kp=(label,n,d,col,fn)=>`<article class="kp" style="--c:${col}"><small>${label}</small><strong>${d?P(n,d)+'<sup>%</sup>':'—'}</strong><span>${n} of ${d}</span>${fn?delta(fn):''}</article>`;
+ const kpis=kp('Live-birth rate',lb.length,tr.length,'#1f8a52',x=>x.tr?x.lb/x.tr*100:0)+kp('Clinical pregnancy',cp.length,tr.length,'#7c5cbf',x=>x.tr?x.cp/x.tr*100:0)+kp('Implantation',im.length,tr.length,'#14b8a6',x=>x.tr?x.im/x.tr*100:0)+kp('Transferred',tr.length,rows.length,'#3b8fd0',x=>x.n?x.tr/x.n*100:0)+kp('Outcomes recorded',recorded,rows.length,'#0a7180',null);
+ const trend=(()=>{const pts=ms.filter(x=>x.tr>0);if(pts.length<2)return '<div class="chart-empty">The trend appears once transfers are recorded in two or more months.</div>';
+  const W=640,H=210,pl=40,pr=28,pt=12,pb=30,iw=W-pl-pr,ih=H-pt-pb,xs=i=>pl+i*iw/(pts.length-1),ys=v=>pt+ih-v/100*ih;
+  const ser=[['lb','Live birth','#1f8a52'],['cp','Clinical pregnancy','#7c5cbf'],['im','Implantation','#14b8a6']];
+  const grid=[0,25,50,75,100].map(t=>`<line x1="${pl}" x2="${W-pr}" y1="${ys(t)}" y2="${ys(t)}" stroke="#edf1ee"/><text x="${pl-6}" y="${ys(t)+3}" font-size="10" fill="#8a9a97" text-anchor="end">${t}%</text>`).join('');
+  const lines=ser.map(([k,l,col])=>{const v=x=>x.tr?x[k]/x.tr*100:0;return `<polyline fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" points="${pts.map((x,i)=>xs(i)+','+ys(v(x))).join(' ')}"/>${pts.map((x,i)=>`<circle cx="${xs(i)}" cy="${ys(v(x))}" r="3.5" fill="${col}"><title>${l} · ${monthLabel(x.m)}: ${Math.round(v(x))}% (${x[k]} of ${x.tr})</title></circle>`).join('')}`}).join('');
+  const labels=pts.map((x,i)=>`<text x="${xs(i)}" y="${H-9}" font-size="10.5" fill="#6b7d76" text-anchor="middle">${monthLabel(x.m).replace(' 20',' ’')}</text>`).join('');
+  return `<div class="tr-leg">${ser.map(([,l,col])=>`<span><i style="background:${col}"></i>${l}</span>`).join('')}<span class="muted">% of transferred embryos</span></div><svg viewBox="0 0 ${W} ${H}" class="tr-svg">${grid}${lines}${labels}</svg>`})();
+ const cmap=new Map();rows.forEach(r=>{const k=r.f.clinic||'—',x=cmap.get(k)||{k,n:0,rec:0,tr:0,im:0,lb:0};x.n++;if(r.status)x.rec++;if(TRANSFERRED.includes(r.status))x.tr++;if(IMPLANTED.includes(r.status))x.im++;if(r.status==='Live birth')x.lb++;cmap.set(k,x)});
+ const clients=[...cmap.values()].sort((x,y)=>y.n-x.n);
+ const attn=[...clients].map(x=>({...x,w:x.n-x.rec})).filter(x=>x.w>0).sort((x,y)=>y.w-x.w).slice(0,6);
+ const attention=attn.length?`<ul class="at">${attn.map(x=>`<li data-clinic="${esc(x.k)}"><span class="at-n">${esc(x.k)}</span><div class="at-bar"><i style="width:${x.n?x.rec/x.n*100:0}%"></i></div><b>${x.w}</b><small>waiting</small></li>`).join('')}</ul>`:'<div class="chart-empty">Every embryo has an outcome. Nothing is waiting.</div>';
+ const cq=clQ.trim().toLowerCase(),cl=clients.filter(x=>!cq||x.k.toLowerCase().includes(cq)),shownC=cq||clAll?cl:cl.slice(0,10);
+ const clientTable=`<div class="fu-table-wrap"><table class="fu-table cl"><thead><tr><th>Client</th><th>Embryos</th><th>Outcomes recorded</th><th>Transferred</th><th>Implantation</th><th>Live birth</th></tr></thead><tbody>${shownC.map(x=>`<tr data-clinic="${esc(x.k)}"><td class="strong">${esc(x.k)}</td><td>${x.n}</td><td><div class="cl-bar"><i style="width:${x.n?x.rec/x.n*100:0}%"></i></div><small>${x.rec} of ${x.n}</small></td><td>${x.tr}</td><td>${x.tr?P(x.im,x.tr)+'%':'—'}</td><td>${x.tr?P(x.lb,x.tr)+'%':'—'}</td></tr>`).join('')||'<tr><td colspan="6" class="chart-empty">No client matches.</td></tr>'}</tbody></table></div>${!cq&&cl.length>10?`<div style="text-align:center;margin-top:10px"><button type="button" class="secondary compact" id="clAllBtn">${clAll?'Show top 10':`Show all ${cl.length} clients`}</button></div>`:''}<p class="fu-note" style="margin:8px 0 0">Click a client to filter the whole dashboard to it.</p>`;
+ const ftChip=(k,label)=>{const an=rows.filter(r=>r.tests?.[k]?.where==='Anderson').length,ot=rows.filter(r=>r.tests?.[k]?.where==='Other lab').length;return `<div class="ft"><b>${label}</b><span><strong>${an+ot}</strong> done</span><small>${an} at Anderson · ${ot} at another lab</small></div>`};
  return `<div class="db-h-row"><h3 class="db-h">The journey of the embryos</h3><div class="db-h-tools">${chips}${nOn?'<button type="button" class="db-fclear" id="fuClear">Clear all</button>':''}<button type="button" class="db-ftoggle${filtersOpen?' on':''}" id="fuFToggle" aria-expanded="${filtersOpen}">${IC('navigation__filter')}<span>Filters</span>${nOn?`<b>${nOn}</b>`:''}<i>${filtersOpen?'▴':'▾'}</i></button></div>
  <div class="db-pop"${filtersOpen?'':' hidden'}><div class="db-pop-head"><b>Filter the dashboard</b><button type="button" class="secondary compact" id="fuFClose">Done</button></div><div class="db-pop-grid">${sel('month','Month',monthLabel)}${sel('clinic','Clinic')}${sel('region','Region')}${sel('embryologist','Embryologist')}${sel('test','Test')}${sel('age','Age group')}${sel('result','Embryo result')}</div>${nOn?'<button type="button" class="db-fclear" id="fuClear2">Clear all filters</button>':''}</div>
 </div>
  <div class="journey">${journey}</div>
- <div class="mg2">
-  <article class="db-card mg2-sum"><h3>Summary</h3><ul class="sumlist">${summary.map(s=>`<li>${s}</li>`).join('')}</ul></article>
-  <article class="db-card"><h3>Scorecard <small>rate at each step</small></h3>${scorecard}</article>
- </div>
- <article class="db-card db-trend"><h3>Month by month <small>embryos reaching each step</small></h3>${trend}</article>
- <article class="db-card"><h3>Further testing after PGT-A</h3>${testTable}</article>`}
+ <div class="mk">${kpis}</div>
+ <div class="mk2"><article class="db-card"><h3>Month by month <small>${filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>
+ <article class="db-card"><h3>Needs attention <small>most embryos still waiting for an outcome</small></h3>${attention}</article></div>
+ <article class="db-card"><div class="cl-head"><h3>Clients <small>${clients.length} in total</small></h3><div class="search-wrap fu-search"><span>⌕</span><input id="clQ" type="search" placeholder="Find a client…" value="${esc(clQ)}"></div></div>${clientTable}</article>
+ <div class="ft-strip">${ftChip('tera','TERA')}${ftChip('nips','NIPS')}</div>`}
 function breakdownHtml(){
  const rows=embryoRows();
  const grp=(keyFn)=>{const m=new Map();rows.forEach(r=>{const k=keyFn(r)||'—',x=m.get(k)||{k,patients:new Set(),n:0,t:0,i:0,p:0,l:0};x.patients.add(r.f.caseKey);x.n++;if(TRANSFERRED.includes(r.status))x.t++;if(IMPLANTED.includes(r.status))x.i++;if(CLINICAL.includes(r.status))x.p++;if(r.status==='Live birth')x.l++;m.set(k,x)});return[...m.values()]};
@@ -287,6 +288,9 @@ function breakdownHtml(){
  const clinics=grp(r=>r.f.clinic).sort((a,b)=>b.n-a.n),months=grp(r=>r.f.month).sort((a,b)=>String(b.k).localeCompare(String(a.k)));
  return `<div class="db-two db-two-eq">${table('By clinic',clinics,'Clinic')}${table('By month',months,'Month')}</div>`}
 function wireDash(root,redraw){
+ const cqi=root.querySelector('#clQ');if(cqi)cqi.oninput=()=>{clQ=cqi.value;const pos=cqi.selectionStart;redraw();const n=root.querySelector('#clQ');n.focus();n.setSelectionRange(pos,pos)};
+ const cab=root.querySelector('#clAllBtn');if(cab)cab.onclick=()=>{clAll=!clAll;redraw()};
+ root.querySelectorAll('[data-clinic]').forEach(el=>el.onclick=()=>{flt.clinic=el.dataset.clinic;redraw()});
  const gr=root.querySelector('#goRunStatus');if(gr)gr.onclick=()=>showView('home');
  root.querySelectorAll('[data-flt]').forEach(s=>s.onchange=()=>{flt[s.dataset.flt]=s.value;redraw()});
  const tg=root.querySelector('#fuFToggle');if(tg)tg.onclick=e=>{e.stopPropagation();filtersOpen=!filtersOpen;redraw()};
