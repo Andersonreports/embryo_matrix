@@ -925,7 +925,7 @@ function showView(view){if(!viewAllowed(view))view=roleHomeView();
  $('#genericHeaderLeft')?.classList.toggle('hidden',view==='overview'||view==='home'||view==='cases'||view==='samples');
  $('#rebiopsyHeaderSearch')?.classList.toggle('hidden',view!=='rebiopsy');
  $('#rebiopsyHeaderActions')?.classList.toggle('hidden',view!=='rebiopsy');
- $('#vaultHeaderActions')?.classList.toggle('hidden',view!=='images');
+ $('#vaultHeaderActions')?.classList.toggle('hidden',view!=='images'||canEditData());
  $('#rebiopsyViewToggle')?.classList.toggle('hidden',view!=='rebiopsy');
  $('#registrySearchWrap')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#registryHeaderActions')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
@@ -985,7 +985,7 @@ function openVaultGallery(group){if(!group)return;$('#lightboxImg').classList.ad
  const done=async msg=>{$('#imageLightbox').close();await setupImageVaultView();toast(msg)};
  gallery.querySelectorAll('.vg-remove').forEach(b=>b.onclick=async()=>{if(!confirm('Remove this image? This cannot be undone.'))return;try{await deleteImage(b.closest('[data-image-id]').dataset.imageId);await done('Image removed')}catch(err){toast('Could not remove the image')}});
  gallery.querySelectorAll('.vg-btn input').forEach(inp=>inp.onchange=async()=>{const f=inp.files[0];if(!f)return;try{await replaceImage(inp.closest('[data-image-id]').dataset.imageId,f);await done('Image replaced')}catch(err){toast(err.message||'Could not replace the image')}});gallery.classList.remove('hidden');$('#imageLightbox').showModal()}
-function vaultUploadBar(el){if($('#vaultUpload'))return;const bar=document.createElement('div');bar.id='vaultUpload';bar.className='vault-upload';
+function vaultUploadBar(el){document.body.classList.toggle('vault-staff',canEditData());if(canEditData())return;if($('#vaultUpload'))return;const bar=document.createElement('div');bar.id='vaultUpload';bar.className='vault-upload';
  const mName=k=>{const m=/^(\d{4})-(\d{2})$/.exec(k||'');return m?`${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1]} ${m[1]}`:k};
  const info=cases.map(c=>{const es=c.embryos||[];return{c,months:[...new Set(es.map(recordMonth).filter(Boolean))],runs:[...new Set([...es.flatMap(runsOf),...(caseRunMap[c.id]?[String(caseRunMap[c.id])]:[])])],hay:`${c.patient} ${c.id} ${es.map(e=>field(e,['sample id','box number'])).join(' ')}`.toLowerCase()}});
  const opts=(f)=>[...new Set(info.flatMap(f).filter(Boolean))];

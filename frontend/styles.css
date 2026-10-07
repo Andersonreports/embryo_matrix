@@ -1974,3 +1974,7 @@ button.ft{cursor:pointer;text-align:left;font:inherit;position:relative;transiti
 @media(max-width:1400px){#homeView #homeStats article{padding:12px 14px!important;min-height:82px!important}#homeView #homeStats strong{font-size:30px!important}#homeView #homeStats .stat-icon{width:38px!important;height:38px!important}}
 #homeView #homeStats article{flex-direction:row!important;align-items:center!important;justify-content:space-between!important}
 #homeView #homeStats article>div{align-items:flex-start!important}
+
+/* Admin / team lead: the Image vault page opens straight on the run-wise stacked gallery; the patient list + upload flow is for team members */
+body.vault-staff .images-view>#imageVaultGroups{display:block!important}
+body.vault-staff #vaultUpload{display:none!important}
