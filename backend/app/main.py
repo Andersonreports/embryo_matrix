@@ -408,6 +408,12 @@ def log_legacy_result_delete(payload: KVValue, request: Request, db: Session = D
 # --- Manual cell edits: written to the live "Edited samples" Google Sheet (edits_sheet.py)
 # and kept in their own .xlsx as the local copy (cell_edits.py), not the database ---
 
+def _embryo_edits(sample_id: str, embryo: str) -> dict:
+    """Every saved edit of one embryo {column: value}: the Edits sheet's and this server's."""
+    k = edits_sheet.record_key(sample_id, embryo)
+    return {e["column"]: e["value"] for e in edits_sheet.merged_edits(cell_edits.list_edits())
+            if edits_sheet.record_key(e.get("sampleId"), e.get("embryo")) == k}
+
 @app.get("/api/cell-edits")
 def get_cell_edits(db: Session = Depends(get_db)):
     local = cell_edits.list_edits()
@@ -418,9 +424,9 @@ def get_cell_edits(db: Session = Depends(get_db)):
         kv = db.get(KVStore, "embryomatrix-imported-cases")
         rows = kv.value if kv else []
         for e in missing:
-            mine = {x["column"]: x["value"] for x in local
-                    if edits_sheet.record_key(x["sampleId"], x["embryo"]) == edits_sheet.record_key(e["sampleId"], e["embryo"])}
-            edits_sheet.push_edit(e, edits_sheet.row_from_cases(rows, e["sampleId"], e["embryo"], mine))
+            row = edits_sheet.full_row(rows, e["sampleId"], e["embryo"], _embryo_edits(e["sampleId"], e["embryo"]))
+            if row:
+                edits_sheet.push_edit(e, row)
     return merged
 
 @app.get("/api/edits-sheet")
@@ -440,12 +446,11 @@ def post_cell_edit(payload: CellEditIn, request: Request, db: Session = Depends(
         raise HTTPException(400, str(e))
     where = f"{entry['sampleId']}" + (f" embryo {entry['embryo']}" if entry["embryo"] else "")
     log_activity(db, "cell_edit", f"{where} · {entry['column']}: '{entry['oldValue']}' → '{entry['value']}'", request=request)
-    row = payload.row
-    if not row:  # app sent no row (e.g. an old browser tab) - rebuild it from the synced sheet rows
-        kv = db.get(KVStore, "embryomatrix-imported-cases")
-        mine = {e["column"]: e["value"] for e in cell_edits.list_edits()
-                if edits_sheet.record_key(e["sampleId"], e["embryo"]) == edits_sheet.record_key(entry["sampleId"], entry["embryo"])}
-        row = edits_sheet.row_from_cases(kv.value if kv else [], entry["sampleId"], entry["embryo"], {**mine, entry["column"]: entry["value"]})
+    # The whole embryo row goes to the sheet, built here so it is identical whichever computer or
+    # table layout the edit came from, and carries every edit of this embryo (the sheet's + this server's).
+    kv = db.get(KVStore, "embryomatrix-imported-cases")
+    row = edits_sheet.full_row(kv.value if kv else [], entry["sampleId"], entry["embryo"],
+                               {**_embryo_edits(entry["sampleId"], entry["embryo"]), entry["column"]: entry["value"]}, payload.row)
     edits_sheet.retry_pending()
     entry["sheet"] = edits_sheet.push_edit(entry, row)
     return entry

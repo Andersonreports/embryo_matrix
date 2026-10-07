@@ -303,3 +303,30 @@ def row_from_cases(cases: list, sample_id: str, embryo: str, values: dict) -> li
             row.append([h, "" if v is None else str(v)])
         return row
     return []
+
+
+def full_row(cases: list, sample_id: str, embryo: str, edits: dict, shown: list | None = None) -> list:
+    """The row written to the Edits sheet for one embryo - the same on every computer: all
+    VIEW_COLUMNS in order, from the synced sheet rows, with the values the app showed for this
+    embryo (per-embryo WGA / karyotype rather than the whole multi-embryo cell) laid over them,
+    then every edit of this embryo on top. `edits` = {column key: value}; `shown` = [[header, value]]."""
+    shown_map = {}
+    for pair in shown or []:
+        try:
+            h, v = str(pair[0]).strip().upper(), "" if pair[1] is None else str(pair[1]).strip()
+        except (IndexError, TypeError):
+            continue
+        if h in VIEW_COLUMNS and v and v not in ("-", "—"):
+            shown_map[h] = v
+    base = row_from_cases(cases, sample_id, embryo, {})
+    if not base and not shown_map:
+        return []
+    values = {h: v for h, v in base} if base else {h: "" for h in VIEW_COLUMNS}
+    values.update(shown_map)
+    if not base:
+        values.setdefault("SAMPLE ID", sample_id)
+    for key, v in (edits or {}).items():
+        h = next((hh for hh, kk in _KEY_FOR.items() if kk == key), str(key).upper())
+        if h in values:
+            values[h] = "" if v is None else str(v)
+    return [[h, values.get(h, "")] for h in VIEW_COLUMNS]
