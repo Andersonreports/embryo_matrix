@@ -128,7 +128,7 @@ const TILES=[
  ['awaiting','Awaiting clinic update','navigation__internal-transfer','Clinic has been asked','blue'],
  ['completed','Completed','stages-results__qc-pass','All outcomes known','green'],
  ['na','Not applicable','stages-results__na-result','No consent / not needed','grey']];
-let dashHome=false,taskSort='due',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
+let filtersOpen=false,dashHome=false,taskSort='due',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
 
 // ---------------- Tasks (card queue) ----------------
 function tasksHtml(){
@@ -232,6 +232,7 @@ function dashHtml(){
  const rows=all.filter(r=>(!flt.month||r.f.month===flt.month)&&(!flt.clinic||r.f.clinic===flt.clinic)&&(!flt.region||r.f.region===flt.region)&&(!flt.embryologist||r.f.embryologist===flt.embryologist)&&(!flt.test||r.f.test===flt.test)&&(!flt.age||r.age===flt.age)&&(!flt.result||r.result===flt.result));
  const inSet=l=>rows.filter(r=>l.includes(r.status)),tr=inSet(TRANSFERRED),im=inSet(IMPLANTED),cp=inSet(CLINICAL),mc=inSet(['Miscarriage']),lb=inSet(['Live birth']),recorded=rows.filter(r=>r.status).length;
  const patients=new Set(rows.map(r=>r.f.caseKey)).size,filtersOn=Object.values(flt).some(Boolean);
+ const LBL={month:'Month',clinic:'Clinic',region:'Region',embryologist:'Embryologist',test:'Test',age:'Age',result:'Result'},nOn=Object.values(flt).filter(Boolean).length,chips=Object.entries(flt).filter(([,v])=>v).map(([k,v])=>`<span class="db-chip">${LBL[k]}: <b>${esc(k==='month'?monthLabel(v):v)}</b><button type="button" data-x="${k}" aria-label="Remove filter">×</button></span>`).join('');
  const rate=(label,n,d,color,sub,help)=>`<article class="db-rate">${ring(n,d,color)}<div><h4>${label}</h4><p><b>${n}</b> of ${d} ${sub}</p><small>${help}</small></div></article>`;
  const stages=[['Embryos tracked',rows.length,IC('stages-results__total-embryos'),'#0a7180'],['Transferred',tr.length,IC('tests-transfers__transferred-to-transfer'),'#3b8fd0'],['Implantation positive',im.length,IC('stages-results__normal'),'#14b8a6'],['Clinical pregnancy',cp.length,IC('navigation__patient'),'#7c5cbf'],['Live birth',lb.length,SVG.heart,'#1f8a52']];
  const journey=stages.map(([l,n,ic,col],i)=>`<div class="jy" style="--c:${col}"><div class="jy-ic">${ic}</div><strong>${n}</strong><span>${l}</span>${i?`<em>${pct(n,stages[i-1][1])} of ${stages[i-1][0].toLowerCase()}</em>`:`<em>${patients} patient${patients===1?'':'s'}</em>`}</div>${i<stages.length-1?'<div class="jy-arrow">›</div>':''}`).join('');
@@ -244,7 +245,8 @@ function dashHtml(){
  const table=(title,list,first)=>`<article class="db-card"><h3>${title}</h3><div class="fu-table-wrap fu-clinics"><table class="fu-table"><thead><tr><th>${first}</th><th>Patients</th><th>Embryos</th><th>Transferred</th><th>Implant.</th><th>Clin. preg.</th><th>Live birth</th></tr></thead><tbody>${list.map(x=>`<tr><td class="strong">${esc(first==='Month'?monthLabel(x.k):x.k)}</td><td>${x.patients.size}</td><td>${x.n}</td><td>${x.t}</td><td>${pct(x.i,x.t)}</td><td>${pct(x.p,x.t)}</td><td>${pct(x.l,x.t)}</td></tr>`).join('')||'<tr><td colspan="7" class="chart-empty">No data for these filters.</td></tr>'}</tbody></table></div></article>`;
  const clinics=grp(r=>r.f.clinic).sort((a,b)=>b.n-a.n),months=grp(r=>r.f.month).sort((a,b)=>String(b.k).localeCompare(String(a.k)));
  return `<div class="fu-hero db-hero"><div><h2>Pregnancy outcomes</h2><p>What happened after transfer, for <b>${rows.length}</b> embryo${rows.length===1?'':'s'} from <b>${patients}</b> patient${patients===1?'':'s'} who agreed to follow-up${filtersOn?' <span class="db-on">· filtered</span>':''}.</p></div><div class="db-hero-stats"><div><strong>${recorded}</strong><small>outcomes recorded</small></div><div><strong>${rows.length-recorded}</strong><small>still unknown</small></div>${dashHome?'<button type="button" class="hero-btn" id="goRunStatus">Run-wise status ›</button>':''}</div></div>
- <div class="db-filters">${sel('month','Month',monthLabel)}${sel('clinic','Clinic')}${sel('region','Region')}${sel('embryologist','Embryologist')}${sel('test','Test')}${sel('age','Age group')}${sel('result','Embryo result')}<button type="button" class="secondary compact" id="fuClear"${filtersOn?'':' disabled'}>Clear filters</button></div>
+ <div class="db-fbar"><button type="button" class="db-ftoggle${filtersOpen?' on':''}" id="fuFToggle" aria-expanded="${filtersOpen}">${IC('navigation__filter')}<span>Filters</span>${nOn?`<b>${nOn}</b>`:''}<i>${filtersOpen?'▴':'▾'}</i></button>${chips}${nOn?'<button type="button" class="db-fclear" id="fuClear">Clear all</button>':''}</div>
+ <div class="db-filters"${filtersOpen?'':' hidden'}>${sel('month','Month',monthLabel)}${sel('clinic','Clinic')}${sel('region','Region')}${sel('embryologist','Embryologist')}${sel('test','Test')}${sel('age','Age group')}${sel('result','Embryo result')}</div>
  <h3 class="db-h">The journey of the embryos</h3>
  <div class="journey">${journey}</div>
  <h3 class="db-h">Success rates</h3>
@@ -261,7 +263,9 @@ function dashHtml(){
 function wireDash(root,redraw){
  const gr=root.querySelector('#goRunStatus');if(gr)gr.onclick=()=>showView('home');
  root.querySelectorAll('[data-flt]').forEach(s=>s.onchange=()=>{flt[s.dataset.flt]=s.value;redraw()});
- root.querySelector('#fuClear').onclick=()=>{Object.keys(flt).forEach(k=>flt[k]='');redraw()}}
+ const tg=root.querySelector('#fuFToggle');if(tg)tg.onclick=()=>{filtersOpen=!filtersOpen;redraw()};
+ const cl=root.querySelector('#fuClear');if(cl)cl.onclick=()=>{Object.keys(flt).forEach(k=>flt[k]='');redraw()};
+ root.querySelectorAll('.db-chip [data-x]').forEach(b=>b.onclick=()=>{flt[b.dataset.x]='';redraw()})}
 
 // ---------------- Views ----------------
 window.renderFollowupView=async function(g,view){

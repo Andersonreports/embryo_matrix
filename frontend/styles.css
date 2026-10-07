@@ -1731,3 +1731,9 @@ body.role-embryologist #trfModeSeg{display:none}
 .tk-bar{justify-content:flex-start}.tk-bar .fu-search{margin-left:0;flex:1 1 240px}.tk-sort input{margin-right:4px}
 .oe-card.oe-focus{border-color:#0a7180;box-shadow:0 0 0 3px rgba(20,184,166,.28)}
 .hero-btns{display:flex;gap:10px;flex-wrap:wrap}
+
+.db-fbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:6px}
+.db-ftoggle{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 16px;border:2px solid var(--line);border-radius:999px;background:#fff;font:700 13.5px "Inter";color:#35504d;cursor:pointer}.db-ftoggle .ico{width:20px;height:20px}.db-ftoggle b{background:#0a7180;color:#fff;border-radius:999px;font-size:12px;min-width:20px;height:20px;display:inline-grid;place-items:center;padding:0 6px}.db-ftoggle i{font-style:normal;color:#8a9a97}.db-ftoggle:hover,.db-ftoggle.on{border-color:#0a7180}
+.db-chip{display:inline-flex;align-items:center;gap:6px;background:#eaf7f6;border:1px solid #bfe3dc;color:#0a5f6b;border-radius:999px;padding:5px 6px 5px 12px;font-size:12.5px}.db-chip button{border:0;background:#0a7180;color:#fff;width:18px;height:18px;border-radius:50%;line-height:16px;font-size:13px;cursor:pointer;padding:0}
+.db-fclear{border:0;background:transparent;color:#d12f2f;font:600 12.5px "Inter";cursor:pointer;text-decoration:underline}
+.db-filters[hidden]{display:none!important}.db-filters{margin-bottom:10px}
