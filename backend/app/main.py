@@ -1027,7 +1027,10 @@ def _embryologist_sees(db: Session, user: dict, f: Followup) -> bool:
         return True
     mine = _norm_name((u.embryologist_name if u and u.embryologist_name else uname))
     theirs = _norm_name(f.embryologist)
-    return bool(mine and theirs and (mine == theirs or (not (u and (u.embryologist_name or u.client_name)) and mine in theirs)))
+    unmapped = not (u and (u.embryologist_name or u.client_name))
+    if unmapped and mine and mine in _norm_name(f.clinic):
+        return True
+    return bool(mine and theirs and (mine == theirs or (unmapped and mine in theirs)))
 
 # --- Embryos assigned to an embryologist (from the sample sheet) ---
 _EMB_ALIASES = {"SINDHUJA": "SINDHUJA N S", "SINDHIYA": "SINDHUJA N S", "SINDHIYANS": "SINDHUJA N S", "SIADHUDA": "SINDHUJA N S",
@@ -1090,14 +1093,15 @@ def _month_of(tab: str) -> str:
     m = re.match(r"^\s*([A-Za-z]{3})[A-Za-z]*\s+(\d{4})", str(tab or ""))
     return f"{m.group(2)}-{_MONTHS[m.group(1).upper()]:02d}" if m and m.group(1).upper() in _MONTHS else ""
 
-def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = ""):
+def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = "", loose: bool = False):
     """Make sure every patient listed under this embryologist in the sample sheet has a follow-up record."""
     want, want_client = _norm_name(emb_name), _norm_name(client_name)
     if not want and not want_client:
         return
     cases: dict = {}
     for r in _sheet_rows(db):
-        by_name = bool(want) and _canon_embryologist(_field(r, "embryologist name", "embryologist")) == want
+        canon = _canon_embryologist(_field(r, "embryologist name", "embryologist"))
+        by_name = bool(want) and (canon == want or (loose and want in canon))
         by_client = bool(want_client) and want_client in _norm_name(_field(r, "center name", "hospital clinic name", "client"))
         if not (by_name or by_client):
             continue
@@ -1130,9 +1134,12 @@ def list_followups(request: Request, db: Session = Depends(get_db)):
     user = request.state.user or {}
     if user.get("role") == "embryologist":
         u = db.query(User).filter(User.username == (user.get("username") or "").lower()).first()
-        if u and (u.embryologist_name or u.client_name):
+        if u:
             try:
-                _sync_sheet_followups(db, u.embryologist_name or "", u.client_name or "")
+                if u.embryologist_name or u.client_name:
+                    _sync_sheet_followups(db, u.embryologist_name or "", u.client_name or "")
+                else:  # no explicit link: the login name is matched against the sheet's Embryologist and centre names
+                    _sync_sheet_followups(db, u.username, u.username, loose=True)
             except Exception as exc:
                 db.rollback()
                 print(f"Sheet follow-up sync failed for {u.username}: {exc}")
