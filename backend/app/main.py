@@ -409,8 +409,19 @@ def log_legacy_result_delete(payload: KVValue, request: Request, db: Session = D
 # and kept in their own .xlsx as the local copy (cell_edits.py), not the database ---
 
 @app.get("/api/cell-edits")
-def get_cell_edits():
-    return edits_sheet.merged_edits(cell_edits.list_edits())
+def get_cell_edits(db: Session = Depends(get_db)):
+    local = cell_edits.list_edits()
+    merged = edits_sheet.merged_edits(local)
+    # Edits saved here that never reached the sheet (old deployment, offline) are sent again.
+    missing = edits_sheet.missing_from_sheet(local)
+    if missing:
+        kv = db.get(KVStore, "embryomatrix-imported-cases")
+        rows = kv.value if kv else []
+        for e in missing:
+            mine = {x["column"]: x["value"] for x in local
+                    if edits_sheet.record_key(x["sampleId"], x["embryo"]) == edits_sheet.record_key(e["sampleId"], e["embryo"])}
+            edits_sheet.push_edit(e, edits_sheet.row_from_cases(rows, e["sampleId"], e["embryo"], mine))
+    return merged
 
 @app.get("/api/edits-sheet")
 def get_edits_sheet():

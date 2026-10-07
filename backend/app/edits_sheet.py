@@ -21,6 +21,10 @@ PENDING_PATH = Path(__file__).parent / "data" / "edits_sheet_pending.json"
 STATE_PATH = Path(__file__).parent / "data" / "edits_sheet.json"
 _lock = Lock()
 _cache = {"at": 0.0, "edits": None, "miss_at": 0.0}
+# Why the last push failed (shown on the Edits sheet button), cleared by the next successful push.
+_last_error = {"text": ""}
+OLD_DEPLOYMENT = ("SHEET_API_URL in backend/.env points to an Apps Script deployment without the edits support - "
+                  "copy the current SHEET_API_URL / SHEET_API_TOKEN into this server's backend/.env and restart it")
 CACHE_SECONDS = 30
 # After a failed / unsupported read, wait this long before asking again - an Apps Script
 # deployment without the edits support answers ?action=edits with all three source sheets.
@@ -66,6 +70,10 @@ def _post(body: dict) -> dict:
         raise RuntimeError("The Apps Script web app didn't return JSON - redeploy it with the edits support (apps_script/Code.gs)")
     if out.get("error"):
         raise RuntimeError(f"Apps Script error: {out['error']}")
+    # Only the edits-capable script answers {"ok": true}; an older deployment replies with
+    # something else and writes nothing, so that must not count as sent.
+    if body.get("action") in ("editsUpsert", "editsRevert") and out.get("ok") is not True:
+        raise RuntimeError(OLD_DEPLOYMENT)
     if out.get("url"):
         _write_json(STATE_PATH, {"url": out["url"], "sheetId": out.get("sheetId", "")})
     return out
@@ -78,9 +86,11 @@ def _send_or_queue(body: dict) -> dict:
     with _lock:
         try:
             _post(body)
+            _last_error["text"] = ""
             _cache["at"] = _cache["miss_at"] = 0.0
             return {"ok": True, "status": "saved"}
         except Exception as e:
+            _last_error["text"] = str(e)
             pending = [p for p in _read_json(PENDING_PATH, []) if not (p.get("key") == body["key"] and p.get("column") == body["column"])]
             pending.append(body)
             _write_json(PENDING_PATH, pending)
@@ -123,7 +133,9 @@ def retry_pending() -> int:
         for i, body in enumerate(pending):
             try:
                 _post(body)
-            except Exception:
+                _last_error["text"] = ""
+            except Exception as e:
+                _last_error["text"] = str(e)
                 left = pending[i:]
                 break
         _write_json(PENDING_PATH, left)
@@ -148,6 +160,8 @@ def _refresh() -> None:
         return
     if out.get("error") or "edits" not in out:  # error, or an old deployment that doesn't know ?action=edits
         _cache["miss_at"] = time.time()
+        if "edits" not in out and not out.get("error"):
+            _last_error["text"] = OLD_DEPLOYMENT
         return
     if out.get("url"):
         _write_json(STATE_PATH, {**_read_json(STATE_PATH, {}), "url": out["url"]})
@@ -192,7 +206,32 @@ def merged_edits(local: list) -> list:
 
 
 def status() -> dict:
-    return {"configured": configured(), "url": _read_json(STATE_PATH, {}).get("url", ""), "pending": len(_read_json(PENDING_PATH, []))}
+    return {"configured": configured(), "url": _read_json(STATE_PATH, {}).get("url", ""), "pending": len(_read_json(PENDING_PATH, [])),
+            "error": _last_error["text"]}
+
+
+_backfilled: set = set()
+
+
+def missing_from_sheet(local: list) -> list:
+    """Local edits the sheet doesn't have (e.g. saved while this server pointed at an old deployment).
+    Each is returned once per server run, so the caller can push it again."""
+    sheet = _cache["edits"]
+    if sheet is None:
+        return []
+    key = lambda e: (_clean_id(e.get("sampleId")), _clean_id(e.get("embryo")), str(e.get("column", "")).strip().lower())
+    have = {key(e) for e in sheet}
+    queued = {(p.get("key"), p.get("column")) for p in _read_json(PENDING_PATH, [])}
+    out = []
+    for e in local:
+        k = key(e)
+        if not str(e.get("value") or "").strip():
+            continue  # a cleared cell: nothing to re-add
+        if k in have or k in _backfilled or (record_key(e.get("sampleId"), e.get("embryo")), e.get("column")) in queued:
+            continue
+        _backfilled.add(k)
+        out.append(e)
+    return out
 
 
 # Samples > Embryo view headers, in table order (matches EDITS_VIEW_COLUMNS in apps_script/Code.gs).

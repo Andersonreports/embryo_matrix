@@ -1979,3 +1979,6 @@ button.ft{cursor:pointer;text-align:left;font:inherit;position:relative;transiti
 body.vault-staff .images-view>#imageVaultGroups{display:block!important}
 body.vault-staff #vaultUpload{display:none!important}
 .overview-title{margin:0;font:600 26px "Lora",serif;color:#102432}.overview-title.hidden{display:none}
+/* Edits sheet button: red when this server can't write edits to the sheet (reason in its tooltip) */
+#editsSheetLink.edits-sheet-error{background:#fdecea!important;border-color:#e3b8b2!important;color:#a02f23!important}
+#editsSheetLink.edits-sheet-error b{background:#c0392b!important;color:#fff!important}
