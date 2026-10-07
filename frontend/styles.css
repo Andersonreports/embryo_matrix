@@ -2054,3 +2054,10 @@ body.vault-staff #vaultUpload{display:none!important}
 #homeView #homeStats article{display:grid!important;grid-template-columns:1fr!important;grid-template-rows:auto auto!important;grid-template-areas:"ic" "txt"!important;justify-items:center!important;align-content:center!important;row-gap:4px!important;padding:16px 12px 14px!important;overflow:hidden!important}
 #homeView #homeStats .stat-icon{grid-area:ic!important;position:static!important;inset:auto!important;transform:none!important;margin:0!important;width:46px!important;height:46px!important}
 #homeView #homeStats article>div{grid-area:txt!important;width:100%}
+
+/* PGT-M transfer cards: count with its icon beside it, label underneath */
+.transfer-cards .stat-card{display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:6px!important;padding:16px 20px 18px!important}
+.transfer-cards .tc-row{display:flex;align-items:center;gap:14px}
+.transfer-cards .tc-row strong{font-size:40px!important;line-height:1!important;margin:0!important}
+.transfer-cards .tc-row .ico{width:46px;height:46px;flex:0 0 auto}
+.transfer-cards .tc-label{font-size:13.5px;font-weight:800;color:#102432}
