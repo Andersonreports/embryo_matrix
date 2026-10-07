@@ -109,7 +109,7 @@ function trfPagesHtml(d,meta={},opts={}){
 function trfCollect(root){const d={};
  root.querySelectorAll('[data-f]').forEach(el=>d[el.dataset.f]=el.value.trim());
  const checked=g=>[...root.querySelectorAll(`[data-g="${g}"]:checked`)].map(x=>x.value);
- d.formType=d.formType==='PGT-M'?'PGT-M':'PGT-A';d.tests=checked('tests');d.gametes=checked('gametes');d.biopsyDay=checked('biopsyDay')[0]||'';d.rebiopsy=checked('rebiopsy')[0]||'';d.dryRun=checked('dryRun').length>0;
+ d.formType=d.formType==='PGT-M'?'PGT-M':'PGT-A';d.tests=checked('tests');d.gametes=checked('gametes');d.biopsyDay=checked('biopsyDay')[0]||'';d.rebiopsy=checked('rebiopsy')[0]||'';d.dryRun=checked('dryRun').length>0;d.followupConsent=checked('followupConsent')[0]||'';
  d.embryos=[...root.querySelectorAll('.td-embryo-rows tr')].map(tr=>{const e=Object.fromEntries([...tr.querySelectorAll('[data-e]')].map(x=>[x.dataset.e,x.value.trim()]));let im=[];try{im=JSON.parse(tr.dataset.images||'[]')}catch{}if(im.length)e.images=im;return e}).filter(e=>Object.values(e).some(Boolean));
  return d}
 // The digital form: the template's sections and fields as a normal web form (labels above
@@ -124,6 +124,8 @@ const TRF_LOCAL_THUMBS={};
 function trfThumbsHtml(ids){return `<span class="tf-thumbs">${ids.map(id=>`<span class="tf-thumb" data-id="${esc(id)}">${TRF_LOCAL_THUMBS[id]?`<img src="${TRF_LOCAL_THUMBS[id]}" alt="Embryo photo">`:'<i>📷</i>'}<button type="button" class="tf-thumb-x" aria-label="Remove photo">×</button></span>`).join('')}</span>`}
 // A JPEG no larger than 1600px on its long side keeps uploads quick on clinic connections.
 async function trfShrinkImage(file){try{const bmp=await createImageBitmap(file),k=Math.min(1,1600/Math.max(bmp.width,bmp.height)),c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);const b=await new Promise(r=>c.toBlob(r,'image/jpeg',.85));return b||file}catch{return file}}
+// Follow-up consent summary for the reviewer (lab users).
+function trfFollowupHtml(d){if(!d||!d.followupConsent)return'';const row=(l,v)=>v?`<div><b>${l}</b> ${esc(v)}</div>`:'';return `<section class="trf-followup"><h3>Outcome follow-up</h3><div><b>Consent</b> <span class="fu-chip ${d.followupConsent==='Yes'?'fu-yes':'fu-no'}">${esc(d.followupConsent)}</span></div>${row('Contact person',d.followupContact)}${row('Email / phone',d.followupPhoneEmail)}${row('Expected transfer',d.followupExpected)}</section>`}
 // Read-only gallery of the photos attached to each embryo, for whoever reviews the TRF (lab users only - the images are served to them alone).
 function trfImagesHtml(d){const rows=(d?.embryos||[]).filter(e=>(e.images||[]).length);if(!rows.length)return'';
  return `<section class="trf-photos"><h3>Embryo photos</h3>${rows.map(e=>`<div class="trf-photo-row"><strong>${esc(e.label||'Embryo')}</strong><div>${e.images.map(id=>`<a href="/api/trf-image/${esc(id)}" target="_blank" rel="noopener"><img src="/api/trf-image/${esc(id)}" alt="Photo of ${esc(e.label||'embryo')}" loading="lazy"></a>`).join('')}</div></div>`).join('')}</section>`}
@@ -162,6 +164,12 @@ function trfFormHtml(d={}){
   ${f('geneticClinicRegNo','Genetic clinic registration no.')}
   <label class="tf-field tf-wide"><span>Genetic clinic address</span><textarea data-f="geneticClinicAddress" rows="2">${esc(d.geneticClinicAddress)}</textarea></label>
  </div>`,'Statutory PNDT Act consent (Form G). Signatures are still signed on the printed copy.')}
+ ${card(8,'Outcome follow-up consent <b class="td-req">*</b>',`<div class="tf-grid tf-grid-2">
+  <div class="tf-field tf-wide"><span>Patient consent for outcome follow-up (transfer / pregnancy outcome will be requested from the clinic later)</span><div class="tf-opts">${opt('followupConsent','Yes','Yes',d.followupConsent==='Yes',true)}${opt('followupConsent','No','No',d.followupConsent==='No',true)}</div></div>
+  ${f('followupContact','Clinic contact person')}
+  ${f('followupPhoneEmail','Follow-up email / phone')}
+  <label class="tf-field"><span>Expected transfer period, if known</span><select data-f="followupExpected"><option value="">—</option>${['Within 1 month','1–3 months','3–6 months','6–12 months','Not known'].map(x=>`<option${d.followupExpected===x?' selected':''}>${x}</option>`).join('')}</select></label>
+ </div>`,'Only permission and contact details are collected here. Pregnancy results are recorded later by the lab, not in this form.')}
  <p class="tf-foot">Storage and transport: store and ship refrigerated at -20ºC. CONFIDENTIAL WHEN COMPLETED — the personal health information is collected for clinical laboratory testing only.</p>
  </div>`}
 // Wires the digital form: add / remove embryo rows (always keeping one).
@@ -180,7 +188,8 @@ function trfWire(root,onChange=()=>{}){
 }
 function trfProblems(d){const p=Object.entries(TRF_REQUIRED).filter(([k])=>!d[k]).map(([,l])=>l);
  if(!d.tests.length)p.push('Test requested');if(!d.embryos.some(e=>e.label))p.push('At least one embryo label in the biopsy worksheet');
- const a=String(d.aadhaar||'').replace(/\D/g,'');if(a&&a.length!==12)p.push('Aadhaar number (must be 12 digits)');return p}
+ const a=String(d.aadhaar||'').replace(/\D/g,'');if(a&&a.length!==12)p.push('Aadhaar number (must be 12 digits)');
+ if(!d.followupConsent)p.push('Patient consent for outcome follow-up (Yes / No)');else if(d.followupConsent==='Yes'&&(!d.followupContact||!d.followupPhoneEmail))p.push('Clinic contact person and follow-up email / phone (needed when follow-up consent is Yes)');return p}
 // Opens the TRF in a new window laid out for A4 and brings up the print dialog (Save as PDF).
 // Preview / Print: the server fills the lab's original paper template with the data and returns a PDF,
 // which opens in the browser's PDF viewer (print or save from there). If that fails, the HTML layout is printed instead.
@@ -209,5 +218,5 @@ function printTrfHtml(d,meta={},existing){
   Promise.all(imgs).then(()=>setTimeout(go,300));setTimeout(go,8000);
  });
 }
-Object.assign(global,{TRF_TEST_LABELS,TRF_TEST_LABELS_M,TRF_REQUIRED,trfPagesHtml,trfFormHtml,trfCollect,trfWire,trfProblems,printTrf,trfImagesHtml});
+Object.assign(global,{trfFollowupHtml,TRF_TEST_LABELS,TRF_TEST_LABELS_M,TRF_REQUIRED,trfPagesHtml,trfFormHtml,trfCollect,trfWire,trfProblems,printTrf,trfImagesHtml});
 })(window);

@@ -124,3 +124,42 @@ class ActivityLog(Base):
     role: Mapped[str] = mapped_column(String(40), default="")
     action: Mapped[str] = mapped_column(String(40), index=True)
     detail: Mapped[str] = mapped_column(Text, default="")
+
+class Followup(Base):
+    """Clinical outcome follow-up for one patient case. case_key is the sheet case id once known, else "trf:<TRF ref>".
+    Patient / clinic / embryo fields are a snapshot taken when the record is created or saved, so the follow-up
+    pages and dashboard need no access to the sample sheet."""
+    __tablename__ = "followups"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    case_key: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    source: Mapped[str] = mapped_column(String(10), default="manual")  # "trf" | "manual"
+    trf_ref: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    patient: Mapped[str] = mapped_column(String(255), default="")
+    clinic: Mapped[str] = mapped_column(String(255), default="")
+    region: Mapped[str] = mapped_column(String(120), default="")
+    embryologist: Mapped[str] = mapped_column(String(120), default="")
+    test: Mapped[str] = mapped_column(String(255), default="")
+    month: Mapped[str] = mapped_column(String(20), default="")
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    embryos: Mapped[Any] = mapped_column(JSON, default=list)  # [{"label": "SB-1", "result": "Euploid"}]
+    consent: Mapped[str] = mapped_column(String(3), default="Yes")  # "Yes" | "No"
+    contact_name: Mapped[str] = mapped_column(String(255), default="")
+    contact_detail: Mapped[str] = mapped_column(String(255), default="")
+    expected_period: Mapped[str] = mapped_column(String(60), default="")
+    due_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    state: Mapped[str] = mapped_column(String(20), default="")  # "" | awaiting | completed | not_applicable
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_by: Mapped[str] = mapped_column(String(120), default="")
+
+class EmbryoOutcome(Base):
+    __tablename__ = "embryo_outcomes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    case_key: Mapped[str] = mapped_column(String(120), index=True)
+    embryo_label: Mapped[str] = mapped_column(String(80))
+    status: Mapped[str] = mapped_column(String(40), default="")
+    event_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_by: Mapped[str] = mapped_column(String(120), default="")

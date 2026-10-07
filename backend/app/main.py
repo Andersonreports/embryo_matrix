@@ -15,7 +15,7 @@ from sqlalchemy import func
 from .config import settings
 from .database import Base, engine, get_db, SessionLocal
 from .placement import Placement, safe as _safe_name
-from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment, User
+from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment, User, Followup, EmbryoOutcome
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn
 from .sheet_sync import parse_sources, sync_sources
 from . import auth, cell_edits, edits_sheet, storage, trf_fill, trf_pdf
@@ -116,6 +116,7 @@ _ROLE_RULES = {
     ],
     "embryologist": [
         ("POST", r"/api/(trf|trf-image|trf/preview-pdf)"), ("GET", r"/api/trf-image/[^/]+"),
+        ("GET", r"/api/followups"), ("POST", r"/api/followups/save"),
     ],
 }
 _ALWAYS_OK = {("GET", "/api/whoami"), ("POST", "/api/logout")}
@@ -685,6 +686,8 @@ TRF_TEXT_FIELDS = (
     "consentRelation", "consentGuardianName", "consentAge", "patientAddress", "consentDate", "consentPlace",
     "companionName", "companionAddress", "companionRelation", "gynaecologistName", "gynaecologistRegNo",
     "explanationDate", "geneticClinicName", "geneticClinicAddress", "geneticClinicRegNo",
+    # Outcome follow-up consent (asked now; the pregnancy results themselves come later, outside the TRF)
+    "followupConsent", "followupContact", "followupPhoneEmail", "followupExpected",
 )
 TRF_EMBRYO_FIELDS = ("label", "grade", "cells", "day", "intact", "comments")
 TRF_IMG_RE = re.compile(r"^[0-9a-f]{32}\.(jpg|png|webp)$")
@@ -707,6 +710,7 @@ def _clean_trf(raw: dict) -> dict:
     data["tests"] = [t for t in (raw.get("tests") or []) if t in TRF_TESTS]
     data["gametes"] = [g for g in (raw.get("gametes") or []) if g in ("Self", "Donor Sperm", "Donor Oocyte")]
     data["dryRun"] = bool(raw.get("dryRun"))
+    data["followupConsent"] = data["followupConsent"] if data["followupConsent"] in ("Yes", "No") else ""
     embryos = []
     for e in (raw.get("embryos") or [])[:60]:
         row = {k: s((e or {}).get(k), 500) for k in TRF_EMBRYO_FIELDS}
@@ -782,6 +786,7 @@ async def submit_trf(request: Request, db: Session = Depends(get_db)):
     t = TrfSubmission(ref=ref, clinic=data["hospital"][:255], patient_name=data["patientName"][:255], data=data)
     db.add(t); db.commit(); db.refresh(t)
     _generate_trf_pdf(db, t)
+    _create_followup_from_trf(db, t)
     _trf_recent[ip] = recent + [now]
     log_activity(db, "trf_submit", f"{t.ref} · {t.patient_name} · {t.clinic}", request=request)
     return {"ref": t.ref, "submittedAt": _iso_utc(t.submitted_at)}
@@ -931,9 +936,146 @@ def link_trf_case(trf_id: int, payload: KVValue, request: Request, db: Session =
         raise HTTPException(404, "Not found")
     case_code = str((payload.value or {}).get("caseCode", "")).strip() if isinstance(payload.value, dict) else ""
     t.case_code = case_code or None
+    if case_code:
+        _rekey_followup(db, f"trf:{t.ref}", case_code)
     db.commit()
     log_activity(db, "trf_link_case", f"{t.ref} → case {case_code or '(unlinked)'}", request=request)
     return _trf_summary(t)
+
+# --- Clinical outcome follow-up ---
+OUTCOME_STATUSES = ("Not transferred", "Transfer planned", "Transferred", "Implantation successful", "Implantation unsuccessful",
+                    "Clinical pregnancy", "Ongoing pregnancy", "Miscarriage", "Live birth", "Outcome unknown")
+FOLLOWUP_STATES = ("", "awaiting", "completed", "not_applicable")
+_PERIOD_MONTHS = {"Within 1 month": 1, "1–3 months": 3, "3–6 months": 6, "6–12 months": 12}
+
+def _add_months(d, n):
+    from datetime import date
+    y, mo = divmod(d.month - 1 + n, 12)
+    y, mo = d.year + y, mo + 1
+    day = min(d.day, [31, 29 if y % 4 == 0 and (y % 100 or y % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1])
+    return date(y, mo, day)
+
+def _age_from_trf(data: dict, at: datetime):
+    dob = str(data.get("patientDob") or "")
+    try:
+        b = datetime.strptime(dob[:10], "%Y-%m-%d")
+        return at.year - b.year - ((at.month, at.day) < (b.month, b.day))
+    except ValueError:
+        pass
+    digits = "".join(ch for ch in str(data.get("consentAge") or "") if ch.isdigit())
+    return int(digits) if digits and 14 <= int(digits) <= 70 else None
+
+def _create_followup_from_trf(db: Session, t: TrfSubmission):
+    """A submitted TRF that answered the follow-up consent question opens a follow-up record. Never fails the submission."""
+    try:
+        d = t.data or {}
+        consent = d.get("followupConsent")
+        if consent not in ("Yes", "No"):
+            return
+        key = f"trf:{t.ref}"
+        if db.query(Followup.id).filter(Followup.case_key == key).first():
+            return
+        months = _PERIOD_MONTHS.get(d.get("followupExpected", ""), 3)
+        due = _add_months(t.submitted_at.date(), months).isoformat()
+        db.add(Followup(
+            case_key=key, source="trf", trf_ref=t.ref, patient=t.patient_name, clinic=t.clinic, region="",
+            embryologist=d.get("embryologistName", ""), test=", ".join(d.get("tests", [])), month=t.submitted_at.strftime("%Y-%m"),
+            age=_age_from_trf(d, t.submitted_at), embryos=[{"label": e.get("label", ""), "result": ""} for e in d.get("embryos", []) if e.get("label")],
+            consent=consent, contact_name=d.get("followupContact", ""), contact_detail=d.get("followupPhoneEmail", ""),
+            expected_period=d.get("followupExpected", ""), due_date=due, state="not_applicable" if consent == "No" else "",
+            updated_by="TRF"))
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        print(f"Follow-up record for {t.ref} failed: {exc}")
+
+def _rekey_followup(db: Session, old: str, new: str):
+    f = db.query(Followup).filter(Followup.case_key == old).first()
+    if not f or db.query(Followup.id).filter(Followup.case_key == new).first():
+        return
+    f.case_key = new
+    for o in db.query(EmbryoOutcome).filter(EmbryoOutcome.case_key == old).all():
+        o.case_key = new
+
+def _fu_out(f: Followup, outs: list) -> dict:
+    return {
+        "caseKey": f.case_key, "source": f.source, "trfRef": f.trf_ref, "patient": f.patient, "clinic": f.clinic, "region": f.region,
+        "embryologist": f.embryologist, "test": f.test, "month": f.month, "age": f.age, "embryos": f.embryos or [],
+        "consent": f.consent, "contactName": f.contact_name, "contactDetail": f.contact_detail, "expectedPeriod": f.expected_period,
+        "dueDate": f.due_date, "state": f.state, "note": f.note, "updatedBy": f.updated_by, "updatedAt": _iso_utc(f.updated_at),
+        "createdAt": _iso_utc(f.created_at),
+        "outcomes": [{"embryo": o.embryo_label, "status": o.status, "date": o.event_date, "note": o.note, "by": o.updated_by, "at": _iso_utc(o.updated_at)} for o in outs],
+    }
+
+@app.get("/api/followups")
+def list_followups(db: Session = Depends(get_db)):
+    outs: dict[str, list] = {}
+    for o in db.query(EmbryoOutcome).all():
+        outs.setdefault(o.case_key, []).append(o)
+    return {"statuses": list(OUTCOME_STATUSES), "items": [_fu_out(f, outs.get(f.case_key, [])) for f in db.query(Followup).order_by(Followup.updated_at.desc()).all()]}
+
+@app.post("/api/followups/save")
+def save_followup(payload: dict, request: Request, db: Session = Depends(get_db)):
+    """Create or update one follow-up record and its per-embryo outcomes in one call. An embryologist may only update
+    records that already exist (they come from submitted TRFs or are started by a team lead / admin)."""
+    user = request.state.user or {}
+    s = lambda v, n=255: str(v or "").strip()[:n]
+    key = s(payload.get("caseKey"), 120)
+    if not key:
+        raise HTTPException(422, "caseKey is required")
+    f = db.query(Followup).filter(Followup.case_key == key).first()
+    if not f:
+        if user.get("role") == "embryologist":
+            raise HTTPException(403, "Only a team lead or admin can start a follow-up")
+        f = Followup(case_key=key, source="manual")
+        db.add(f)
+    meta = payload.get("followup") or {}
+    for attr, k, n in (("patient", "patient", 255), ("clinic", "clinic", 255), ("region", "region", 120), ("embryologist", "embryologist", 120),
+                       ("test", "test", 255), ("month", "month", 20), ("contact_name", "contactName", 255), ("contact_detail", "contactDetail", 255),
+                       ("expected_period", "expectedPeriod", 60)):
+        if k in meta:
+            setattr(f, attr, s(meta[k], n))
+    if "consent" in meta and meta["consent"] in ("Yes", "No"):
+        f.consent = meta["consent"]
+    if "age" in meta:
+        try:
+            a = int(meta["age"]); f.age = a if 10 <= a <= 80 else None
+        except (TypeError, ValueError):
+            f.age = None
+    if "embryos" in meta and isinstance(meta["embryos"], list):
+        f.embryos = [{"label": s(e.get("label"), 80), "result": s(e.get("result"), 40)} for e in meta["embryos"][:80] if isinstance(e, dict) and s(e.get("label"), 80)]
+    if "dueDate" in meta:
+        d = s(meta["dueDate"], 10)
+        f.due_date = d if len(d) == 10 else None
+    if "state" in meta:
+        if meta["state"] not in FOLLOWUP_STATES:
+            raise HTTPException(422, "Unknown state")
+        f.state = meta["state"]
+    if "note" in meta:
+        f.note = s(meta["note"], 2000)
+    f.updated_at, f.updated_by = datetime.utcnow(), user.get("username") or ""
+    changes = []
+    for o in payload.get("outcomes") or []:
+        if not isinstance(o, dict):
+            continue
+        label, status = s(o.get("embryo"), 80), s(o.get("status"), 40)
+        if not label or (status and status not in OUTCOME_STATUSES):
+            continue
+        row = db.query(EmbryoOutcome).filter(EmbryoOutcome.case_key == key, EmbryoOutcome.embryo_label == label).first()
+        date = s(o.get("date"), 10)
+        date = date if len(date) == 10 else None
+        if not status and not row:
+            continue
+        if not row:
+            row = EmbryoOutcome(case_key=key, embryo_label=label); db.add(row)
+        if row.status != status:
+            changes.append(f"{label}: {row.status or '—'} → {status or '—'}")
+        row.status, row.event_date, row.note = status, date, s(o.get("note"), 1000)
+        row.updated_at, row.updated_by = datetime.utcnow(), user.get("username") or ""
+    db.commit()
+    log_activity(db, "followup_save", f"{f.patient or key} · " + ("; ".join(changes) if changes else (f.state or "details updated")), request=request)
+    outs = db.query(EmbryoOutcome).filter(EmbryoOutcome.case_key == key).all()
+    return _fu_out(f, outs)
 
 @app.get("/api/trf-files")
 def list_trf_files_for_sync(since_id: int = 0, db: Session = Depends(get_db)):
