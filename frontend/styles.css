@@ -2067,3 +2067,9 @@ body.vault-staff #vaultUpload{display:none!important}
 @media(max-width:1000px){.mk2,.mk2-one{grid-template-columns:1fr!important}}
 .ft-stack{display:flex;flex-direction:column;gap:14px}.ft-stack .ft{flex:1 1 0;margin:0;flex-wrap:wrap;align-content:center;width:100%}
 .tr-svg{max-height:230px}.db-trend{margin-bottom:0}
+
+/* Back button in the top bar (every page except the one you landed on) */
+.top-back{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px 0 12px;border:1px solid #cfe3df;border-radius:999px;background:#fff;font:700 13.5px "Inter";color:#0a7180;cursor:pointer;flex-shrink:0;box-shadow:0 1px 2px rgba(10,113,128,.08)}
+.top-back span{font-size:22px;line-height:1;margin-top:-2px}.top-back:hover{background:#eaf7f6;border-color:#0a7180}.top-back.hidden{display:none}
+@media(min-width:721px){.topbar{grid-template-columns:auto auto 1fr auto auto!important;grid-template-areas:"brand back nav alerts user"!important}.top-back{grid-area:back}}
+@media(min-width:721px) and (max-width:1720px){.topbar{grid-template-columns:auto auto 1fr auto auto!important;grid-template-areas:"brand back . alerts user" "nav nav nav nav nav"!important}}

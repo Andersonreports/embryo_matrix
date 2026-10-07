@@ -1861,17 +1861,17 @@ function setupRunReportsView(){const sel=$('#rrMonth'),body=$('#rrBody');if(!sel
  if(src&&dst){const mirror=()=>{dst.textContent=src.textContent};new MutationObserver(mirror).observe(src,{childList:true,characterData:true,subtree:true});mirror()}
 })();
 
-// Back button on every inner page: returns to the page you came from (Run status when there is no history).
+// Back button on every page: the top bar's Back returns to the page you came from. It is hidden only on the page you landed on (nothing to go back to).
 (function(){
  const orig=showView;let cur=null;const stack=[];
- const TOP=['dashboard','home','pgtm','runreports','followup','trfs','fuTasks','fuDash'];
- const topLevel=v=>TOP.includes(v)||(!canEditData()&&['samples','cases','images'].includes(v));
  window.showView=function(view,backing){
-  if(!backing&&cur&&cur!==view){if(topLevel(view))stack.length=0;else stack.push(cur)}
+  if(!backing&&cur&&cur!==view){if(stack[stack.length-1]!==cur)stack.push(cur);if(stack.length>30)stack.shift()}
   cur=view;orig(view);
-  const b=document.getElementById('backBtn');if(b)b.classList.toggle('hidden',topLevel(view)||view==='run')};
- const b=document.getElementById('backBtn');
- if(b)b.onclick=()=>{const prev=stack.pop()||(canEditData()?'home':roleHomeView());window.showView(prev,true)};
+  const t=document.getElementById('topBack');if(t)t.classList.toggle('hidden',!stack.length);
+  const o=document.getElementById('backBtn');if(o)o.classList.add('hidden')};
+ const go=()=>{const prev=stack.pop();if(prev)window.showView(prev,true)};
+ const t=document.getElementById('topBack');if(t)t.onclick=go;
+ const o=document.getElementById('backBtn');if(o)o.onclick=go;
 })();
 
 // Keep the headers fixed: the sticky page header and the Run status count cards sit just below the top bar, whatever its height.
