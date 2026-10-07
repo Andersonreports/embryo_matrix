@@ -1872,7 +1872,7 @@ function setupRunReportsView(){const sel=$('#rrMonth'),body=$('#rrBody');if(!sel
   if(!backing&&cur&&cur!==view){if(stack[stack.length-1]!==cur)stack.push(cur);if(stack.length>30)stack.shift()}
   cur=view;orig(view);
   const t=document.getElementById('topBack');if(t)t.classList.toggle('hidden',!stack.length);
-  const o=document.getElementById('backBtn');if(o)o.classList.add('hidden')};
+  const o=document.getElementById('backBtn');if(o)o.classList.toggle('hidden',!stack.length||['dashboard','home','pgtm','runreports','followup','trfs','fuTasks','fuDash'].includes(view)||(!canEditData()&&['samples','cases','images'].includes(view))||view==='run')};
  const go=()=>{const prev=stack.pop();if(prev)window.showView(prev,true)};
  const t=document.getElementById('topBack');if(t)t.onclick=go;
  const o=document.getElementById('backBtn');if(o)o.onclick=go;
