@@ -1887,7 +1887,7 @@ function setupRunReportsView(){const sel=$('#rrMonth'),body=$('#rrBody');if(!sel
  let busy=false;
  const run=()=>{if(busy)return;busy=true;try{
   const root=document.getElementById('genericView');if(!root||!root.querySelector('#rrBody'))return;
-  root.querySelectorAll('#rrBody th:not([data-ic])').forEach(th=>{th.dataset.ic='1';const k=MAP[key(th.textContent)];if(k)th.insertAdjacentHTML('afterbegin',I(k))});
+  // (no icons inside the table headings - the tables are exported)
   root.querySelectorAll('#rrBody .rr-stat:not([data-ic])').forEach(el=>{el.dataset.ic='1';const k=MAP[key(el.querySelector('span')?.textContent)];if(k)el.insertAdjacentHTML('beforeend',`<img class="ico rr-stat-ic" src="/static/icons/${k}.png" alt="">`)});
   root.querySelectorAll('#rrBody .rr-leg:not([data-ic])').forEach(el=>{el.dataset.ic='1';const k=MAP[key(el.querySelector('span')?.textContent)];if(k)el.insertAdjacentHTML('afterbegin',`<img class="ico rr-leg-ic" src="/static/icons/${k}.png" alt="">`)});
   const ex=root.querySelector('#rrExport');if(ex&&!ex.dataset.ic){ex.dataset.ic='1';ex.innerHTML='<img class="ico btn-ico-img" src="/static/icons/navigation__download-export.png" alt="">Download Excel'}

@@ -2026,3 +2026,27 @@ body.vault-staff #vaultUpload{display:none!important}
 #homeView #homeStats article strong{font-size:36px!important;margin-top:4px!important}
 #homeView #homeStats article small{font-size:11.5px!important}
 @media(max-width:1250px){#homeView #homeStats{gap:14px!important}}
+/* Run status count cards: white cards, colour only on the number and icon tile (no fills) */
+#homeView #homeStats article{background:#fff!important;border:1px solid #d9e6e3!important;box-shadow:0 1px 2px rgba(10,60,70,.06)!important;grid-template-columns:52px minmax(0,1fr)!important;grid-template-areas:"ic txt"!important;column-gap:14px!important}
+#homeView #homeStats article:hover{transform:translateY(-1px);box-shadow:0 8px 16px -12px rgba(10,60,70,.45)!important;border-color:var(--c)!important}
+#homeView #homeStats article strong{color:var(--c)!important}
+#homeView #homeStats article small{color:#4d6361!important}
+#homeView #homeStats .stat-icon{width:52px!important;height:52px!important;background:color-mix(in srgb,var(--c) 10%,white)!important;box-shadow:none!important;border-radius:14px!important}
+#homeView #homeStats article.overdue-card strong{color:var(--c)!important}
+
+/* Run status count cards — same look as the journey cards: icon on top, centred number, label, short subtitle */
+#homeView #homeStats article{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;gap:0!important;padding:14px 12px 12px!important;min-height:0!important;background:#fff!important;border:2px solid color-mix(in srgb,var(--c) 38%,white)!important;border-radius:18px!important;box-shadow:0 8px 18px -14px var(--c)!important;position:relative}
+#homeView #homeStats article:hover{border-color:var(--c)!important;transform:translateY(-2px)}
+#homeView #homeStats .stat-icon{order:0;position:static!important;width:46px!important;height:46px!important;background:transparent!important;border-radius:0!important;padding:0!important;margin:0 0 2px!important;display:grid!important;place-items:center!important}
+#homeView #homeStats .stat-icon .ico{width:46px;height:46px}
+#homeView #homeStats article>div{order:1;display:flex!important;flex-direction:column!important;align-items:center!important;text-align:center!important;width:100%}
+#homeView #homeStats article>div,#homeView #homeStats article>div *{text-align:center!important}
+#homeView #homeStats strong{order:1;font-size:34px!important;color:var(--c)!important;line-height:1.1!important;margin:0!important}
+#homeView #homeStats small{order:2;font-size:13px!important;font-weight:800!important;letter-spacing:0!important;text-transform:none!important;color:#102432!important}
+#homeView #homeStats article p{display:block!important;order:3;margin:2px 0 0!important;font-size:12px!important;color:#76868a!important}
+@media(max-width:1250px){#homeView #homeStats .stat-icon,#homeView #homeStats .stat-icon .ico{width:38px!important;height:38px!important}#homeView #homeStats strong{font-size:28px!important}}
+
+#homeView #homeStats article{justify-content:flex-start!important;height:auto!important;min-height:0!important;padding:14px 12px 12px!important;overflow:hidden}
+#homeView #homeStats .stat-icon{margin:0 0 4px!important;flex:0 0 auto}
+#homeView #homeStats article>div{flex:0 0 auto}
+#homeView #homeStats .stat-icon{transform:none!important;top:auto!important;right:auto!important;left:auto!important}
