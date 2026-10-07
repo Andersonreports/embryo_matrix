@@ -1816,3 +1816,12 @@ html,body{overflow-x:clip!important;overflow-y:visible!important}
 
 .db-toolbar{margin:0 0 6px}.db-pop{top:56px!important}
 .db-pop{left:0!important;right:auto!important}
+
+/* Run reports icons */
+.rr-title{display:inline-flex;align-items:center;gap:12px}.rr-logo{width:38px;height:38px;border-radius:11px;box-shadow:0 2px 6px rgba(10,113,128,.25)}
+.btn-ico-img{width:20px;height:20px;margin-right:6px;vertical-align:middle}#openProtocols,#rrExport{display:inline-flex;align-items:center}
+.rr-ic{width:20px;height:20px;display:inline-block;vertical-align:middle;margin-right:6px}
+.rr-stat{position:relative;padding-right:70px!important}.rr-stat-ic{position:absolute;right:16px;top:50%;transform:translateY(-50%);width:44px;height:44px}
+.rr-leg{position:relative}.rr-leg-ic{width:30px;height:30px;display:block;margin-bottom:4px}
+.rr-groups th{text-align:center}
+#rrBody th .rr-ic{width:16px;height:16px;margin-right:4px}
