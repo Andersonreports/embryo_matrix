@@ -265,7 +265,7 @@ function wireDash(root,redraw){
 
 // ---------------- Views ----------------
 window.renderFollowupView=async function(g,view){
- const title={followup:'Clinical follow-up',fuTasks:'Follow-up tasks',fuDash:'Outcomes',dashboard:'Dashboard'}[view];
+ const title={followup:'Clinical follow-up',fuTasks:'Follow-up tasks',fuDash:'Outcomes',dashboard:'Home'}[view];
  const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent=title;
  g.innerHTML='<div class="generic-card wide-card fu-view"><div class="chart-empty">Loading follow-up data…</div></div>';
  await loadFollowups(true);
