@@ -206,13 +206,13 @@ const RESULT_NAME={Normal:'Euploid',Abnormal:'Aneuploid',Mosaic:'Mosaic',Inconcl
 // Admin / team lead: which sheet embryologist name each embryologist login sees the embryos of.
 async function openLinks(){
  let list=[];try{const r=await fetch('/api/embryologist-links');if(!r.ok)throw 0;list=await r.json()}catch(e){toast('Could not load the embryologist logins');return}
- const names=typeof cases!=='undefined'?[...new Set(cases.map(c=>c.embryologist).filter(n=>n&&n!=='Not assigned'))].sort():[];
+ const names=typeof cases!=='undefined'?[...new Set(cases.map(c=>c.embryologist).filter(n=>n&&n!=='Not assigned'))].sort():[],clients=typeof cases!=='undefined'?[...new Set(cases.map(c=>c.client).filter(Boolean))].sort():[];
  const d=document.createElement('dialog');d.className='vu-dialog fu-dialog';document.body.append(d);d.addEventListener('close',()=>d.remove());
- d.innerHTML=`<div class="vu-dhead"><h3>Embryologist logins</h3><button type="button" class="secondary compact" data-close>Close</button></div><div class="vu-dbody"><p class="fu-note" style="margin-top:0">Choose the name each login has in the sheet's <b>Embryologist</b> column. That login then sees (and fills in) the embryos of every patient listed under that name.</p>
- <datalist id="lkNames">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
- <div class="fu-table-wrap"><table class="fu-table"><thead><tr><th>Login</th><th>Name in the sheet</th><th></th></tr></thead><tbody>${list.map(u=>`<tr data-u="${esc(u.username)}"><td class="strong">${esc(u.username)}</td><td><input list="lkNames" class="lk-name" value="${esc(u.name)}" placeholder="Start typing a name…" style="width:100%;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px"></td><td><button type="button" class="primary compact" data-save="1">Save</button></td></tr>`).join('')||'<tr><td colspan="3" class="chart-empty">No embryologist logins yet.</td></tr>'}</tbody></table></div></div>`;
+ d.innerHTML=`<div class="vu-dhead"><h3>Embryologist logins</h3><button type="button" class="secondary compact" data-close>Close</button></div><div class="vu-dbody"><p class="fu-note" style="margin-top:0">A login can see the embryos of one <b>embryologist</b> (as typed in the sheet's Embryologist column), or of a whole <b>fertility centre</b> (any centre whose name contains the text you type, e.g. <i>Mamta</i>). Fill in one or both.</p>
+ <datalist id="lkClients">${clients.map(n=>`<option value="${esc(n)}">`).join('')}</datalist><datalist id="lkNames">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+ <div class="fu-table-wrap"><table class="fu-table"><thead><tr><th>Login</th><th>Embryologist in the sheet</th><th>Fertility centre (client)</th><th></th></tr></thead><tbody>${list.map(u=>`<tr data-u="${esc(u.username)}"><td class="strong">${esc(u.username)}</td><td><input list="lkNames" class="lk-name" value="${esc(u.name)}" placeholder="Start typing a name…" style="width:100%;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px"></td><td><input list="lkClients" class="lk-client" value="${esc(u.client||'')}" placeholder="e.g. Mamta" style="width:100%;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px"></td><td><button type="button" class="primary compact" data-save="1">Save</button></td></tr>`).join('')||'<tr><td colspan="3" class="chart-empty">No embryologist logins yet.</td></tr>'}</tbody></table></div></div>`;
  d.querySelector('tbody').onclick=async e=>{const b=e.target.closest('[data-save]');if(!b)return;const tr=b.closest('tr');b.disabled=true;
-  try{const r=await fetch('/api/embryologist-links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:tr.dataset.u,name:tr.querySelector('.lk-name').value})});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).detail||'Failed');toast(`${tr.dataset.u} linked`)}catch(err){toast(err.message||'Could not save')}b.disabled=false};
+  try{const r=await fetch('/api/embryologist-links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:tr.dataset.u,name:tr.querySelector('.lk-name').value,client:tr.querySelector('.lk-client').value})});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).detail||'Failed');toast(`${tr.dataset.u} linked`)}catch(err){toast(err.message||'Could not save')}b.disabled=false};
  d.showModal()}
 
 // ---------------- Dashboard ----------------
@@ -267,6 +267,7 @@ function wireDash(root,redraw){
 window.renderFollowupView=async function(g,view){
  const title={followup:'Clinical follow-up',fuTasks:'Follow-up tasks',fuDash:'Outcomes',dashboard:'Home'}[view];
  const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent=title;
+ const mh=document.getElementById('mainHeader');if(mh)mh.classList.toggle('hidden',view==='dashboard');
  g.innerHTML='<div class="generic-card wide-card fu-view"><div class="chart-empty">Loading follow-up data…</div></div>';
  await loadFollowups(true);
  const card=g.querySelector('.fu-view');

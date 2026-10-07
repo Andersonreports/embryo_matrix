@@ -17,6 +17,7 @@ ap.add_argument("cmd", choices=["add", "passwd", "remove", "list", "setname"])
 ap.add_argument("username", nargs="?")
 ap.add_argument("--role", default="member", choices=["admin", "team_lead", "member", "embryologist"])
 ap.add_argument("--password")
+ap.add_argument("--client", help="fertility centre name (or part of it) for a login that represents a centre, e.g. MAMTA")
 ap.add_argument("--embryologist", help="name in the sheets' Embryologist column (for embryologist logins)")
 a = ap.parse_args()
 Base.metadata.create_all(bind=engine)
@@ -25,7 +26,7 @@ migrations.run()
 db = SessionLocal()
 if a.cmd == "list":
     for u in db.query(User).order_by(User.username):
-        print(f"{u.username:24} {u.role:14} {u.embryologist_name or ''}")
+        print(f"{u.username:24} {u.role:14} {u.embryologist_name or ''} {('centre: '+u.client_name) if u.client_name else ''}")
     sys.exit()
 if not a.username:
     ap.error("username required")
@@ -33,7 +34,7 @@ name = a.username.strip().lower()
 u = db.query(User).filter(User.username == name).first()
 if a.cmd == "setname":
     if not u: sys.exit("No such user")
-    u.embryologist_name = (a.embryologist or None); db.commit(); print("ok"); sys.exit()
+    u.embryologist_name = (a.embryologist or None); u.client_name = (a.client or None); db.commit(); print("ok"); sys.exit()
 if a.cmd == "remove":
     if not u: sys.exit("No such user")
     db.delete(u); db.commit(); print("removed", name); sys.exit()

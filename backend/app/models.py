@@ -19,6 +19,8 @@ class User(Base):
     lab_id: Mapped[int | None] = mapped_column(ForeignKey("labs.id"), nullable=True)
     # The name this person goes by in the sheets' Embryologist column - used to show an embryologist their own embryos.
     embryologist_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # For a login that represents a fertility centre: any patient whose centre name contains this text is listed for them.
+    client_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     lab = relationship("Lab")
 
 class PatientCase(Base):

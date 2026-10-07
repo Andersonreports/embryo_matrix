@@ -1023,9 +1023,11 @@ def _embryologist_sees(db: Session, user: dict, f: Followup) -> bool:
     if f.owner and f.owner == uname:
         return True
     u = db.query(User).filter(User.username == uname.lower()).first()
+    if u and u.client_name and _norm_name(u.client_name) in _norm_name(f.clinic):
+        return True
     mine = _norm_name((u.embryologist_name if u and u.embryologist_name else uname))
     theirs = _norm_name(f.embryologist)
-    return bool(mine and theirs and (mine == theirs or (not (u and u.embryologist_name) and mine in theirs)))
+    return bool(mine and theirs and (mine == theirs or (not (u and (u.embryologist_name or u.client_name)) and mine in theirs)))
 
 # --- Embryos assigned to an embryologist (from the sample sheet) ---
 _EMB_ALIASES = {"SINDHUJA": "SINDHUJA N S", "SINDHIYA": "SINDHUJA N S", "SINDHIYANS": "SINDHUJA N S", "SIADHUDA": "SINDHUJA N S",
@@ -1088,14 +1090,16 @@ def _month_of(tab: str) -> str:
     m = re.match(r"^\s*([A-Za-z]{3})[A-Za-z]*\s+(\d{4})", str(tab or ""))
     return f"{m.group(2)}-{_MONTHS[m.group(1).upper()]:02d}" if m and m.group(1).upper() in _MONTHS else ""
 
-def _sync_sheet_followups(db: Session, emb_name: str, username: str):
+def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = ""):
     """Make sure every patient listed under this embryologist in the sample sheet has a follow-up record."""
-    want = _norm_name(emb_name)
-    if not want:
+    want, want_client = _norm_name(emb_name), _norm_name(client_name)
+    if not want and not want_client:
         return
     cases: dict = {}
     for r in _sheet_rows(db):
-        if _canon_embryologist(_field(r, "embryologist name", "embryologist")) != want:
+        by_name = bool(want) and _canon_embryologist(_field(r, "embryologist name", "embryologist")) == want
+        by_client = bool(want_client) and want_client in _norm_name(_field(r, "center name", "hospital clinic name", "client"))
+        if not (by_name or by_client):
             continue
         patient = _field(r, "patient name", "patient")
         cid = _field(r, "case id") or _field(r, "sample id", "sample no", "box number")
@@ -1114,7 +1118,7 @@ def _sync_sheet_followups(db: Session, emb_name: str, username: str):
             continue
         r = c["r"]
         db.add(Followup(case_key=c["key"][:120], source="sheet", patient=c["patient"][:255], clinic=_field(r, "center name", "hospital clinic name", "client")[:255],
-                        region=_field(r, "location", "region")[:120], embryologist=emb_name[:120], test=_field(r, "test name", "test")[:255],
+                        region=_field(r, "location", "region")[:120], embryologist=(_field(r, "embryologist name", "embryologist") or emb_name)[:120], test=_field(r, "test name", "test")[:255],
                         month=_month_of(r.get("_importSource")), embryos=[{"label": k, "result": v} for k, v in c["embryos"].items()], consent="Yes",
                         due_date=due, updated_by="Sheet"))
         added += 1
@@ -1126,9 +1130,9 @@ def list_followups(request: Request, db: Session = Depends(get_db)):
     user = request.state.user or {}
     if user.get("role") == "embryologist":
         u = db.query(User).filter(User.username == (user.get("username") or "").lower()).first()
-        if u and u.embryologist_name:
+        if u and (u.embryologist_name or u.client_name):
             try:
-                _sync_sheet_followups(db, u.embryologist_name, u.username)
+                _sync_sheet_followups(db, u.embryologist_name or "", u.client_name or "")
             except Exception as exc:
                 db.rollback()
                 print(f"Sheet follow-up sync failed for {u.username}: {exc}")
@@ -1141,7 +1145,7 @@ def list_followups(request: Request, db: Session = Depends(get_db)):
 @app.get("/api/embryologist-links")
 def embryologist_links(request: Request, db: Session = Depends(get_db)):
     """Which sheet embryologist name each embryologist login sees the embryos of."""
-    return [{"username": u.username, "name": u.embryologist_name or ""} for u in db.query(User).filter(User.role == "embryologist").order_by(User.username).all()]
+    return [{"username": u.username, "name": u.embryologist_name or "", "client": u.client_name or ""} for u in db.query(User).filter(User.role == "embryologist").order_by(User.username).all()]
 
 @app.post("/api/embryologist-links")
 def set_embryologist_link(payload: dict, request: Request, db: Session = Depends(get_db)):
@@ -1149,9 +1153,10 @@ def set_embryologist_link(payload: dict, request: Request, db: Session = Depends
     if not u:
         raise HTTPException(404, "No such embryologist login")
     u.embryologist_name = str(payload.get("name", "")).strip()[:120] or None
+    u.client_name = str(payload.get("client", "")).strip()[:120] or None
     db.commit()
-    log_activity(db, "followup_save", f"Embryologist login {u.username} linked to sheet name '{u.embryologist_name or '—'}'", request=request)
-    return {"username": u.username, "name": u.embryologist_name or ""}
+    log_activity(db, "followup_save", f"Login {u.username} linked to embryologist '{u.embryologist_name or '—'}' / centre '{u.client_name or '—'}'", request=request)
+    return {"username": u.username, "name": u.embryologist_name or "", "client": u.client_name or ""}
 
 @app.post("/api/followups/bulk")
 def bulk_followups(payload: dict, request: Request, db: Session = Depends(get_db)):
