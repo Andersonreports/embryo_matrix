@@ -1873,3 +1873,14 @@ html,body{overflow-x:clip!important;overflow-y:visible!important}
 
 /* Overview: slim header that only carries the Back button */
 body.view-overview #mainHeader{height:56px}
+
+.tg{display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px}
+.tg-t{border-radius:14px;padding:12px 14px;background:color-mix(in srgb,var(--c) 10%,white);border:1px solid color-mix(in srgb,var(--c) 30%,white);border-left:6px solid var(--c);display:flex;flex-direction:column;gap:2px;min-width:0}
+.tg-t strong{font:600 32px "Lora",serif;line-height:1.05;color:#17302f}.tg-t span{font-size:12.5px;font-weight:700;color:#35504d;line-height:1.2}.tg-t em{font-style:normal;font-size:11.5px;color:#76868a}.tg-t.zero{background:#f7f9f8;border-color:#e6eceb;border-left-color:#d3dcda}.tg-t.zero strong,.tg-t.zero span{opacity:.5}
+.db-rates{grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))}
+.db-rate2{border:1px solid var(--line);border-radius:16px;padding:14px 16px;background:linear-gradient(160deg,color-mix(in srgb,var(--c) 9%,white),#fff 70%);position:relative;overflow:hidden}
+.db-rate2::before{content:"";position:absolute;inset:0 auto 0 0;width:5px;background:var(--c)}
+.db-rate2 small{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#5c6e6c}
+.rt-n strong{display:block;font:600 44px "Lora",serif;color:var(--c);line-height:1.1;margin:4px 0}.rt-n sup{font-size:20px;margin-left:2px}
+.rt-bar{height:8px;border-radius:999px;background:#e6eeed;overflow:hidden}.rt-bar i{display:block;height:100%;background:var(--c);border-radius:999px}
+.db-rate2 p{margin:8px 0 0;font-size:12.5px;color:#4d6361}
