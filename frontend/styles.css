@@ -1928,3 +1928,4 @@ body.view-overview #mainHeader{height:56px}
 .db-pop .db-f select.on{color:#000!important;font-weight:800!important}
 .db-pop .secondary,.db-pop .db-fclear{font-weight:800!important}
 .db-pop .db-fclear{color:#b3261e!important}
+.mk2-one{grid-template-columns:1fr!important}

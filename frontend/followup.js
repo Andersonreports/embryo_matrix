@@ -250,6 +250,7 @@ function dashHtml(){
  const furtherCard=(k,label)=>{const g=w=>rows.filter(r=>(r.tests?.[k]?.where||'')===w).length,an=g('Anderson'),ot=g('Other lab'),nd=g('Not done'),nr=rows.length-an-ot-nd,labs={};rows.forEach(r=>{const t=r.tests?.[k];if(t?.where==='Other lab'&&t.lab)labs[t.lab]=(labs[t.lab]||0)+1});
   const seg=[[an,'#0a7180','Done at Anderson'],[ot,'#e08a1e','Done at another lab'],[nd,'#9aa6a0','Not done']],done=an+ot,tot=an+ot+nd;
   return `<article class="db-card db-further"><h3>${label} <small>after PGT-A</small></h3>${tileGrid(seg,tot)}<p class="dn-wait"><b>${nr}</b> of ${rows.length} embryos not recorded yet.</p>${Object.keys(labs).length?`<p class="db-labs">Other labs: ${Object.entries(labs).sort((a,b)=>b[1]-a[1]).map(([l,n])=>`<b>${esc(l)}</b> (${n})`).join(', ')}</p>`:''}</article>`};
+ const isEmb=currentUser&&currentUser.role==='embryologist';
  const P=(n,d)=>d?Math.round(n/d*100):null;
  const byM=new Map();rows.forEach(r=>{const m=r.f.month||'';if(!/^\d{4}-\d{2}$/.test(m))return;const x=byM.get(m)||{m,n:0,tr:0,im:0,cp:0,lb:0};x.n++;if(TRANSFERRED.includes(r.status))x.tr++;if(IMPLANTED.includes(r.status))x.im++;if(CLINICAL.includes(r.status))x.cp++;if(r.status==='Live birth')x.lb++;byM.set(m,x)});
  const ms=[...byM.values()].sort((x,y)=>x.m.localeCompare(y.m));
@@ -280,8 +281,8 @@ function dashHtml(){
 </div>
  <div class="journey">${journey}</div>
  ${gauges}
- <div class="mk2"><article class="db-card"><h3>Month by month <small>${filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>
- <article class="db-card"><h3>Needs attention <small>most embryos still waiting for an outcome</small></h3>${attention}</article></div>
+ <div class="mk2${isEmb?' mk2-one':''}"><article class="db-card"><h3>Month by month <small>${isEmb?'your embryos':filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>
+${isEmb?'':`<article class="db-card"><h3>Needs attention <small>most embryos still waiting for an outcome</small></h3>${attention}</article>`}</div>
  <div class="ft-strip">${ftChip('tera','TERA')}${ftChip('nips','NIPS')}</div>`}
 function breakdownHtml(){
  const rows=embryoRows();
