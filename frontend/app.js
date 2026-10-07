@@ -758,6 +758,7 @@ function lastDmy(v,row){let tab=row?recordMonth(row):'';if(!/^\d{4}-\d{2}$/.test
 // Where one sample row stands: 'pending' (received only), 'wga' (WGA done, not sequenced), 'seq' (sequenced, report not finished), 'released'.
 function rowStage(r){const has=k=>!!field(r,[k]);if((has('ngs report')&&has('attune upload'))||isCompleteOnSeq(r,r._case))return'released';if(has('seq date'))return'seq';if(has('wga done on'))return'wga';return'pending'}
 let homeCardsMemo=null;
+const isEmbryoSureRow=r=>/EMBRYO\s*SURE|EMBRYOSURE/i.test(String(field(r,['test name','test'])||''));
 function homeCards(){if(homeCardsMemo&&homeCardsMemo.cases===cases&&homeCardsMemo.files===resultFilesCache)return homeCardsMemo.cards;
  const groups=new Map;
  cases.forEach(c=>(c.embryos||[]).forEach(row=>{if(isNotReporting(row))return;
@@ -770,6 +771,8 @@ function homeCards(){if(homeCardsMemo&&homeCardsMemo.cases===cases&&homeCardsMem
   const stage=g.kind==='rec'?'pending':g.kind==='wga'?'wga':released===g.rows.length?'released':'seq';
   // The Run ID cell is often blank (or has a stray value); the run of each sample's uploaded result file counts too, so a lone mistyped cell can't name the whole batch.
   const runCount={};g.rows.forEach(({row})=>{const seen=new Set(runsOf(row));Object.values(row._embryoResults||{}).forEach(p=>{const f=(resultFilesCache||[]).find(x=>x.id===p._fileId),n=f&&(f.run||runNumberOf(f.fileName));if(n)seen.add(n)});seen.forEach(r=>{const k=runIdNorm(r);if(k)runCount[k]=(runCount[k]||0)+1})});const runId=Object.entries(runCount).sort((x,y)=>y[1]-x[1])[0]?.[0];
+  // Embryo Sure samples sequenced on their own (per-patient files, no run number) are not a run: no batch card for them.
+  if(g.kind==='seq'&&!runId&&g.rows.every(({row})=>isEmbryoSureRow(row)))return null;
   const title=runId?`RUN ${runId}`:g.kind==='seq'?`SEQ ${g.date}`:g.kind==='wga'?`WGA ${g.date}`:`RECEIVED ${g.date||'(no date)'}`;
   const platform=g.kind==='seq'?(g.plat||'Platform not recorded'):g.kind==='wga'?(g.kit?`Kit ${g.kit} · awaiting sequencing`:'Awaiting sequencing'):'Awaiting WGA';
   const fileIds=new Set;g.rows.forEach(({row})=>Object.values(row._embryoResults||{}).forEach(p=>{if(p._fileId)fileIds.add(p._fileId)}));
@@ -777,7 +780,7 @@ function homeCards(){if(homeCardsMemo&&homeCardsMemo.cases===cases&&homeCardsMem
   const dk=dmyKey(g.date),live={kind:'seq',runId:g.key,title,runDate:g.date,platform:g.kind==='seq'?g.plat:'',items,b,files,tab:''};
   return{live,stage,title,platform,date:g.date,sortKey:`${dk}|${g.key}`,month:dk.slice(0,7),patients:b.patients,samples:b.total,
    res:fileRes?{euploid:b.euploid,aneuploid:b.aneuploid,mosaic:b.mosaic,inconclusive:b.inconclusive}:null,
-   tests:b.tests,qc:fileRes?{pass:b.pass,fail:b.fail}:null,progress:g.kind==='seq'?{done:released,total:g.rows.length}:null,search:items.map(x=>x.s.patient).join(' ')}});
+   tests:b.tests,qc:fileRes?{pass:b.pass,fail:b.fail}:null,progress:g.kind==='seq'?{done:released,total:g.rows.length}:null,search:items.map(x=>x.s.patient).join(' ')}}).filter(Boolean);
  cards.sort((a,b)=>b.sortKey.localeCompare(a.sortKey));
  homeCardsMemo={cases,files:resultFilesCache,cards};return cards}
 // Home: the run-search bar spans the same width as the Samples-through-Protocols nav range.
@@ -1782,9 +1785,9 @@ function rrSheetRuns(){const groups=new Map,files=new Map((resultFilesCache||[])
   // A run is one row: the run number of its result file, or - until that file is uploaded - the Run ID typed in the sheet. Uploading the file later just fills in the same row.
   const key=run?`R|${run}`:`S|${sd.date}|${platform}`;let g=groups.get(key);if(!g)groups.set(key,g={run,dates:{},months:{},platforms:{},patients:new Set,samples:0,tests:{},res:{euploid:0,aneuploid:0,mosaic:0,inconclusive:0},resN:0,qc:{pass:0,fail:0},qcN:0,ids:{},by:{}});
   tally(g.dates,sd?.date);tally(g.months,top(fm)||sd?.month);tally(g.platforms,platform);
-  const units=embryoRowsOf(e).length,bucket=runTestBucket(field(e,['test name','test']));g.samples+=units;g.patients.add(nameKey(e._case?.patient||field(e,['patient name'])));const bt=bucket?(g.by[bucket]=g.by[bucket]||rrTally()):null;if(bt){bt.samples+=units;bt.patients.add(nameKey(e._case?.patient||field(e,['patient name'])))}if(bucket)g.tests[bucket]=(g.tests[bucket]||0)+units;if(!run)runsOf(e).forEach(r=>tally(g.ids,r));
+  const units=embryoRowsOf(e).length,bucket=runTestBucket(field(e,['test name','test']));if(!isEmbryoSureRow(e))g.nonES=(g.nonES||0)+1;g.samples+=units;g.patients.add(nameKey(e._case?.patient||field(e,['patient name'])));const bt=bucket?(g.by[bucket]=g.by[bucket]||rrTally()):null;if(bt){bt.samples+=units;bt.patients.add(nameKey(e._case?.patient||field(e,['patient name'])))}if(bucket)g.tests[bucket]=(g.tests[bucket]||0)+units;if(!run)runsOf(e).forEach(r=>tally(g.ids,r));
   expandEmbryoRow(e).forEach(x=>{if(bt)rrAddResult(bt,x);const c=conclusionClass(x);if(!c)return;g.resN++;g.res[{Normal:'euploid',Abnormal:'aneuploid',Mosaic:'mosaic',Inconclusive:'inconclusive'}[c]]++;const q=qcVerdict(x);if(q){g.qcN++;g.qc[q==='PASS'?'pass':'fail']++}})});
- return[...groups.values()].map(g=>({date:top(g.dates),month:top(g.months),runId:g.run||top(g.ids),platform:top(g.platforms),patients:g.patients.size,samples:g.samples,res:g.resN?g.res:null,tests:g.tests,qc:g.qcN?g.qc:null,byTest:Object.fromEntries(Object.entries(g.by).map(([k,t])=>[k,rrFinish(t)])),src:'pgs'}))}
+ return[...groups.values()].filter(g=>g.run||g.nonES).map(g=>({date:top(g.dates),month:top(g.months),runId:g.run||top(g.ids),platform:top(g.platforms),patients:g.patients.size,samples:g.samples,res:g.resN?g.res:null,tests:g.tests,qc:g.qcN?g.qc:null,byTest:Object.fromEntries(Object.entries(g.by).map(([k,t])=>[k,rrFinish(t)])),src:'pgs'}))}
 function runReportRows(){const hist=runHistory.map(h=>({date:h.date||'',runId:String(h.runId||''),platform:h.platform||'',patients:h.patients??null,samples:h.samples??null,res:{euploid:h.euploid,aneuploid:h.aneuploid,mosaic:h.mosaic,inconclusive:h.inconclusive},tests:h.tests||null,qc:h.qcPass!=null?{pass:h.qcPass,fail:h.qcFail}:null,month:dmyKey(h.date).slice(0,7),src:'report'})).filter(r=>r.month),have=new Set(hist.map(h=>runIdNorm(h.runId))),typed=new Set(hist.map(h=>h.month));
  const live=seqRunsView.filter(r=>!have.has(runIdNorm(r.runId))).map(r=>{const b=r.b,hasRes=b.euploid+b.aneuploid+b.mosaicInc>0;return{date:r.runDate||'',runId:String(r.runId),platform:r.platform||'',patients:b.patients,samples:b.total,res:hasRes?{euploid:b.euploid,aneuploid:b.aneuploid,mosaic:b.mosaic,inconclusive:b.inconclusive}:null,tests:b.tests,qc:hasRes?{pass:b.pass,fail:b.fail}:null,byTest:(()=>{const by={};r.items.forEach(x=>{const k=x.m&&runTestBucket(field(x.m.row,['test name','test']));if(!k)return;const t=by[k]=by[k]||rrTally();t.samples++;t.patients.add(nameKey(x.s.patient));rrAddResult(t,runResult(x.m))});return Object.fromEntries(Object.entries(by).map(([k,t])=>[k,rrFinish(t)]))})(),month:tabMonth(r.tab)||dmyKey(r.runDate).slice(0,7),src:'sheet',live:r}}).filter(r=>r.month);
  const now=new Date(),cur=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`,sheet=rrSheetRuns().filter(r=>!typed.has(r.month)&&r.month<=cur),sheetIds=new Set(sheet.map(r=>runIdNorm(r.runId)).filter(Boolean));
