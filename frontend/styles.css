@@ -1644,3 +1644,19 @@ body.role-embryologist #trfModeSeg{display:none}
 /* Nav: room for the extra follow-up tab */
 .topbar{gap:18px}.topnav{gap:2px;flex:1 1 auto;min-width:0}.topnav .nav-item{padding:9px 12px;font-size:16px;gap:8px}.nav-item b{margin-left:4px}
 @media(max-width:1500px){.topnav .nav-item{padding:8px 9px;font-size:15px}}
+/* ---- Responsive top bar (final word): brand | nav | alerts | user on wide screens, nav on its own row below that ---- */
+@media(min-width:721px){
+ .topbar{display:grid!important;grid-template-columns:auto 1fr auto auto;grid-template-areas:"brand nav alerts user";align-items:center;column-gap:16px;row-gap:8px;flex-wrap:nowrap}
+ .topbar .brand{grid-area:brand;margin:0}
+ .topbar .topnav{grid-area:nav;display:flex!important;flex-wrap:wrap;justify-content:center;gap:2px 4px;min-width:0;padding:0;overflow:visible;flex:none}
+ .topbar .qc-alerts{grid-area:alerts;margin:0}
+ .topbar .session-info{grid-area:user;margin:0}
+ .topbar .topnav .nav-item{padding:8px 11px;font-size:15px;gap:7px;flex:none}
+}
+@media(min-width:721px) and (max-width:1720px){
+ .topbar{grid-template-columns:1fr auto auto;grid-template-areas:"brand alerts user" "nav nav nav"}
+ .topbar .topnav{justify-content:flex-start}
+}
+@media(min-width:1721px){.topbar .topnav .nav-item{font-size:16px;padding:9px 12px}}
+/* small screens: the nav scrolls sideways inside its own row instead of pushing the page wider */
+@media(max-width:720px){.topbar .topnav{max-width:100%}}
