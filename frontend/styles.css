@@ -1929,3 +1929,4 @@ body.view-overview #mainHeader{height:56px}
 .db-pop .secondary,.db-pop .db-fclear{font-weight:800!important}
 .db-pop .db-fclear{color:#b3261e!important}
 .mk2-one{grid-template-columns:1fr!important}
+.oe-test .ot-done.ot-tera{grid-template-columns:150px 130px 1fr 1fr}@media(max-width:900px){.oe-test .ot-done.ot-tera{grid-template-columns:1fr 1fr}}.ot-result,.ot-time{height:38px;padding:0 12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:transparent;color:inherit}

@@ -988,7 +988,8 @@ def _clean_further_tests(raw) -> dict:
             where = ""
         date = str(t.get("date") or "").strip()[:10]
         item = {"where": where, "lab": str(t.get("lab") or "").strip()[:120] if where == "Other lab" else "",
-                "date": date if len(date) == 10 else "", "result": str(t.get("result") or "").strip()[:300], "note": str(t.get("note") or "").strip()[:1000]}
+                "date": date if len(date) == 10 else "", "biopsyTime": str(t.get("biopsyTime") or "").strip()[:5] if k == "tera" else "",
+                "result": str(t.get("result") or "").strip()[:300], "note": str(t.get("note") or "").strip()[:1000]}
         if any(item.values()):
             out[k] = item
     return out

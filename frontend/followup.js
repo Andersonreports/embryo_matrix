@@ -50,6 +50,7 @@ const GROUPS=[['Before transfer',['Not transferred','Transfer planned']],['Trans
 const histItem=h=>`<li><span class="hi-dot"></span><div><b>${h.status?statusChip(h.status):'<span class="fu-os fu-os-none">Cleared</span>'}</b>${h.previous?`<small>was ${esc(h.previous)}</small>`:'<small>first entry</small>'}${h.date?`<small>outcome date ${fmtDate(h.date)}</small>`:''}${h.note?`<em>${esc(h.note)}</em>`:''}<span class="hi-by">${esc(h.by||'—')} · ${fmtWhen(h.at)}</span></div></li>`;
 const fmtWhen=iso=>{if(!iso)return'';const d=new Date(iso);return isNaN(d)?'':d.toLocaleString([],{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})};
 const histHtml=list=>list&&list.length?`<ol class="hist">${[...list].reverse().map(histItem).join('')}</ol>`:'<p class="fu-note" style="margin:0">No changes recorded yet.</p>';
+const TERA_RESULTS=['Pre-receptive','Receptive','Post-receptive'];
 const FURTHER=[['tera','TERA'],['nips','NIPS']];
 const WHERE=[['','— Not recorded —'],['Not done','Not done'],['Anderson','Done at Anderson'],['Other lab','Done at another lab']];
 function testsHtml(t){
@@ -57,8 +58,9 @@ function testsHtml(t){
   return `<div class="oe-test" data-t="${k}"><h5>${label}</h5>
    <label class="fu-f"><span>Status</span><select class="ot-where">${WHERE.map(([val,l])=>`<option value="${esc(val)}"${(v.where||'')===val?' selected':''}>${l}</option>`).join('')}</select></label>
    <label class="fu-f ot-lab-wrap"${v.where==='Other lab'?'':' hidden'}><span>Lab name</span><input class="ot-lab" value="${esc(v.lab||'')}" placeholder="Name of the other lab"></label>
-   <div class="ot-done"${done?'':' hidden'}><label class="fu-f"><span>Date done</span><input class="ot-date" type="date" value="${esc(v.date||'')}"></label>
-   <label class="fu-f"><span>Result</span><input class="ot-result" value="${esc(v.result||'')}" placeholder="Result"></label>
+   <div class="ot-done${k==='tera'?' ot-tera':''}"${done?'':' hidden'}><label class="fu-f"><span>Date done</span><input class="ot-date" type="date" value="${esc(v.date||'')}"></label>
+   ${k==='tera'?`<label class="fu-f"><span>Biopsy time</span><input class="ot-time" type="time" value="${esc(v.biopsyTime||'')}"></label>
+   <label class="fu-f"><span>Result</span><select class="ot-result"><option value="">— Select —</option>${[...TERA_RESULTS,...(v.result&&!TERA_RESULTS.includes(v.result)?[v.result]:[])].map(r=>`<option${v.result===r?' selected':''}>${esc(r)}</option>`).join('')}</select></label>`:`<label class="fu-f"><span>Result</span><input class="ot-result" value="${esc(v.result||'')}" placeholder="Result"></label>`}
    <label class="fu-f"><span>Other details</span><input class="ot-note" value="${esc(v.note||'')}" placeholder="Report no., remarks…"></label></div></div>`}).join('')}</div></div>`}
 let editorSeq=0;
 function editorHtml(embryos,om){
@@ -68,7 +70,7 @@ function editorHtml(embryos,om){
   return `<div class="oe-card" data-label="${esc(e.label)}"><div class="oe-head"><strong>${esc(e.label)}</strong>${resChip(e.result)}<button type="button" class="oe-clear" title="Clear this embryo's outcome">Clear</button></div>
   <div class="oe-status"><label class="fu-f"><span>Current status <small>(choose one)</small></span><select class="oe-sel">${`<option value="">— Not recorded —</option>`+GROUPS.map(([g,list])=>`<optgroup label="${g}">${list.map(s=>`<option${o.status===s?' selected':''}>${esc(s)}</option>`).join('')}</optgroup>`).join('')}</select></label><span class="oe-now">${statusChip(o.status||'')}</span></div>
   <div class="oe-extra"><label class="fu-f"><span>Date of this outcome</span><input class="oe-date" type="date" value="${esc(o.date||'')}"></label><label class="fu-f"><span>Note</span><input class="oe-note" value="${esc(o.note||'')}" placeholder="Optional"></label></div>${testsHtml(o.tests||{})}<div class="oe-foot"><button type="button" class="primary compact oe-rec">Record outcome</button><button type="button" class="oe-hist-btn">History <b>${(o.history||[]).length}</b></button><span class="oe-saved"></span></div><div class="oe-hist" hidden>${histHtml(o.history)}</div></div>`}).join('')}</div>`}
-const readTests=c=>{const t={};c.querySelectorAll('.oe-test').forEach(b=>{t[b.dataset.t]={where:b.querySelector('.ot-where').value,lab:b.querySelector('.ot-lab').value,date:b.querySelector('.ot-date').value,result:b.querySelector('.ot-result').value,note:b.querySelector('.ot-note').value}});return t};
+const readTests=c=>{const t={};c.querySelectorAll('.oe-test').forEach(b=>{t[b.dataset.t]={where:b.querySelector('.ot-where').value,lab:b.querySelector('.ot-lab').value,date:b.querySelector('.ot-date').value,biopsyTime:b.querySelector('.ot-time')?.value||'',result:b.querySelector('.ot-result').value,note:b.querySelector('.ot-note').value}});return t};
 const readCard=c=>({embryo:c.dataset.label,status:c.querySelector('.oe-sel')?.value||'',date:c.querySelector('.oe-date').value,note:c.querySelector('.oe-note').value,tests:readTests(c)});
 const readEditor=root=>[...root.querySelectorAll('.oe-card')].map(c=>({embryo:c.dataset.label,status:c.querySelector('.oe-sel')?.value||'',date:c.querySelector('.oe-date').value,note:c.querySelector('.oe-note').value,tests:readTests(c)}));
 function wireEditor(root,onChange,onRecord){
@@ -307,7 +309,7 @@ function wireDash(root,redraw){
 const stepper=status=>`<div class="stp">${STATUSES.map(s=>{const on=s===status;return `<span class="stp-i${on?' on':''}"${on?` style="background:${OS_COLOR[s]};border-color:${OS_COLOR[s]}"`:''}>${esc(s)}</span>`}).join('')}${status?'':'<span class="stp-i on stp-none">Not entered yet</span>'}</div>`;
 const WHERE_LBL={Anderson:'Done at Anderson','Other lab':'Done at another lab','Not done':'Not done'};
 const testLine=(label,t)=>{if(!t||!t.where)return`<span class="es-t"><b>${label}</b> not recorded</span>`;if(t.where==='Not done')return`<span class="es-t"><b>${label}</b> not done</span>`;
- return `<span class="es-t"><b>${label}</b> ${t.where==='Anderson'?'done at Anderson':`done at ${esc(t.lab||'another lab')}`}${t.date?' · '+fmtDate(t.date):''}${t.result?' · result: '+esc(t.result):''}${t.note?' · '+esc(t.note):''}</span>`};
+ return `<span class="es-t"><b>${label}</b> ${t.where==='Anderson'?'done at Anderson':`done at ${esc(t.lab||'another lab')}`}${t.date?' · '+fmtDate(t.date):''}${t.biopsyTime?' · biopsy '+esc(t.biopsyTime):''}${t.result?' · result: '+esc(t.result):''}${t.note?' · '+esc(t.note):''}</span>`};
 const whoWhen=o=>o&&o.at?`Updated${o.by?' by <b>'+esc(o.by)+'</b>':''} on ${fmtDate(String(o.at).slice(0,10))}`:'Not entered yet';
 function embryoState(e,o){o=o||{};
  return `<div class="es"><div class="es-head"><strong>${esc(e.label)}</strong>${resChip(e.result)}<span class="es-who">${whoWhen(o)}</span></div>${stepper(o.status||'')}<div class="es-meta">${o.date?`<span class="es-t"><b>Outcome date</b> ${fmtDate(o.date)}</span>`:''}${o.note?`<span class="es-t"><b>Note</b> ${esc(o.note)}</span>`:''}${testLine('TERA',o.tests?.tera)}${testLine('NIPS',o.tests?.nips)}</div>${(o.history||[]).length?`<details class="es-hist"><summary>History (${o.history.length})</summary>${histHtml(o.history)}</details>`:''}</div>`}
