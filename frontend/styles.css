@@ -2009,3 +2009,4 @@ body.vault-staff #vaultUpload{display:none!important}
 #homeView .home-toolbar .samples-go b{background:#e3efed!important;color:#0a5f6b!important}
 #homeView .home-toolbar .nav-item+.nav-item{border-left-width:1px}
 .cl-tag{display:inline-block;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;padding:3px 10px;border-radius:999px;background:#eaf4f2;color:#0a5f6b;font-weight:700;font-size:12px}
+.mon-f{display:flex;flex-direction:column;gap:2px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#8a9a97;margin:0!important}.mon-f select{height:38px;max-width:260px;border:1px solid var(--line);border-radius:999px;padding:0 12px;background:#fff;font:600 13px "Inter";color:#000;text-transform:none;letter-spacing:0}

@@ -296,8 +296,8 @@ function dashHtml(){
 </div>
  <div class="journey">${journey}</div>
  ${gauges}
- <div class="mk2${isEmb?' mk2-one':''}"><article class="db-card"><h3>Month by month <small>${isEmb?'your embryos':filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>
-${isEmb?'':`<article class="db-card"><h3>Needs attention <small>most embryos still waiting for an outcome</small></h3>${attention}</article>`}</div>
+ <div class="mk2 mk2-one"><article class="db-card"><h3>Month by month <small>${isEmb?'your embryos':filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>
+</div>
  <div class="ft-strip">${ftChip('tera','TERA')}${ftChip('nips','NIPS')}</div>`}
 function breakdownHtml(){
  const rows=embryoRows();
@@ -336,7 +336,7 @@ function openResultDialog(f){
  if(!d.open)d.showModal()}
 
 // ---------------- Admin / team lead: results entered by the embryologists ----------------
-let monGroupsAll=false,monQ='',monStatus='',monGroup='',monOnly='all',monLimit=100;
+let monClient='',monEmb='',monGroupsAll=false,monQ='',monStatus='',monGroup='',monOnly='all',monLimit=100;
 function monitorHtml(){
  const all=[];
  FU.items.forEach(f=>{if(f.consent==='No'||f.state==='not_applicable')return;const om=outcomeMap(f);(f.embryos||[]).forEach(e=>{const o=om[norm(e.label)]||{};all.push({f,e,o,s:o.status||'',g:f.embryologist||f.clinic||'—'})})});
@@ -344,7 +344,7 @@ function monitorHtml(){
  const groups=new Map();all.forEach(r=>{const x=groups.get(r.g)||{g:r.g,n:0,f:0,last:null,by:''};x.n++;if(r.s)x.f++;if(r.o.at&&(!x.last||r.o.at>x.last)){x.last=r.o.at;x.by=r.o.by||''}groups.set(r.g,x)});
  const glist=[...groups.values()].sort((a,b)=>(b.n-b.f)-(a.n-a.f));
  const q=monQ.trim().toLowerCase();
- let rows=all.filter(r=>(!monStatus||(monStatus==='__none'?!r.s:r.s===monStatus))&&(!monGroup||r.g===monGroup)&&(monOnly==='all'||(monOnly==='filled'?!!r.s:!r.s))&&(!q||`${r.f.patient} ${r.f.clinic} ${r.e.label} ${r.o.by||''}`.toLowerCase().includes(q)));
+ let rows=all.filter(r=>(!monStatus||(monStatus==='__none'?!r.s:r.s===monStatus))&&(!monGroup||r.g===monGroup)&&(!monClient||r.f.clinic===monClient)&&(!monEmb||(r.f.embryologist||'')===monEmb)&&(monOnly==='all'||(monOnly==='filled'?!!r.s:!r.s))&&(!q||`${r.f.patient} ${r.f.clinic} ${r.e.label} ${r.o.by||''}`.toLowerCase().includes(q)));
  const shown=rows.slice(0,monLimit),cnt=s=>all.filter(r=>r.s===s).length;
  const tiles=STATUSES.map(s=>{const n=s==='__none'?total-filled:cnt(s),col=s==='__none'?'#dfe6e4':OS_COLOR[s];return `<button type="button" class="mt${monStatus===s?' on':''}" data-s="${esc(s)}" style="--c:${col}"><strong>${n}</strong><span>${s==='__none'?'Not entered yet':esc(s)}</span></button>`}).join('');
  const pctF=total?Math.round(filled/total*100):0;
@@ -352,7 +352,7 @@ function monitorHtml(){
  <h3 class="db-h">Current state of the embryos</h3><div class="mon-tiles">${tiles}</div>
  <h3 class="db-h">Outcomes by clinic and by month</h3>${breakdownHtml()}
  <h3 class="db-h">Embryo by embryo</h3>
- <div class="tk-bar"><div class="seg-toggle" id="monOnly">${[['all','All'],['filled','Entered'],['waiting','Waiting']].map(([k,l])=>`<button type="button" class="${monOnly===k?'on':''}" data-v="${k}">${l}</button>`).join('')}</div><div class="search-wrap fu-search"><span>⌕</span><input id="monSearch" type="search" placeholder="Search patient, clinic or embryo…" value="${esc(monQ)}"></div>${(monStatus||monGroup)?'<button type="button" class="db-fclear" id="monClear">Clear filters</button>':''}</div>
+ <div class="tk-bar"><div class="seg-toggle" id="monOnly">${[['all','All'],['filled','Entered'],['waiting','Waiting']].map(([k,l])=>`<button type="button" class="${monOnly===k?'on':''}" data-v="${k}">${l}</button>`).join('')}</div><label class="mon-f"><span>Client</span><select id="monClient"><option value="">All clients</option>${[...new Set(all.map(r=>r.f.clinic).filter(Boolean))].sort().map(c=>`<option${monClient===c?' selected':''}>${esc(c)}</option>`).join('')}</select></label><label class="mon-f"><span>Embryologist</span><select id="monEmb"><option value="">All embryologists</option>${[...new Set(all.map(r=>r.f.embryologist).filter(Boolean))].sort().map(c=>`<option${monEmb===c?' selected':''}>${esc(c)}</option>`).join('')}</select></label><div class="search-wrap fu-search"><span>⌕</span><input id="monSearch" type="search" placeholder="Search patient, clinic or embryo…" value="${esc(monQ)}"></div>${(monStatus||monGroup||monClient||monEmb)?'<button type="button" class="db-fclear" id="monClear">Clear filters</button>':''}</div>
  <div class="fu-table-wrap fu-tasks"><table class="fu-table"><thead><tr><th>Patient</th><th>Client</th><th>Embryo</th><th>PGT-A result</th><th>Current state</th><th>Date</th><th>TERA</th><th>NIPS</th><th>Updated by</th></tr></thead><tbody>${shown.map(({f,e,o,s})=>{const tc=k=>{const v=o.tests?.[k];return !v||!v.where?'<span class="fu-os fu-os-none">—</span>':v.where==='Not done'?'<span class="fu-os fu-os-none">Not done</span>':`<span class="fu-os">${v.where==='Anderson'?'Anderson':esc(v.lab||'Other lab')}${v.result?' · '+esc(v.result):''}</span>`};
   return `<tr data-key="${esc(f.caseKey)}"><td class="strong">${esc(f.patient)}</td><td><span class="cl-tag" title="${esc(f.clinic)}">${esc(f.clinic)||'—'}</span></td><td class="strong">${esc(e.label)}</td><td>${resChip(e.result)}</td><td>${statusChip(s)}</td><td>${fmtDate(o.date)}</td><td>${tc('tera')}</td><td>${tc('nips')}</td><td>${o.by?esc(o.by)+'<small>'+fmtDate(String(o.at||'').slice(0,10))+'</small>':'—'}</td></tr>`}).join('')||'<tr><td colspan="9" class="chart-empty">No embryos match.</td></tr>'}</tbody></table></div>
  ${rows.length>shown.length?`<div style="text-align:center;margin:12px"><button type="button" class="secondary" id="monMore">Show more (${rows.length-shown.length} left)</button></div>`:''}`}
@@ -361,7 +361,9 @@ function wireMonitor(root,redraw){
  const gp=root.querySelector('.mon-groups');if(gp)gp.onclick=e=>{const b=e.target.closest('[data-g]');if(!b)return;monGroup=monGroup===b.dataset.g?'':b.dataset.g;monLimit=100;redraw()};
  root.querySelector('#monOnly').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;monOnly=b.dataset.v;monLimit=100;redraw()};
  const s=root.querySelector('#monSearch');s.oninput=()=>{monQ=s.value;monLimit=100;const pos=s.selectionStart;redraw();const n=root.querySelector('#monSearch');n.focus();n.setSelectionRange(pos,pos)};
- const c=root.querySelector('#monClear');if(c)c.onclick=()=>{monStatus='';monGroup='';redraw()};
+ const mc=root.querySelector('#monClient');if(mc)mc.onchange=()=>{monClient=mc.value;monLimit=100;redraw()};
+ const me=root.querySelector('#monEmb');if(me)me.onchange=()=>{monEmb=me.value;monLimit=100;redraw()};
+ const c=root.querySelector('#monClear');if(c)c.onclick=()=>{monStatus='';monGroup='';monClient='';monEmb='';redraw()};
  const gt=root.querySelector('#monGroupsToggle');if(gt)gt.onclick=()=>{monGroupsAll=!monGroupsAll;redraw()};
  const m=root.querySelector('#monMore');if(m)m.onclick=()=>{monLimit+=200;redraw()};
  const fs=root.querySelector('#fuFromSheet');if(fs)fs.onclick=()=>openSheetImport(redraw);
