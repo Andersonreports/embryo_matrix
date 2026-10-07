@@ -128,7 +128,7 @@ const TILES=[
  ['awaiting','Awaiting clinic update','navigation__internal-transfer','Clinic has been asked','blue'],
  ['completed','Completed','stages-results__qc-pass','All outcomes known','green'],
  ['na','Not applicable','stages-results__na-result','No consent / not needed','grey']];
-let taskSort='due',taskView='patient',taskEmb='',onlyNeeds=false;
+let dashHome=false,taskSort='due',taskView='patient',taskEmb='',onlyNeeds=false;
 
 // ---------------- Tasks (card queue) ----------------
 function tasksHtml(){
@@ -229,7 +229,7 @@ function dashHtml(){
  const grp=(keyFn)=>{const m=new Map();rows.forEach(r=>{const k=keyFn(r)||'—',x=m.get(k)||{k,patients:new Set(),n:0,t:0,i:0,p:0,l:0};x.patients.add(r.f.caseKey);x.n++;if(TRANSFERRED.includes(r.status))x.t++;if(IMPLANTED.includes(r.status))x.i++;if(CLINICAL.includes(r.status))x.p++;if(r.status==='Live birth')x.l++;m.set(k,x)});return[...m.values()]};
  const table=(title,list,first)=>`<article class="db-card"><h3>${title}</h3><div class="fu-table-wrap fu-clinics"><table class="fu-table"><thead><tr><th>${first}</th><th>Patients</th><th>Embryos</th><th>Transferred</th><th>Implant.</th><th>Clin. preg.</th><th>Live birth</th></tr></thead><tbody>${list.map(x=>`<tr><td class="strong">${esc(first==='Month'?monthLabel(x.k):x.k)}</td><td>${x.patients.size}</td><td>${x.n}</td><td>${x.t}</td><td>${pct(x.i,x.t)}</td><td>${pct(x.p,x.t)}</td><td>${pct(x.l,x.t)}</td></tr>`).join('')||'<tr><td colspan="7" class="chart-empty">No data for these filters.</td></tr>'}</tbody></table></div></article>`;
  const clinics=grp(r=>r.f.clinic).sort((a,b)=>b.n-a.n),months=grp(r=>r.f.month).sort((a,b)=>String(b.k).localeCompare(String(a.k)));
- return `<div class="fu-hero db-hero"><div><h2>Pregnancy outcomes</h2><p>What happened after transfer, for <b>${rows.length}</b> embryo${rows.length===1?'':'s'} from <b>${patients}</b> patient${patients===1?'':'s'} who agreed to follow-up${filtersOn?' <span class="db-on">· filtered</span>':''}.</p></div><div class="db-hero-stats"><div><strong>${recorded}</strong><small>outcomes recorded</small></div><div><strong>${rows.length-recorded}</strong><small>still unknown</small></div></div></div>
+ return `<div class="fu-hero db-hero"><div><h2>Pregnancy outcomes</h2><p>What happened after transfer, for <b>${rows.length}</b> embryo${rows.length===1?'':'s'} from <b>${patients}</b> patient${patients===1?'':'s'} who agreed to follow-up${filtersOn?' <span class="db-on">· filtered</span>':''}.</p></div><div class="db-hero-stats"><div><strong>${recorded}</strong><small>outcomes recorded</small></div><div><strong>${rows.length-recorded}</strong><small>still unknown</small></div>${dashHome?'<button type="button" class="hero-btn" id="goRunStatus">Run-wise status ›</button>':''}</div></div>
  <div class="db-filters">${sel('month','Month',monthLabel)}${sel('clinic','Clinic')}${sel('region','Region')}${sel('embryologist','Embryologist')}${sel('test','Test')}${sel('age','Age group')}${sel('result','Embryo result')}<button type="button" class="secondary compact" id="fuClear"${filtersOn?'':' disabled'}>Clear filters</button></div>
  <h3 class="db-h">The journey of the embryos</h3>
  <div class="journey">${journey}</div>
@@ -245,18 +245,20 @@ function dashHtml(){
  <div class="db-two db-two-eq">${table('By clinic',clinics,'Clinic')}${table('By month',months,'Month')}</div>
  <p class="fu-note">"Outcome unknown" and "Not transferred" embryos count only in the embryos tracked. Patients who declined follow-up are left out.</p>`}
 function wireDash(root,redraw){
+ const gr=root.querySelector('#goRunStatus');if(gr)gr.onclick=()=>showView('home');
  root.querySelectorAll('[data-flt]').forEach(s=>s.onchange=()=>{flt[s.dataset.flt]=s.value;redraw()});
  root.querySelector('#fuClear').onclick=()=>{Object.keys(flt).forEach(k=>flt[k]='');redraw()}}
 
 // ---------------- Views ----------------
 window.renderFollowupView=async function(g,view){
- const title={followup:'Clinical follow-up',fuTasks:'Follow-up tasks',fuDash:'Outcomes'}[view];
+ const title={followup:'Clinical follow-up',fuTasks:'Follow-up tasks',fuDash:'Outcomes',dashboard:'Dashboard'}[view];
  const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent=title;
  g.innerHTML='<div class="generic-card wide-card fu-view"><div class="chart-empty">Loading follow-up data…</div></div>';
  await loadFollowups(true);
  const card=g.querySelector('.fu-view');
  const draw=()=>{
   const tab=view==='followup'?subTab:view==='fuTasks'?'tasks':'dash';
+  dashHome=view==='dashboard';
   const seg=view==='followup'?`<div class="fu-switch" id="fuSub"><button type="button" class="${tab==='tasks'?'on':''}" data-t="tasks">${IC('navigation__patient')}<span><b>Follow-up tasks</b><small>Who to call, what to record</small></span></button><button type="button" class="${tab==='dash'?'on':''}" data-t="dash">${IC('navigation__embryo-results')}<span><b>Outcomes dashboard</b><small>Rates, counts and trends</small></span></button></div>`:'';
   card.innerHTML=seg+`<div class="fu-pane">${tab==='tasks'?tasksHtml():dashHtml()}</div>`;
   const sub=card.querySelector('#fuSub');if(sub)sub.onclick=e=>{const b=e.target.closest('[data-t]');if(!b)return;subTab=b.dataset.t;draw()};
