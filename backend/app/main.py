@@ -15,7 +15,7 @@ from sqlalchemy import func
 from .config import settings
 from .database import Base, engine, get_db, SessionLocal
 from .placement import Placement, safe as _safe_name
-from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment, User, Followup, EmbryoOutcome
+from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment, User, Followup, EmbryoOutcome, OutcomeHistory
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn
 from .sheet_sync import parse_sources, sync_sources
 from . import auth, cell_edits, edits_sheet, storage, trf_fill, trf_pdf
@@ -1001,14 +1001,17 @@ def _rekey_followup(db: Session, old: str, new: str):
     for o in db.query(EmbryoOutcome).filter(EmbryoOutcome.case_key == old).all():
         o.case_key = new
 
-def _fu_out(f: Followup, outs: list) -> dict:
+def _hist_out(h: OutcomeHistory) -> dict:
+    return {"status": h.status, "previous": h.previous_status, "date": h.event_date, "note": h.note, "tests": h.tests or {}, "by": h.changed_by, "at": _iso_utc(h.changed_at)}
+
+def _fu_out(f: Followup, outs: list, hist: dict | None = None) -> dict:
     return {
         "caseKey": f.case_key, "source": f.source, "trfRef": f.trf_ref, "patient": f.patient, "clinic": f.clinic, "region": f.region,
         "embryologist": f.embryologist, "test": f.test, "month": f.month, "age": f.age, "embryos": f.embryos or [],
         "consent": f.consent, "contactName": f.contact_name, "contactDetail": f.contact_detail, "expectedPeriod": f.expected_period,
         "dueDate": f.due_date, "state": f.state, "note": f.note, "updatedBy": f.updated_by, "updatedAt": _iso_utc(f.updated_at),
         "createdAt": _iso_utc(f.created_at),
-        "outcomes": [{"embryo": o.embryo_label, "status": o.status, "date": o.event_date, "note": o.note, "tests": o.tests or {}, "by": o.updated_by, "at": _iso_utc(o.updated_at)} for o in outs],
+        "outcomes": [{"embryo": o.embryo_label, "status": o.status, "date": o.event_date, "note": o.note, "tests": o.tests or {}, "by": o.updated_by, "at": _iso_utc(o.updated_at), "history": (hist or {}).get(o.embryo_label, [])} for o in outs],
     }
 
 def _norm_name(v: str) -> str:
@@ -1146,8 +1149,11 @@ def list_followups(request: Request, db: Session = Depends(get_db)):
     outs: dict[str, list] = {}
     for o in db.query(EmbryoOutcome).all():
         outs.setdefault(o.case_key, []).append(o)
+    hist: dict[str, dict] = {}
+    for h in db.query(OutcomeHistory).order_by(OutcomeHistory.id).all():
+        hist.setdefault(h.case_key, {}).setdefault(h.embryo_label, []).append(_hist_out(h))
     rows = [f for f in db.query(Followup).order_by(Followup.updated_at.desc()).all() if _embryologist_sees(db, user, f)]
-    return {"statuses": list(OUTCOME_STATUSES), "items": [_fu_out(f, outs.get(f.case_key, [])) for f in rows]}
+    return {"statuses": list(OUTCOME_STATUSES), "items": [_fu_out(f, outs.get(f.case_key, []), hist.get(f.case_key)) for f in rows]}
 
 @app.get("/api/embryologist-links")
 def embryologist_links(request: Request, db: Session = Depends(get_db)):
@@ -1246,16 +1252,25 @@ def save_followup(payload: dict, request: Request, db: Session = Depends(get_db)
             continue
         if not row:
             row = EmbryoOutcome(case_key=key, embryo_label=label); db.add(row)
+        new_note = s(o.get("note"), 1000)
+        new_tests = tests if "tests" in o else (row.tests or {})
+        prev = (row.status or "", row.event_date or None, row.note or "", row.tests or {})
         if row.status != status:
             changes.append(f"{label}: {row.status or '—'} → {status or '—'}")
-        row.status, row.event_date, row.note = status, date, s(o.get("note"), 1000)
+        if prev != (status, date, new_note, new_tests):
+            db.add(OutcomeHistory(case_key=key, embryo_label=label, status=status, previous_status=prev[0], event_date=date, note=new_note,
+                                  tests=new_tests, changed_by=user.get("username") or ""))
+        row.status, row.event_date, row.note = status, date, new_note
         if "tests" in o:
             row.tests = tests
         row.updated_at, row.updated_by = datetime.utcnow(), user.get("username") or ""
     db.commit()
     log_activity(db, "followup_save", f"{f.patient or key} · " + ("; ".join(changes) if changes else (f.state or "details updated")), request=request)
     outs = db.query(EmbryoOutcome).filter(EmbryoOutcome.case_key == key).all()
-    return _fu_out(f, outs)
+    hist: dict = {}
+    for h in db.query(OutcomeHistory).filter(OutcomeHistory.case_key == key).order_by(OutcomeHistory.id).all():
+        hist.setdefault(h.embryo_label, []).append(_hist_out(h))
+    return _fu_out(f, outs, hist)
 
 @app.get("/api/trf-files")
 def list_trf_files_for_sync(since_id: int = 0, db: Session = Depends(get_db)):

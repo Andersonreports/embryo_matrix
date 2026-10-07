@@ -170,3 +170,17 @@ class EmbryoOutcome(Base):
     tests: Mapped[Any] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_by: Mapped[str] = mapped_column(String(120), default="")
+
+class OutcomeHistory(Base):
+    """Every change to an embryo's outcome, newest last: what it was set to, by whom and when."""
+    __tablename__ = "outcome_history"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    case_key: Mapped[str] = mapped_column(String(120), index=True)
+    embryo_label: Mapped[str] = mapped_column(String(80), index=True)
+    status: Mapped[str] = mapped_column(String(40), default="")
+    previous_status: Mapped[str] = mapped_column(String(40), default="")
+    event_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    tests: Mapped[Any] = mapped_column(JSON, nullable=True)
+    changed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    changed_by: Mapped[str] = mapped_column(String(120), default="")
