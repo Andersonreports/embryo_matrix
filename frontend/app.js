@@ -1869,3 +1869,10 @@ function setupRunReportsView(){const sel=$('#rrMonth'),body=$('#rrBody');if(!sel
  const b=document.getElementById('backBtn');
  if(b)b.onclick=()=>{const prev=stack.pop()||(canEditData()?'home':roleHomeView());window.showView(prev,true)};
 })();
+
+// Keep the headers fixed: the sticky page header and the Run status count cards sit just below the top bar, whatever its height.
+(function(){
+ const bar=document.querySelector('.topbar');if(!bar)return;
+ const set=()=>document.documentElement.style.setProperty('--topbar-h',bar.offsetHeight+'px');
+ set();window.addEventListener('resize',set);if(window.ResizeObserver)new ResizeObserver(set).observe(bar);
+})();

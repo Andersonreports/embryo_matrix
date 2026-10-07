@@ -1783,3 +1783,27 @@ body.role-embryologist #trfModeSeg{display:none}
 .doc-thumb small{max-width:100%;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .doc-thumb:hover{border-color:#0a7180}
 .stack-front .doc-thumb,.stored-image .doc-thumb{height:100%;min-height:110px}
+
+/* Fixed headers: top bar, page header and (Run status) the title row + count cards stay put; only what is below scrolls */
+:root{--topbar-h:80px}
+.topbar{position:sticky;top:0;z-index:30}
+#mainHeader{position:sticky!important;top:var(--topbar-h);z-index:25;background:#fff}
+.home-fixed{position:sticky;top:var(--topbar-h);z-index:20;background:var(--bg,#f4f6f4);padding-bottom:6px;margin:0 -2px}
+.home-fixed .home-toolbar{margin-bottom:12px}.home-fixed #homeStats{margin-bottom:6px}
+/* overflow-x:hidden on html/body turned body into a scroll container and broke position:sticky; clip does not */
+html,body{overflow-x:clip!important;overflow-y:visible!important}
+/* Compact fixed header: top bar on one row from 1380px; Run status cards in one row from 1100px */
+@media(min-width:1380px) and (max-width:1720px){
+ .topbar{grid-template-columns:auto 1fr auto auto!important;grid-template-areas:"brand nav alerts user"!important;padding-top:8px;padding-bottom:8px}
+ .topbar .topnav{justify-content:center!important;flex-wrap:nowrap!important;gap:0!important}
+ .topbar .topnav .nav-item{padding:7px 8px!important;font-size:14px!important;gap:6px!important}
+ .topnav .nav-item span:has(>.ico){width:26px;height:26px}.topnav .nav-item .ico{width:24px;height:24px}
+ .topnav .nav-item b{font-size:10.5px;padding:1px 6px}
+}
+@media(min-width:1100px){#homeView #homeStats{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:10px}}
+#homeStats article{padding:10px 14px!important}#homeStats strong{font-size:28px!important}#homeStats .stat-icon{width:40px!important;height:40px!important}#homeStats article p{display:none!important}
+.home-fixed .home-toolbar{margin:0 0 8px!important}.home-title{font-size:26px!important}
+.home-title{display:none!important}
+#homeView .home-toolbar{grid-template-columns:minmax(0,1fr) auto auto!important}
+#homeView .home-toolbar #runSearchWrap{grid-column:1!important;order:0!important;justify-self:stretch}
+@media(max-width:1400px){#homeStats small{font-size:10.5px!important;letter-spacing:.02em}#homeStats strong{font-size:24px!important}#homeStats .stat-icon{width:30px!important;height:30px!important}#homeStats article{padding:8px 10px!important}}
