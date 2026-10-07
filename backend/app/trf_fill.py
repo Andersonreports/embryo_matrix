@@ -1,5 +1,5 @@
 """Fills the lab's original paper TRF templates (PGT-A / PGT-M, 3 pages each) with a submission's data,
-then adds a 4th page for the outcome follow-up consent (not on the paper forms).
+then adds a 4th page for the outcome follow-up consent when the patient agreed to it (not on the paper forms).
 
 The templates are the real PDFs (backend/app/data/trf_template_{a,m}.pdf), so every label, line, box,
 logo, header and footer is exactly the paper form. The submission is typed on top: an overlay page
@@ -336,9 +336,11 @@ def render_trf_filled_pdf(data: dict, meta: dict | None = None) -> bytes:
         page = PdfReader(str(TEMPLATES[kind])).pages[1]
         page.merge_page(PdfReader(io.BytesIO(ex_pdf)).pages[0])
         out.add_page(page)
-    fu_pdf = HTML(string=f"<!doctype html><html><head><meta charset='utf-8'><style>{FOLLOWUP_CSS}</style></head><body>{_followup_page_html(d)}</body></html>",
-                  base_url=str(STATIC_DIR) + "/").write_pdf()
-    out.add_page(PdfReader(io.BytesIO(fu_pdf)).pages[0])
+    # the follow-up consent page only when the patient agreed to the follow-up
+    if d.get("followupConsent") == "Yes":
+        fu_pdf = HTML(string=f"<!doctype html><html><head><meta charset='utf-8'><style>{FOLLOWUP_CSS}</style></head><body>{_followup_page_html(d)}</body></html>",
+                      base_url=str(STATIC_DIR) + "/").write_pdf()
+        out.add_page(PdfReader(io.BytesIO(fu_pdf)).pages[0])
     buf = io.BytesIO()
     out.write(buf)
     return buf.getvalue()

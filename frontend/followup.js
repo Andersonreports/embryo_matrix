@@ -2,11 +2,11 @@
 // Data comes from /api/followups (a snapshot of each patient's embryos is kept with the record, so these pages work
 // for the embryologist role too, which cannot read the sample sheet).
 (function(){
-const STATUSES=['Not transferred','Transfer planned','Transferred','Implantation successful','Implantation unsuccessful','Clinical pregnancy','Ongoing pregnancy','Miscarriage','Live birth','Outcome unknown'];
-const TRANSFERRED=['Transferred','Implantation successful','Implantation unsuccessful','Clinical pregnancy','Ongoing pregnancy','Miscarriage','Live birth'];
-const IMPLANTED=['Implantation successful','Clinical pregnancy','Ongoing pregnancy','Miscarriage','Live birth'];
-const CLINICAL=['Clinical pregnancy','Ongoing pregnancy','Miscarriage','Live birth'];
-const ACTIVE=['Transfer planned','Transferred','Implantation successful','Clinical pregnancy','Ongoing pregnancy'];
+const STATUSES=['Not transferred','Transferred','Implantation successful','Implantation unsuccessful','Clinical pregnancy','Miscarriage','Live birth','Outcome unknown'];
+const TRANSFERRED=['Transferred','Implantation successful','Implantation unsuccessful','Clinical pregnancy','Miscarriage','Live birth'];
+const IMPLANTED=['Implantation successful','Clinical pregnancy','Miscarriage','Live birth'];
+const CLINICAL=['Clinical pregnancy','Miscarriage','Live birth'];
+const ACTIVE=['Transferred','Implantation successful','Clinical pregnancy'];
 const TERMINAL=['Implantation unsuccessful','Miscarriage','Live birth','Outcome unknown'];
 const PERIODS=['Within 1 month','1–3 months','3–6 months','6–12 months','Not known'];
 const TASK_DEFS=[['due','Follow-up due'],['overdue','Overdue'],['awaiting','Awaiting clinic update'],['completed','Completed'],['na','Not applicable']];
@@ -46,7 +46,7 @@ const ageGroup=a=>a==null?'Unknown':a<30?'Under 30':a<=34?'30–34':a<=37?'35–
 const AGE_ORDER=['Under 30','30–34','35–37','38–40','41 and over','Unknown'];
 
 // ---------------- Per-embryo outcome editor (shared by the dialog and the patient page) ----------------
-const GROUPS=[['Before transfer',['Not transferred','Transfer planned']],['Transfer',['Transferred']],['Implantation',['Implantation successful','Implantation unsuccessful']],['Pregnancy',['Clinical pregnancy','Ongoing pregnancy','Miscarriage','Live birth']],['Other',['Outcome unknown']]];
+const GROUPS=[['Before transfer',['Not transferred']],['Transfer',['Transferred']],['Implantation',['Implantation successful','Implantation unsuccessful']],['Pregnancy',['Clinical pregnancy','Miscarriage','Live birth']],['Other',['Outcome unknown']]];
 const histItem=h=>`<li><span class="hi-dot"></span><div><b>${h.status?statusChip(h.status):'<span class="fu-os fu-os-none">Cleared</span>'}</b>${h.previous?`<small>was ${esc(h.previous)}</small>`:'<small>first entry</small>'}${h.date?`<small>outcome date ${fmtDate(h.date)}</small>`:''}${h.note?`<em>${esc(h.note)}</em>`:''}<span class="hi-by">${esc(h.by||'—')} · ${fmtWhen(h.at)}</span></div></li>`;
 const fmtWhen=iso=>{if(!iso)return'';const d=new Date(iso);return isNaN(d)?'':d.toLocaleString([],{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})};
 const histHtml=list=>list&&list.length?`<ol class="hist">${[...list].reverse().map(histItem).join('')}</ol>`:'<p class="fu-note" style="margin:0">No changes recorded yet.</p>';
@@ -238,7 +238,7 @@ function embryoRows(){
  return out}
 const pct=(n,d)=>d?`${(n/d*100).toFixed(1)}%`:'—';
 const ring=(n,d,color)=>{const p=d?n/d:0,r=34,c=2*Math.PI*r;return `<svg class="ring" viewBox="0 0 84 84" width="84" height="84"><circle cx="42" cy="42" r="${r}" fill="none" stroke="#e8efee" stroke-width="9"/>${p>0?`<circle cx="42" cy="42" r="${r}" fill="none" stroke="${color}" stroke-width="9" stroke-linecap="round" stroke-dasharray="${(c*p).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 42 42)"/>`:''}<text x="42" y="47" text-anchor="middle" font-size="15" font-weight="700" fill="#17302f">${d?Math.round(p*100)+'%':'—'}</text></svg>`};
-const OS_COLOR={'Not transferred':'#9aa6a0','Transfer planned':'#c9b458','Transferred':'#3b8fd0','Implantation successful':'#14b8a6','Implantation unsuccessful':'#e57373','Clinical pregnancy':'#7c5cbf','Ongoing pregnancy':'#5a4aa8','Miscarriage':'#d12f2f','Live birth':'#1f8a52','Outcome unknown':'#6b766f','':'#dfe6e4'};
+const OS_COLOR={'Not transferred':'#9aa6a0','Transferred':'#3b8fd0','Implantation successful':'#14b8a6','Implantation unsuccessful':'#e57373','Clinical pregnancy':'#7c5cbf','Miscarriage':'#d12f2f','Live birth':'#1f8a52','Outcome unknown':'#6b766f','':'#dfe6e4'};
 const tileGrid=(segs,total)=>`<div class="tg">${segs.map(([n,col,l])=>`<div class="tg-t${n?'':' zero'}" style="--c:${col}"><strong>${n}</strong><span>${esc(l)}</span><em>${total?Math.round(n/total*100)+'% of '+total:'—'}</em></div>`).join('')}</div>`;
 const colChart=(segs,total)=>{const peak=Math.max(1,...segs.map(x=>x[0]));
  return `<div class="cc">${segs.map(([n,col,l])=>`<div class="cc-col${n?'':' zero'}" title="${esc(l)}: ${n}"><b>${n}</b><div class="cc-track"><i style="height:${n?Math.max(n/peak*100,6):0}%;background:${col}"></i></div><span>${esc(l)}</span><em>${total?Math.round(n/total*100):0}%</em></div>`).join('')}</div>`};
@@ -346,13 +346,11 @@ function monitorHtml(){
  const q=monQ.trim().toLowerCase();
  let rows=all.filter(r=>(!monStatus||(monStatus==='__none'?!r.s:r.s===monStatus))&&(!monGroup||r.g===monGroup)&&(monOnly==='all'||(monOnly==='filled'?!!r.s:!r.s))&&(!q||`${r.f.patient} ${r.f.clinic} ${r.e.label} ${r.o.by||''}`.toLowerCase().includes(q)));
  const shown=rows.slice(0,monLimit),cnt=s=>all.filter(r=>r.s===s).length;
- const tiles=[...STATUSES,'__none'].map(s=>{const n=s==='__none'?total-filled:cnt(s),col=s==='__none'?'#dfe6e4':OS_COLOR[s];return `<button type="button" class="mt${monStatus===s?' on':''}" data-s="${esc(s)}" style="--c:${col}"><strong>${n}</strong><span>${s==='__none'?'Not entered yet':esc(s)}</span></button>`}).join('');
+ const tiles=STATUSES.map(s=>{const n=s==='__none'?total-filled:cnt(s),col=s==='__none'?'#dfe6e4':OS_COLOR[s];return `<button type="button" class="mt${monStatus===s?' on':''}" data-s="${esc(s)}" style="--c:${col}"><strong>${n}</strong><span>${s==='__none'?'Not entered yet':esc(s)}</span></button>`}).join('');
  const pctF=total?Math.round(filled/total*100):0;
  return `<div class="fu-hero"><div><h2>Results entered by the embryologists</h2><p><b>${filled}</b> of <b>${total}</b> embryos have an outcome (${pctF}%). Embryologists fill these in; you can follow them here.</p><div class="mon-bar"><i style="width:${pctF}%"></i></div></div><div class="hero-btns"><button type="button" class="hero-btn" id="fuFromSheet">＋ Add patients from the sheet</button></div></div>
  <h3 class="db-h">Current state of the embryos</h3><div class="mon-tiles">${tiles}</div>
- <h3 class="db-h">Progress by embryologist / centre</h3><div class="mon-groups">${glist.slice(0,monGroupsAll?glist.length:12).map(x=>`<button type="button" class="mg${monGroup===x.g?' on':''}" data-g="${esc(x.g)}"><div class="mg-top"><b>${esc(x.g)}</b><span>${x.f}/${x.n}</span></div><div class="mon-bar sm"><i style="width:${x.n?x.f/x.n*100:0}%"></i></div><small>${x.n-x.f?`${x.n-x.f} waiting`:'All entered'}${x.last?` · last update ${fmtDate(String(x.last).slice(0,10))}${x.by?' by '+esc(x.by):''}`:''}</small></button>`).join('')||'<div class="chart-empty">No follow-ups yet. Add patients from the sheet, or wait for TRFs with follow-up consent.</div>'}</div>
  <h3 class="db-h">Outcomes by clinic and by month</h3>${breakdownHtml()}
- ${glist.length>12?`<div style="margin:10px 0"><button type="button" class="secondary compact" id="monGroupsToggle">${monGroupsAll?'Show fewer':`Show all ${glist.length}`}</button></div>`:''}
  <h3 class="db-h">Embryo by embryo</h3>
  <div class="tk-bar"><div class="seg-toggle" id="monOnly">${[['all','All'],['filled','Entered'],['waiting','Waiting']].map(([k,l])=>`<button type="button" class="${monOnly===k?'on':''}" data-v="${k}">${l}</button>`).join('')}</div><div class="search-wrap fu-search"><span>⌕</span><input id="monSearch" type="search" placeholder="Search patient, clinic or embryo…" value="${esc(monQ)}"></div>${(monStatus||monGroup)?'<button type="button" class="db-fclear" id="monClear">Clear filters</button>':''}</div>
  <div class="fu-table-wrap fu-tasks"><table class="fu-table"><thead><tr><th>Patient</th><th>Embryo</th><th>PGT-A result</th><th>Current state</th><th>Date</th><th>TERA</th><th>NIPS</th><th>Updated by</th></tr></thead><tbody>${shown.map(({f,e,o,s})=>{const tc=k=>{const v=o.tests?.[k];return !v||!v.where?'<span class="fu-os fu-os-none">—</span>':v.where==='Not done'?'<span class="fu-os fu-os-none">Not done</span>':`<span class="fu-os">${v.where==='Anderson'?'Anderson':esc(v.lab||'Other lab')}${v.result?' · '+esc(v.result):''}</span>`};

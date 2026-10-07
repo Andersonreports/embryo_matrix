@@ -925,8 +925,11 @@ def link_trf_case(trf_id: int, payload: KVValue, request: Request, db: Session =
     return _trf_summary(t)
 
 # --- Clinical outcome follow-up ---
-OUTCOME_STATUSES = ("Not transferred", "Transfer planned", "Transferred", "Implantation successful", "Implantation unsuccessful",
-                    "Clinical pregnancy", "Ongoing pregnancy", "Miscarriage", "Live birth", "Outcome unknown")
+OUTCOME_STATUSES = ("Not transferred", "Transferred", "Implantation successful", "Implantation unsuccessful",
+                    "Clinical pregnancy", "Miscarriage", "Live birth", "Outcome unknown")
+# Retired statuses: "Ongoing pregnancy" is the same as "Clinical pregnancy"; "Transfer planned" is not yet transferred.
+_OUTCOME_ALIASES = {"Ongoing pregnancy": "Clinical pregnancy", "Transfer planned": "Not transferred"}
+_outcome_status = lambda v: _OUTCOME_ALIASES.get(v or "", v or "")
 FOLLOWUP_STATES = ("", "awaiting", "completed", "not_applicable")
 _PERIOD_MONTHS = {"Within 1 month": 1, "1–3 months": 3, "3–6 months": 6, "6–12 months": 12}
 
@@ -1012,7 +1015,7 @@ def _fu_out(f: Followup, outs: list, hist: dict | None = None) -> dict:
         "consent": f.consent, "contactName": f.contact_name, "contactDetail": f.contact_detail, "expectedPeriod": f.expected_period,
         "dueDate": f.due_date, "state": f.state, "note": f.note, "updatedBy": f.updated_by, "updatedAt": _iso_utc(f.updated_at),
         "createdAt": _iso_utc(f.created_at),
-        "outcomes": [{"embryo": o.embryo_label, "status": o.status, "date": o.event_date, "note": o.note, "tests": o.tests or {}, "by": o.updated_by, "at": _iso_utc(o.updated_at), "history": (hist or {}).get(o.embryo_label, [])} for o in outs],
+        "outcomes": [{"embryo": o.embryo_label, "status": _outcome_status(o.status), "date": o.event_date, "note": o.note, "tests": o.tests or {}, "by": o.updated_by, "at": _iso_utc(o.updated_at), "history": (hist or {}).get(o.embryo_label, [])} for o in outs],
     }
 
 def _norm_name(v: str) -> str:
@@ -1242,7 +1245,7 @@ def save_followup(payload: dict, request: Request, db: Session = Depends(get_db)
     for o in payload.get("outcomes") or []:
         if not isinstance(o, dict):
             continue
-        label, status = s(o.get("embryo"), 80), s(o.get("status"), 40)
+        label, status = s(o.get("embryo"), 80), _outcome_status(s(o.get("status"), 40))
         if not label or (status and status not in OUTCOME_STATUSES):
             continue
         row = db.query(EmbryoOutcome).filter(EmbryoOutcome.case_key == key, EmbryoOutcome.embryo_label == label).first()

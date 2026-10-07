@@ -114,7 +114,8 @@ function trfPagesHtml(d,meta={},opts={}){
   <p class="td-legal">The clinic may be contacted through ${blank('followupContact',22)} at ${blank('followupPhoneEmail',26)}. The expected period of embryo transfer, if known, is ${fuPeriod}.</p>
   <div class="td-grid td-grid-tight"><div>Patient Signature: <span class="td-signline"></span></div><div>Date: <span class="td-signline"></span></div></div>
   ${footer(3)}<span class="td-fu-pg">Pg.4</span></div>`;
- return page1+page2+page3+page4;
+ // The consent page goes into the preview / PDF only when the patient agreed (Yes); the editable template always has it.
+ return page1+page2+page3+(edit||d.followupConsent==='Yes'?page4:'');
 }
 // Reads an editable template back into the same data shape the server stores.
 function trfCollect(root){const d={};
