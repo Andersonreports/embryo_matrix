@@ -1920,3 +1920,11 @@ body.view-overview #mainHeader{height:56px}
 #runSearchWrap{display:none!important}
 #homeView .home-toolbar{display:flex!important;justify-content:center;align-items:center;gap:14px;flex-wrap:wrap;grid-template-columns:none!important}
 #homeView .home-toolbar .nav-item{justify-self:auto!important;flex:0 0 auto}
+/* Filter panel: black, bold text */
+.db-pop,.db-pop *{color:#000!important}
+.db-pop-head b{font-size:16px;font-weight:800}
+.db-pop .db-f{font-weight:800;font-size:12px}
+.db-pop .db-f select{font-weight:700!important;font-size:14px!important;color:#000!important;border:1.5px solid #9fb3b0}
+.db-pop .db-f select.on{color:#000!important;font-weight:800!important}
+.db-pop .secondary,.db-pop .db-fclear{font-weight:800!important}
+.db-pop .db-fclear{color:#b3261e!important}
