@@ -1730,3 +1730,4 @@ body.role-embryologist #trfModeSeg{display:none}
 .seg-toggle{display:inline-flex;background:#eef2f1;border-radius:999px;padding:4px}.seg-toggle button{border:0;background:transparent;padding:8px 18px;border-radius:999px;font:600 13px "Inter";color:#5c6e6c;cursor:pointer}.seg-toggle button.on{background:#0a7180;color:#fff;box-shadow:0 3px 8px -3px rgba(10,113,128,.6)}
 .tk-bar{justify-content:flex-start}.tk-bar .fu-search{margin-left:0;flex:1 1 240px}.tk-sort input{margin-right:4px}
 .oe-card.oe-focus{border-color:#0a7180;box-shadow:0 0 0 3px rgba(20,184,166,.28)}
+.hero-btns{display:flex;gap:10px;flex-wrap:wrap}

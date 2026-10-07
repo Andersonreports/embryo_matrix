@@ -128,11 +128,12 @@ const TILES=[
  ['awaiting','Awaiting clinic update','navigation__internal-transfer','Clinic has been asked','blue'],
  ['completed','Completed','stages-results__qc-pass','All outcomes known','green'],
  ['na','Not applicable','stages-results__na-result','No consent / not needed','grey']];
-let dashHome=false,taskSort='due',taskView='patient',taskEmb='',onlyNeeds=false;
+let dashHome=false,taskSort='due',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
 
 // ---------------- Tasks (card queue) ----------------
 function tasksHtml(){
- const mine=currentUser&&currentUser.role==='embryologist',embs=[...new Set(FU.items.map(f=>f.embryologist).filter(Boolean))].sort();
+ const mine=currentUser&&currentUser.role==='embryologist';if(mine&&!viewChosen)taskView='embryo';
+ const embs=[...new Set(FU.items.map(f=>f.embryologist).filter(Boolean))].sort();
  const items=FU.items.filter(f=>!taskEmb||f.embryologist===taskEmb).map(f=>({f,s:taskStatus(f)})),cnt=k=>k==='all'?items.length:items.filter(x=>x.s===k).length;
  const q=taskQuery.trim().toLowerCase();
  let list=taskFilter==='all'?items:items.filter(x=>x.s===taskFilter);
@@ -154,7 +155,7 @@ function tasksHtml(){
   </article>`};
  const empty=FU.items.length?`<div class="tk-empty">${IC('stages-results__qc-pass')}<h3>Nothing here</h3><p>No tasks match this view.</p></div>`:`<div class="tk-empty">${IC('navigation__patient')}<h3>No follow-ups yet</h3><p>A task is created automatically when a TRF with follow-up consent is submitted, or when a team lead starts one from a patient page.</p></div>`;
  const embAll=items.flatMap(({f})=>{const om=outcomeMap(f);return(f.embryos||[]).map(e=>om[norm(e.label)]?.status?1:0)}),needN=embAll.filter(x=>!x).length;
- const hero=mine?`<div class="fu-hero"><div><h2>${embAll.length} embryo${embAll.length===1?'':'s'} assigned to you</h2><p>${needN?`<b>${needN}</b> still need their outcome details. Open a patient, or switch to <b>By embryo</b> to go through them one by one.`:'Every assigned embryo has its details filled in. Thank you!'}</p></div></div>`:`<div class="fu-hero"><div><h2>${attention?`${attention} patient${attention===1?'':'s'} need${attention===1?'s':''} a follow-up`:'You are all caught up'}</h2><p>Ask each clinic what happened to the embryos after transfer, then record it with <b>Record outcome</b>.</p></div>${canEditData()?'<button type="button" class="hero-btn" id="fuFromSheet">＋ Add patients from the sheet</button>':''}</div>`;
+ const hero=mine?`<div class="fu-hero"><div><h2>${embAll.length} embryo${embAll.length===1?'':'s'} assigned to you</h2><p>${needN?`<b>${needN}</b> still need their outcome details. Open a patient, or switch to <b>By embryo</b> to go through them one by one.`:'Every assigned embryo has its details filled in. Thank you!'}</p></div></div>`:`<div class="fu-hero"><div><h2>${attention?`${attention} patient${attention===1?'':'s'} need${attention===1?'s':''} a follow-up`:'You are all caught up'}</h2><p>Ask each clinic what happened to the embryos after transfer, then record it with <b>Record outcome</b>.</p></div>${canEditData()?'<div class="hero-btns"><button type="button" class="hero-btn" id="fuLinks">Embryologist logins</button><button type="button" class="hero-btn" id="fuFromSheet">＋ Add patients from the sheet</button></div>':''}</div>`;
  return `${hero}
  <div class="st-tiles">${tiles}</div>
  <div class="tk-bar"><div class="seg-toggle" id="fuView"><button type="button" class="${taskView==='patient'?'on':''}" data-v="patient">By patient</button><button type="button" class="${taskView==='embryo'?'on':''}" data-v="embryo">By embryo</button></div><div class="search-wrap fu-search"><span>⌕</span><input id="fuSearch" type="search" placeholder="Search patient, clinic or contact…" value="${esc(taskQuery)}"></div>${!mine&&embs.length>1?`<label class="tk-sort">Embryologist <select id="fuEmb"><option value="">All</option>${embs.map(n=>`<option${taskEmb===n?' selected':''}>${esc(n)}</option>`).join('')}</select></label>`:''}${taskView==='embryo'?`<label class="tk-sort"><input type="checkbox" id="fuNeeds"${onlyNeeds?' checked':''}> Only embryos needing details</label>`:''}<label class="tk-sort">Sort by <select id="fuSort"><option value="due"${taskSort==='due'?' selected':''}>Due date</option><option value="patient"${taskSort==='patient'?' selected':''}>Patient name</option><option value="clinic"${taskSort==='clinic'?' selected':''}>Clinic</option></select></label></div>
@@ -166,10 +167,11 @@ function embryoTable(list){
  return `<div class="fu-table-wrap fu-tasks"><table class="fu-table"><thead><tr><th>Patient</th><th>Embryo</th><th>PGT-A result</th><th>Outcome</th><th>TERA</th><th>NIPS</th><th>Task</th><th></th></tr></thead><tbody>${shown.map(({f,s,e,o})=>`<tr data-key="${esc(f.caseKey)}" data-emb="${esc(e.label)}"><td class="strong">${esc(f.patient)}<small>${esc(f.clinic)}</small></td><td class="strong">${esc(e.label)}</td><td>${resChip(e.result)}</td><td>${statusChip(o.status)}</td><td>${tchip(o.tests,'tera')}</td><td>${tchip(o.tests,'nips')}</td><td>${chip(s)}</td><td><button type="button" class="primary compact" data-fill="1">${o.status?'Edit details':'Fill details'}</button></td></tr>`).join('')||'<tr><td colspan="8" class="chart-empty">No embryos to show.</td></tr>'}</tbody></table></div>`}
 
 function wireTasks(root,redraw){
- const tg=root.querySelector('#fuView');if(tg)tg.onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;taskView=b.dataset.v;redraw()};
+ const tg=root.querySelector('#fuView');if(tg)tg.onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;taskView=b.dataset.v;viewChosen=true;redraw()};
  const ef=root.querySelector('#fuEmb');if(ef)ef.onchange=()=>{taskEmb=ef.value;redraw()};
  const nd=root.querySelector('#fuNeeds');if(nd)nd.onchange=()=>{onlyNeeds=nd.checked;redraw()};
  const fs=root.querySelector('#fuFromSheet');if(fs)fs.onclick=()=>openSheetImport(redraw);
+ const fl=root.querySelector('#fuLinks');if(fl)fl.onclick=()=>openLinks();
  root.querySelector('.st-tiles').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;taskFilter=b.dataset.k;redraw()};
  const s=root.querySelector('#fuSearch');s.oninput=()=>{taskQuery=s.value;const pos=s.selectionStart;redraw();const n=root.querySelector('#fuSearch');n.focus();n.setSelectionRange(pos,pos)};
  root.querySelector('#fuSort').onchange=e=>{taskSort=e.target.value;redraw()};
@@ -196,10 +198,22 @@ function openSheetImport(redraw){
  d.querySelector('#siGo').onclick=async ev=>{const b=ev.currentTarget;b.disabled=true;
   const items=pick().map(c=>{const emb=resolvedEmbryos(c).map(r=>{const id=resultIdentity(r);return{label:id.patient?`${id.patient}-${id.embryo}`:id.embryo,result:RESULT_NAME[conclusionClass(r)]||'No result'}}).filter(x=>x.label);
    const month=(c.embryos||[]).map(recordMonth).find(m=>/^\d{4}-\d{2}$/.test(m))||'';
-   return{caseKey:c.id,followup:{patient:c.patient,clinic:c.client||'',region:c.region||'',embryologist:c.embryologist||'',test:c.test||'',month,embryos:emb.length?emb:Array.from({length:c.samples||0},(_,i)=>({label:`Embryo ${i+1}`,result:'No result'})),dueDate:addDays(today(),30)}}});
+   return{caseKey:c.id,followup:{patient:c.patient,clinic:c.client||'',region:c.region||'',embryologist:c.embryologist||'',test:c.test||'',month,embryos:emb.length?emb:Array.from({length:c.samples||0},(_,i)=>({label:`Embryo ${i+1}`,result:'No result'})),dueDate:today()}}});
   try{const r=await fetch('/api/followups/bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||'Failed');await loadFollowups(true);toast(`${j.created} patient${j.created===1?'':'s'} added`);d.close();redraw()}catch(err){toast(err.message||'Could not add');b.disabled=false}};
  d.showModal()}
 const RESULT_NAME={Normal:'Euploid',Abnormal:'Aneuploid',Mosaic:'Mosaic',Inconclusive:'Inconclusive'};
+
+// Admin / team lead: which sheet embryologist name each embryologist login sees the embryos of.
+async function openLinks(){
+ let list=[];try{const r=await fetch('/api/embryologist-links');if(!r.ok)throw 0;list=await r.json()}catch(e){toast('Could not load the embryologist logins');return}
+ const names=typeof cases!=='undefined'?[...new Set(cases.map(c=>c.embryologist).filter(n=>n&&n!=='Not assigned'))].sort():[];
+ const d=document.createElement('dialog');d.className='vu-dialog fu-dialog';document.body.append(d);d.addEventListener('close',()=>d.remove());
+ d.innerHTML=`<div class="vu-dhead"><h3>Embryologist logins</h3><button type="button" class="secondary compact" data-close>Close</button></div><div class="vu-dbody"><p class="fu-note" style="margin-top:0">Choose the name each login has in the sheet's <b>Embryologist</b> column. That login then sees (and fills in) the embryos of every patient listed under that name.</p>
+ <datalist id="lkNames">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+ <div class="fu-table-wrap"><table class="fu-table"><thead><tr><th>Login</th><th>Name in the sheet</th><th></th></tr></thead><tbody>${list.map(u=>`<tr data-u="${esc(u.username)}"><td class="strong">${esc(u.username)}</td><td><input list="lkNames" class="lk-name" value="${esc(u.name)}" placeholder="Start typing a name…" style="width:100%;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px"></td><td><button type="button" class="primary compact" data-save="1">Save</button></td></tr>`).join('')||'<tr><td colspan="3" class="chart-empty">No embryologist logins yet.</td></tr>'}</tbody></table></div></div>`;
+ d.querySelector('tbody').onclick=async e=>{const b=e.target.closest('[data-save]');if(!b)return;const tr=b.closest('tr');b.disabled=true;
+  try{const r=await fetch('/api/embryologist-links',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:tr.dataset.u,name:tr.querySelector('.lk-name').value})});if(!r.ok)throw new Error((await r.json().catch(()=>({}))).detail||'Failed');toast(`${tr.dataset.u} linked`)}catch(err){toast(err.message||'Could not save')}b.disabled=false};
+ d.showModal()}
 
 // ---------------- Dashboard ----------------
 function embryoRows(){

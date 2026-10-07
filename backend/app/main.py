@@ -4,7 +4,7 @@ import re
 import secrets
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
@@ -1027,14 +1027,131 @@ def _embryologist_sees(db: Session, user: dict, f: Followup) -> bool:
     theirs = _norm_name(f.embryologist)
     return bool(mine and theirs and (mine == theirs or (not (u and u.embryologist_name) and mine in theirs)))
 
+# --- Embryos assigned to an embryologist (from the sample sheet) ---
+_EMB_ALIASES = {"SINDHUJA": "SINDHUJA N S", "SINDHIYA": "SINDHUJA N S", "SINDHIYANS": "SINDHUJA N S", "SIADHUDA": "SINDHUJA N S",
+                "DRNSSINDHUJA": "SINDHUJA N S", "SINOHUJANS": "SINDHUJA N S", "SINDHUJANS": "SINDHUJA N S"}
+_MONTHS = {m: i + 1 for i, m in enumerate(["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"])}
+_sheet_cache: dict = {"at": 0.0, "rows": []}
+
+def _canon_embryologist(raw: str) -> str:
+    n = _norm_name(raw)
+    return _norm_name(_EMB_ALIASES.get(n, raw))
+
+def _sheet_rows(db: Session) -> list:
+    if time.time() - _sheet_cache["at"] > 60:
+        row = db.get(KVStore, "embryomatrix-imported-cases")
+        _sheet_cache["rows"] = [r for r in ((row.value if row else None) or []) if isinstance(r, dict) and not r.get("_stale")]
+        _sheet_cache["at"] = time.time()
+    return _sheet_cache["rows"]
+
+def _field(r: dict, *names):
+    for n in names:
+        for k, v in r.items():
+            if (k == n or n in k) and v not in (None, ""):
+                return str(v).strip()
+    return ""
+
+def _embryo_labels(raw: str) -> list:
+    parts = [x.strip() for x in re.split(r"[,;/]+", str(raw or "")) if x.strip()]
+    if not parts:
+        return []
+    out, prefix0 = [], re.match(r"^[^0-9]*", parts[0]).group(0)
+    for part in parts:
+        nums = re.findall(r"\d+", part)
+        if not nums:
+            out.append(part)
+            continue
+        prefix = re.match(r"^[^0-9]*", part).group(0) or prefix0
+        out.extend(f"{prefix}{n}" for n in nums)
+    return list(dict.fromkeys(out))
+
+def _embryo_result(r: dict, label: str) -> str:
+    tag = "".join(ch for ch in label.upper() if ch.isalnum())
+    d = (r.get("_embryoResults") or {}).get(tag)
+    if not d:
+        return "No result"
+    text_ = f"{d.get('conclusion', '')} {d.get('pgt result', '')}".lower()
+    if str(d.get("qc", "")).upper() == "FAIL" or "inconclusive" in text_ or "no dna" in text_:
+        return "Inconclusive"
+    concl = str(d.get("conclusion", "")).lower()
+    if "no copy number" in concl:
+        return "Euploid"
+    if "mosaic" in text_:
+        return "Mosaic"
+    if "abnormal" in text_ or "aneuploid" in text_:
+        return "Aneuploid"
+    if "normal" in text_ or "euploid" in text_:
+        return "Euploid"
+    return "No result"
+
+def _month_of(tab: str) -> str:
+    m = re.match(r"^\s*([A-Za-z]{3})[A-Za-z]*\s+(\d{4})", str(tab or ""))
+    return f"{m.group(2)}-{_MONTHS[m.group(1).upper()]:02d}" if m and m.group(1).upper() in _MONTHS else ""
+
+def _sync_sheet_followups(db: Session, emb_name: str, username: str):
+    """Make sure every patient listed under this embryologist in the sample sheet has a follow-up record."""
+    want = _norm_name(emb_name)
+    if not want:
+        return
+    cases: dict = {}
+    for r in _sheet_rows(db):
+        if _canon_embryologist(_field(r, "embryologist name", "embryologist")) != want:
+            continue
+        patient = _field(r, "patient name", "patient")
+        cid = _field(r, "case id") or _field(r, "sample id", "sample no", "box number")
+        if not patient or not cid or _norm_name(cid) in ("NA", "N", "NONE"):
+            continue
+        c = cases.setdefault((_norm_name(patient), _norm_name(cid)), {"key": cid, "patient": patient, "r": r, "embryos": {}})
+        for lab in _embryo_labels(_field(r, "embryo name", "embryo id", "embryo")):
+            c["embryos"].setdefault(lab, _embryo_result(r, lab))
+    if not cases:
+        return
+    have = {k for (k,) in db.query(Followup.case_key).all()}
+    due = datetime.utcnow().date().isoformat()  # needs filling in now
+    added = 0
+    for c in cases.values():
+        if c["key"][:120] in have or not c["embryos"]:
+            continue
+        r = c["r"]
+        db.add(Followup(case_key=c["key"][:120], source="sheet", patient=c["patient"][:255], clinic=_field(r, "center name", "hospital clinic name", "client")[:255],
+                        region=_field(r, "location", "region")[:120], embryologist=emb_name[:120], test=_field(r, "test name", "test")[:255],
+                        month=_month_of(r.get("_importSource")), embryos=[{"label": k, "result": v} for k, v in c["embryos"].items()], consent="Yes",
+                        due_date=due, updated_by="Sheet"))
+        added += 1
+    if added:
+        db.commit()
+
 @app.get("/api/followups")
 def list_followups(request: Request, db: Session = Depends(get_db)):
     user = request.state.user or {}
+    if user.get("role") == "embryologist":
+        u = db.query(User).filter(User.username == (user.get("username") or "").lower()).first()
+        if u and u.embryologist_name:
+            try:
+                _sync_sheet_followups(db, u.embryologist_name, u.username)
+            except Exception as exc:
+                db.rollback()
+                print(f"Sheet follow-up sync failed for {u.username}: {exc}")
     outs: dict[str, list] = {}
     for o in db.query(EmbryoOutcome).all():
         outs.setdefault(o.case_key, []).append(o)
     rows = [f for f in db.query(Followup).order_by(Followup.updated_at.desc()).all() if _embryologist_sees(db, user, f)]
     return {"statuses": list(OUTCOME_STATUSES), "items": [_fu_out(f, outs.get(f.case_key, [])) for f in rows]}
+
+@app.get("/api/embryologist-links")
+def embryologist_links(request: Request, db: Session = Depends(get_db)):
+    """Which sheet embryologist name each embryologist login sees the embryos of."""
+    return [{"username": u.username, "name": u.embryologist_name or ""} for u in db.query(User).filter(User.role == "embryologist").order_by(User.username).all()]
+
+@app.post("/api/embryologist-links")
+def set_embryologist_link(payload: dict, request: Request, db: Session = Depends(get_db)):
+    u = db.query(User).filter(User.username == str(payload.get("username", "")).strip().lower(), User.role == "embryologist").first()
+    if not u:
+        raise HTTPException(404, "No such embryologist login")
+    u.embryologist_name = str(payload.get("name", "")).strip()[:120] or None
+    db.commit()
+    log_activity(db, "followup_save", f"Embryologist login {u.username} linked to sheet name '{u.embryologist_name or '—'}'", request=request)
+    return {"username": u.username, "name": u.embryologist_name or ""}
 
 @app.post("/api/followups/bulk")
 def bulk_followups(payload: dict, request: Request, db: Session = Depends(get_db)):
