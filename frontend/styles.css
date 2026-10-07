@@ -1813,3 +1813,6 @@ html,body{overflow-x:clip!important;overflow-y:visible!important}
 /* Test tiles on the run cards: always 2 x 2 so the labels (PGT A+M, PGT SR) never spill out */
 .rc-grid:has(.rc-test-stat){grid-template-columns:repeat(2,minmax(0,1fr))!important}
 .rc-grid .rc-test-stat{min-width:0;padding:7px 10px!important}.rc-grid .rc-test-stat>div{min-width:0}.rc-grid .rc-test-stat small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+
+.db-toolbar{margin:0 0 6px}.db-pop{top:56px!important}
+.db-pop{left:0!important;right:auto!important}
