@@ -888,7 +888,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show'
 // Which views each role may open (admin and team lead: all). The server enforces the same split on the API.
 // Only admin and team lead may edit sheet/result cells (the API enforces it too).
 const canEditData=()=>!currentUser.signedIn||currentUser.role==='admin'||currentUser.role==='team_lead';
-const ROLE_VIEWS={member:['samples','pgtm','cases','images'],embryologist:['trfs','fuTasks','fuDash']};
+const ROLE_VIEWS={member:['samples','pgtm','cases','images'],embryologist:['fuTasks','fuDash','trfs']};
 const viewAllowed=v=>{const r=currentUser.role;return !currentUser.signedIn||!ROLE_VIEWS[r]&&(r==='admin'||r==='team_lead')||!!ROLE_VIEWS[r]&&ROLE_VIEWS[r].includes(v)};
 const roleHomeView=()=>(ROLE_VIEWS[currentUser.role]||[])[0]||'home';
 function applyRoleAccess(){
@@ -962,7 +962,7 @@ function updateIssueStat(status){const issue=$('#issueStat');if(issue)issue.text
 let caseRunMap={};
 async function loadCaseRuns(){try{const rows=await fetch('/api/case-runs').then(r=>r.json());caseRunMap=Object.fromEntries(rows.map(r=>[r.caseCode,r.runId]))}catch{}}
 async function init(){experiments=(await kvGet('embryomatrix-experiments'))||[];renderExperiments();await Promise.all([setupCases(),loadCaseRuns()]);const status=await syncSheetNow();if(status){if(status.changed!==false)await setupCases();updateIssueStat(status)}}
-loadWhoAmI().then(()=>{applyRoleAccess();if(currentUser.role==='embryologist'&&currentUser.signedIn){showView('trfs');return}return init().then(()=>{if(ROLE_VIEWS[currentUser.role]&&currentUser.signedIn)showView(roleHomeView())})});
+loadWhoAmI().then(()=>{applyRoleAccess();if(currentUser.role==='embryologist'&&currentUser.signedIn){showView('fuTasks');return}return init().then(()=>{if(ROLE_VIEWS[currentUser.role]&&currentUser.signedIn)showView(roleHomeView())})});
 if(document.modelContext?.registerTool){document.modelContext.registerTool({name:'filter_patient_cases',title:'Filter patient cases',description:'Filter the visible patient registry by embryologist, client, test, region, or result.',inputSchema:{type:'object',properties:{embryologist:{type:'string'},client:{type:'string'},test:{type:'string'},region:{type:'string'},result:{type:'string'}},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:false},execute(input){for(const key of ['embryologist','client','test','region','result'])if(input[key]!==undefined)$(`#${key}Filter`).value=input[key];renderCases();return{visibleCases:$$('[data-case]').length,filters:input}}})}
 window.addEventListener('beforeinstallprompt',e=>e.preventDefault());
 
