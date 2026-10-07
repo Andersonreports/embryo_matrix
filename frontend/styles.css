@@ -2073,3 +2073,7 @@ body.vault-staff #vaultUpload{display:none!important}
 .top-back span{font-size:22px;line-height:1;margin-top:-2px}.top-back:hover{background:#eaf7f6;border-color:#0a7180}.top-back.hidden{display:none}
 @media(min-width:721px){.topbar{grid-template-columns:auto auto 1fr auto auto!important;grid-template-areas:"brand back nav alerts user"!important}.top-back{grid-area:back}}
 @media(min-width:721px) and (max-width:1720px){.topbar{grid-template-columns:auto auto 1fr auto auto!important;grid-template-areas:"brand back . alerts user" "nav nav nav nav nav"!important}}
+
+/* Top-bar Back: same look as the run page's Back */
+.top-back{gap:7px!important;height:auto!important;border:1px solid var(--line)!important;background:#fff!important;color:#0b5660!important;border-radius:999px!important;padding:7px 14px 7px 11px!important;font:600 13px "Inter"!important;box-shadow:var(--shadow)!important}
+.top-back svg{flex:0 0 auto}.top-back span{display:none}
