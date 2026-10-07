@@ -1618,3 +1618,8 @@ body.role-embryologist #trfModeSeg{display:none}
 .sum-icon>.ico,.run-stat-icon>.ico{width:100%;height:100%}
 .sum-card.is-zero .sum-icon .ico,.run-stat.is-zero .run-stat-icon .ico{opacity:.4;filter:grayscale(.7)}
 .run-stat-icon:has(>.ico){background:transparent!important;box-shadow:none!important;width:54px;height:54px}
+.test-ico{width:22px;height:22px;display:inline-block;vertical-align:middle}.test-cell{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.case-test-badge{display:inline-flex;align-items:center;gap:6px}.case-test-badge .test-ico{width:20px;height:20px}
+.rc-test-stat{display:flex!important;align-items:center;gap:10px}.rc-test-stat>.ico{width:34px;height:34px}.rc-test-stat>div{display:flex;flex-direction:column;align-items:flex-start;gap:0}
+.rc-grid .rc-test-stat{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:10px;text-align:left!important;padding:8px 12px!important}
+.rc-grid .rc-test-stat>.ico{width:32px;height:32px;flex:0 0 32px}.rc-grid .rc-test-stat>div{display:flex;flex-direction:column;align-items:flex-start;text-align:left;line-height:1.15}
