@@ -24,34 +24,8 @@ import mimetypes
 
 Base.metadata.create_all(bind=engine)
 
-def _migrate_added_columns():
-    """create_all only adds missing tables, not missing columns on tables that
-    already exist. trf_submissions predates case_code/pdf_filename/pdf_file_path
-    (added for the run/patient file-organization feature) - add them if missing."""
-    insp = inspect(engine)
-    if "trf_submissions" not in insp.get_table_names():
-        return
-    existing = {c["name"] for c in insp.get_columns("trf_submissions")}
-    add = {
-        "case_code": "VARCHAR(80)",
-        "pdf_filename": "VARCHAR(255)",
-        "pdf_file_path": "VARCHAR(500)",
-        "status_note": "TEXT",
-    }
-    with engine.begin() as conn:
-        for col, coltype in add.items():
-            if col not in existing:
-                conn.execute(text(f"ALTER TABLE trf_submissions ADD COLUMN {col} {coltype}"))
-
-_migrate_added_columns()
-
-def _migrate_outcome_tests():
-    insp = inspect(engine)
-    if "embryo_outcomes" in insp.get_table_names() and "tests" not in {c["name"] for c in insp.get_columns("embryo_outcomes")}:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE embryo_outcomes ADD COLUMN tests JSON"))
-
-_migrate_outcome_tests()
+from .migrations import run as _run_migrations
+_run_migrations()
 
 def _seed_activity_from_upload_log():
     db = SessionLocal()
@@ -794,7 +768,7 @@ async def submit_trf(request: Request, db: Session = Depends(get_db)):
     t = TrfSubmission(ref=ref, clinic=data["hospital"][:255], patient_name=data["patientName"][:255], data=data)
     db.add(t); db.commit(); db.refresh(t)
     _generate_trf_pdf(db, t)
-    _create_followup_from_trf(db, t)
+    _create_followup_from_trf(db, t, (request.state.user or {}).get("username") or "")
     _trf_recent[ip] = recent + [now]
     log_activity(db, "trf_submit", f"{t.ref} · {t.patient_name} · {t.clinic}", request=request)
     return {"ref": t.ref, "submittedAt": _iso_utc(t.submitted_at)}
@@ -973,7 +947,7 @@ def _age_from_trf(data: dict, at: datetime):
     digits = "".join(ch for ch in str(data.get("consentAge") or "") if ch.isdigit())
     return int(digits) if digits and 14 <= int(digits) <= 70 else None
 
-def _create_followup_from_trf(db: Session, t: TrfSubmission):
+def _create_followup_from_trf(db: Session, t: TrfSubmission, owner: str = ""):
     """A submitted TRF that answered the follow-up consent question opens a follow-up record. Never fails the submission."""
     try:
         d = t.data or {}
@@ -991,7 +965,7 @@ def _create_followup_from_trf(db: Session, t: TrfSubmission):
             age=_age_from_trf(d, t.submitted_at), embryos=[{"label": e.get("label", ""), "result": ""} for e in d.get("embryos", []) if e.get("label")],
             consent=consent, contact_name=d.get("followupContact", ""), contact_detail=d.get("followupPhoneEmail", ""),
             expected_period=d.get("followupExpected", ""), due_date=due, state="not_applicable" if consent == "No" else "",
-            updated_by="TRF"))
+            updated_by="TRF", owner=owner))
         db.commit()
     except Exception as exc:
         db.rollback()
@@ -1037,12 +1011,54 @@ def _fu_out(f: Followup, outs: list) -> dict:
         "outcomes": [{"embryo": o.embryo_label, "status": o.status, "date": o.event_date, "note": o.note, "tests": o.tests or {}, "by": o.updated_by, "at": _iso_utc(o.updated_at)} for o in outs],
     }
 
+def _norm_name(v: str) -> str:
+    return "".join(ch for ch in str(v or "").upper() if ch.isalnum())
+
+def _embryologist_sees(db: Session, user: dict, f: Followup) -> bool:
+    """An embryologist login sees only the follow-ups of their own embryos: TRFs they submitted, or patients whose
+    Embryologist in the sheet is the name saved on their login (falls back to the username)."""
+    if user.get("role") != "embryologist":
+        return True
+    uname = user.get("username") or ""
+    if f.owner and f.owner == uname:
+        return True
+    u = db.query(User).filter(User.username == uname.lower()).first()
+    mine = _norm_name((u.embryologist_name if u and u.embryologist_name else uname))
+    theirs = _norm_name(f.embryologist)
+    return bool(mine and theirs and (mine == theirs or (not (u and u.embryologist_name) and mine in theirs)))
+
 @app.get("/api/followups")
-def list_followups(db: Session = Depends(get_db)):
+def list_followups(request: Request, db: Session = Depends(get_db)):
+    user = request.state.user or {}
     outs: dict[str, list] = {}
     for o in db.query(EmbryoOutcome).all():
         outs.setdefault(o.case_key, []).append(o)
-    return {"statuses": list(OUTCOME_STATUSES), "items": [_fu_out(f, outs.get(f.case_key, [])) for f in db.query(Followup).order_by(Followup.updated_at.desc()).all()]}
+    rows = [f for f in db.query(Followup).order_by(Followup.updated_at.desc()).all() if _embryologist_sees(db, user, f)]
+    return {"statuses": list(OUTCOME_STATUSES), "items": [_fu_out(f, outs.get(f.case_key, [])) for f in rows]}
+
+@app.post("/api/followups/bulk")
+def bulk_followups(payload: dict, request: Request, db: Session = Depends(get_db)):
+    """Team lead / admin: start follow-ups for many patients at once (e.g. every patient of one embryologist)."""
+    user = request.state.user or {}
+    s = lambda v, n=255: str(v or "").strip()[:n]
+    made = skipped = 0
+    for it in (payload.get("items") or [])[:2000]:
+        if not isinstance(it, dict):
+            continue
+        key = s(it.get("caseKey"), 120)
+        if not key or db.query(Followup.id).filter(Followup.case_key == key).first():
+            skipped += 1
+            continue
+        d = it.get("followup") or {}
+        emb = [{"label": s(e.get("label"), 80), "result": s(e.get("result"), 40)} for e in (d.get("embryos") or [])[:80] if isinstance(e, dict) and s(e.get("label"), 80)]
+        due = s(d.get("dueDate"), 10)
+        db.add(Followup(case_key=key, source="manual", patient=s(d.get("patient")), clinic=s(d.get("clinic")), region=s(d.get("region"), 120),
+                        embryologist=s(d.get("embryologist"), 120), test=s(d.get("test")), month=s(d.get("month"), 20), embryos=emb,
+                        consent="Yes", due_date=due if len(due) == 10 else None, updated_by=user.get("username") or ""))
+        made += 1
+    db.commit()
+    log_activity(db, "followup_save", f"Started {made} follow-up(s) from the sheet ({skipped} already existed)", request=request)
+    return {"created": made, "skipped": skipped}
 
 @app.post("/api/followups/save")
 def save_followup(payload: dict, request: Request, db: Session = Depends(get_db)):
@@ -1054,6 +1070,8 @@ def save_followup(payload: dict, request: Request, db: Session = Depends(get_db)
     if not key:
         raise HTTPException(422, "caseKey is required")
     f = db.query(Followup).filter(Followup.case_key == key).first()
+    if f and not _embryologist_sees(db, user, f):
+        raise HTTPException(403, "This follow-up belongs to another embryologist")
     if not f:
         if user.get("role") == "embryologist":
             raise HTTPException(403, "Only a team lead or admin can start a follow-up")

@@ -17,6 +17,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(30), default="lab_user")
     lab_id: Mapped[int | None] = mapped_column(ForeignKey("labs.id"), nullable=True)
+    # The name this person goes by in the sheets' Embryologist column - used to show an embryologist their own embryos.
+    embryologist_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     lab = relationship("Lab")
 
 class PatientCase(Base):
@@ -152,6 +154,7 @@ class Followup(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_by: Mapped[str] = mapped_column(String(120), default="")
+    owner: Mapped[str] = mapped_column(String(120), default="")  # login that submitted the TRF this came from
 
 class EmbryoOutcome(Base):
     __tablename__ = "embryo_outcomes"
