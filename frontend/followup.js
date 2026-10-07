@@ -218,6 +218,18 @@ function openSheetImport(redraw){
  d.showModal()}
 const RESULT_NAME={Normal:'Euploid',Abnormal:'Aneuploid',Mosaic:'Mosaic',Inconclusive:'Inconclusive'};
 
+
+// Click on the TERA / NIPS chip: every embryo it was done on, at Anderson or at another lab (with the lab name).
+function openTestList(k,label,rows){
+ const done=rows.filter(r=>['Anderson','Other lab'].includes(r.tests?.[k]?.where));
+ let f='all';const d=dlgEl();d.classList.add('vu-dialog-wide');
+ const draw=()=>{const list=done.filter(r=>f==='all'||(f==='Anderson'?r.tests[k].where==='Anderson':r.tests[k].where==='Other lab'));
+  const nA=done.filter(r=>r.tests[k].where==='Anderson').length,nO=done.length-nA;
+  d.innerHTML=`<div class="vu-dhead"><h3>${label} · ${done.length} embryo${done.length===1?'':'s'}</h3><button type="button" class="secondary compact" data-close>Close</button></div><div class="vu-dbody"><div class="seg-toggle" id="ftTog" style="margin-bottom:12px">${[['all',`All (${done.length})`],['Anderson',`At Anderson (${nA})`],['Other lab',`At another lab (${nO})`]].map(([v,l])=>`<button type="button" class="${f===v?'on':''}" data-v="${v}">${l}</button>`).join('')}</div>
+  <div class="fu-table-wrap emb-list-wrap"><table class="fu-table"><thead><tr><th>#</th><th>Patient</th><th>Embryo</th><th>Client</th><th>Done at</th>${k==='tera'?'<th>Biopsy time</th>':''}<th>Date</th><th>Result</th><th>Details</th></tr></thead><tbody>${list.map((r,i)=>{const t=r.tests[k];return `<tr><td>${i+1}</td><td class="strong">${esc(r.f.patient)}</td><td class="strong">${esc(r.label)}</td><td>${esc(r.f.clinic)}</td><td>${t.where==='Anderson'?'<span class="fu-os">Anderson</span>':`<span class="fu-os fu-os-lab">${esc(t.lab||'Another lab')}</span>`}</td>${k==='tera'?`<td>${esc(t.biopsyTime||'—')}</td>`:''}<td>${fmtDate(t.date)}</td><td>${t.result?esc(t.result):'—'}</td><td>${esc(t.note||'')}</td></tr>`}).join('')||'<tr><td colspan="9" class="chart-empty">Nothing here.</td></tr>'}</tbody></table></div></div>`;
+  d.querySelector('#ftTog').onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;f=b.dataset.v;draw()}};
+ draw();if(!d.open)d.showModal()}
+
 // ---------------- Dashboard ----------------
 function embryoRows(){
  const out=[];
@@ -277,7 +289,8 @@ function dashHtml(){
  const attention=attn.length?`<ul class="at">${attn.map(x=>`<li data-clinic="${esc(x.k)}"><span class="at-n">${esc(x.k)}</span><div class="at-bar"><i style="width:${x.n?x.rec/x.n*100:0}%"></i></div><b>${x.w}</b><small>waiting</small></li>`).join('')}</ul>`:'<div class="chart-empty">Every embryo has an outcome. Nothing is waiting.</div>';
  const cq=clQ.trim().toLowerCase(),cl=clients.filter(x=>!cq||x.k.toLowerCase().includes(cq)),shownC=cq||clAll?cl:cl.slice(0,10);
  const clientTable=`<div class="fu-table-wrap"><table class="fu-table cl"><thead><tr><th>Client</th><th>Embryos</th><th>Outcomes recorded</th><th>Transferred</th><th>Implantation</th><th>Live birth</th></tr></thead><tbody>${shownC.map(x=>`<tr data-clinic="${esc(x.k)}"><td class="strong">${esc(x.k)}</td><td>${x.n}</td><td><div class="cl-bar"><i style="width:${x.n?x.rec/x.n*100:0}%"></i></div><small>${x.rec} of ${x.n}</small></td><td>${x.tr}</td><td>${x.tr?P(x.im,x.tr)+'%':'—'}</td><td>${x.tr?P(x.lb,x.tr)+'%':'—'}</td></tr>`).join('')||'<tr><td colspan="6" class="chart-empty">No client matches.</td></tr>'}</tbody></table></div>${!cq&&cl.length>10?`<div style="text-align:center;margin-top:10px"><button type="button" class="secondary compact" id="clAllBtn">${clAll?'Show top 10':`Show all ${cl.length} clients`}</button></div>`:''}<p class="fu-note" style="margin:8px 0 0">Click a client to filter the whole dashboard to it.</p>`;
- const ftChip=(k,label)=>{const an=rows.filter(r=>r.tests?.[k]?.where==='Anderson').length,ot=rows.filter(r=>r.tests?.[k]?.where==='Other lab').length;return `<div class="ft"><b>${label}</b><span><strong>${an+ot}</strong> done</span><small>${an} at Anderson · ${ot} at another lab</small></div>`};
+ const ftChip=(k,label)=>{const an=rows.filter(r=>r.tests?.[k]?.where==='Anderson').length,ot=rows.filter(r=>r.tests?.[k]?.where==='Other lab').length;return `<button type="button" class="ft" data-ft="${k}" title="Click to list the embryos"><b>${label}</b><span><strong>${an+ot}</strong> done</span><small>${an} at Anderson · ${ot} at another lab</small><i class="ft-go">View list ›</i></button>`};
+ window._ftRows=rows;
  return `<div class="db-h-row"><h3 class="db-h">The journey of the embryos</h3><div class="db-h-tools">${chips}${nOn?'<button type="button" class="db-fclear" id="fuClear">Clear all</button>':''}<button type="button" class="db-ftoggle${filtersOpen?' on':''}" id="fuFToggle" aria-expanded="${filtersOpen}">${IC('navigation__filter')}<span>Filters</span>${nOn?`<b>${nOn}</b>`:''}<i>${filtersOpen?'▴':'▾'}</i></button></div>
  <div class="db-pop"${filtersOpen?'':' hidden'}><div class="db-pop-head"><b>Filter the dashboard</b><button type="button" class="secondary compact" id="fuFClose">Done</button></div><div class="db-pop-grid">${sel('month','Month',monthLabel)}${sel('clinic','Clinic')}${sel('region','Region')}${sel('embryologist','Embryologist')}${sel('test','Test')}${sel('age','Age group')}${sel('result','Embryo result')}</div>${nOn?'<button type="button" class="db-fclear" id="fuClear2">Clear all filters</button>':''}</div>
 </div>
@@ -294,6 +307,7 @@ function breakdownHtml(){
  return `<div class="db-two db-two-eq">${table('By clinic',clinics,'Clinic')}${table('By month',months,'Month')}</div>`}
 function wireDash(root,redraw){
  const cqi=root.querySelector('#clQ');if(cqi)cqi.oninput=()=>{clQ=cqi.value;const pos=cqi.selectionStart;redraw();const n=root.querySelector('#clQ');n.focus();n.setSelectionRange(pos,pos)};
+ root.querySelectorAll('[data-ft]').forEach(b=>b.onclick=()=>openTestList(b.dataset.ft,b.dataset.ft==='tera'?'TERA':'NIPS',window._ftRows||[]));
  const cab=root.querySelector('#clAllBtn');if(cab)cab.onclick=()=>{clAll=!clAll;redraw()};
  root.querySelectorAll('[data-clinic]').forEach(el=>el.onclick=()=>{flt.clinic=el.dataset.clinic;redraw()});
  const gr=root.querySelector('#goRunStatus');if(gr)gr.onclick=()=>showView('home');
