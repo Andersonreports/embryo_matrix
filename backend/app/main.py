@@ -1126,6 +1126,19 @@ def _fu_out(f: Followup, outs: list, hist: dict | None = None) -> dict:
         "outcomes": [{"embryo": o.embryo_label, "status": _outcome_status(o.status), "date": o.event_date, "note": o.note, "tests": o.tests or {}, "by": o.updated_by, "at": _iso_utc(o.updated_at), "history": (hist or {}).get(o.embryo_label, [])} for o in outs],
     }
 
+def _fu_view(user: dict, f: Followup, outs: list, hist: dict | None = None):
+    """What this login may see of a follow-up. The client's embryologist sees everything of their own; Anderson's
+    staff see only the embryos the client has agreed to share (share == "Yes"), and nothing if there are none."""
+    out = _fu_out(f, outs, hist)
+    if user.get("role") == "embryologist":
+        return out
+    ok = {_norm_name(e.get("label")) for e in (f.embryos or []) if e.get("share") == "Yes"}
+    if not ok:
+        return None
+    out["embryos"] = [e for e in out["embryos"] if _norm_name(e.get("label")) in ok]
+    out["outcomes"] = [o for o in out["outcomes"] if _norm_name(o["embryo"]) in ok]
+    return out
+
 def _norm_name(v: str) -> str:
     return "".join(ch for ch in str(v or "").upper() if ch.isalnum())
 
@@ -1265,7 +1278,8 @@ def list_followups(request: Request, db: Session = Depends(get_db)):
     for h in db.query(OutcomeHistory).order_by(OutcomeHistory.id).all():
         hist.setdefault(h.case_key, {}).setdefault(h.embryo_label, []).append(_hist_out(h))
     rows = [f for f in db.query(Followup).order_by(Followup.updated_at.desc()).all() if _embryologist_sees(db, user, f)]
-    return {"statuses": list(OUTCOME_STATUSES), "items": [_fu_out(f, outs.get(f.case_key, []), hist.get(f.case_key)) for f in rows]}
+    items = [_fu_view(user, f, outs.get(f.case_key, []), hist.get(f.case_key)) for f in rows]
+    return {"statuses": list(OUTCOME_STATUSES), "items": [i for i in items if i]}
 
 # --- User management (admin / senior executive) ---
 
@@ -1400,6 +1414,11 @@ def save_followup(payload: dict, request: Request, db: Session = Depends(get_db)
     f = db.query(Followup).filter(Followup.case_key == key).first()
     if f and not _embryologist_sees(db, user, f):
         raise HTTPException(403, "This follow-up belongs to another embryologist")
+    is_client = user.get("role") == "embryologist"
+    existed = bool(f)
+    shared_labels = {_norm_name(e.get("label")) for e in ((f.embryos if f else None) or []) if e.get("share") == "Yes"}
+    if f and not is_client and not shared_labels:
+        raise HTTPException(404, "No follow-up shared by the client for this case")
     if not f:
         if user.get("role") == "embryologist":
             raise HTTPException(403, "Only a team lead or admin can start a follow-up")
@@ -1418,8 +1437,16 @@ def save_followup(payload: dict, request: Request, db: Session = Depends(get_db)
             a = int(meta["age"]); f.age = a if 10 <= a <= 80 else None
         except (TypeError, ValueError):
             f.age = None
-    if "embryos" in meta and isinstance(meta["embryos"], list):
-        f.embryos = [{"label": s(e.get("label"), 80), "result": s(e.get("result"), 40)} for e in meta["embryos"][:80] if isinstance(e, dict) and s(e.get("label"), 80)]
+    if "embryos" in meta and isinstance(meta["embryos"], list) and (is_client or not existed):
+        old_share = {_norm_name(e.get("label")): e.get("share", "") for e in (f.embryos or [])}
+        f.embryos = [{"label": s(e.get("label"), 80), "result": s(e.get("result"), 40), "share": old_share.get(_norm_name(s(e.get("label"), 80)), "")}
+                     for e in meta["embryos"][:80] if isinstance(e, dict) and s(e.get("label"), 80)]
+    # Per-embryo consent for Anderson to see the follow-up: only the client's own login can change it.
+    if is_client and isinstance(payload.get("share"), dict):
+        want = {_norm_name(k): v for k, v in payload["share"].items() if v in ("Yes", "No")}
+        f.embryos = [{**e, "share": want.get(_norm_name(e.get("label")), e.get("share", ""))} for e in (f.embryos or [])]
+        shared_labels = {_norm_name(e.get("label")) for e in f.embryos if e.get("share") == "Yes"}
+        log_activity(db, "followup_save", f"{f.patient or key} · sharing with Anderson: " + ", ".join(f"{k} {v}" for k, v in payload["share"].items() if v in ("Yes", "No")), request=request)
     if "dueDate" in meta:
         d = s(meta["dueDate"], 10)
         f.due_date = d if len(d) == 10 else None
@@ -1437,6 +1464,8 @@ def save_followup(payload: dict, request: Request, db: Session = Depends(get_db)
         label, status = s(o.get("embryo"), 80), _outcome_status(s(o.get("status"), 40))
         if not label or (status and status not in OUTCOME_STATUSES):
             continue
+        if not is_client and existed and _norm_name(label) not in shared_labels:
+            continue  # Anderson's staff cannot touch an embryo the client has not shared
         row = db.query(EmbryoOutcome).filter(EmbryoOutcome.case_key == key, EmbryoOutcome.embryo_label == label).first()
         date = s(o.get("date"), 10)
         date = date if len(date) == 10 else None
@@ -1463,7 +1492,7 @@ def save_followup(payload: dict, request: Request, db: Session = Depends(get_db)
     hist: dict = {}
     for h in db.query(OutcomeHistory).filter(OutcomeHistory.case_key == key).order_by(OutcomeHistory.id).all():
         hist.setdefault(h.embryo_label, []).append(_hist_out(h))
-    return _fu_out(f, outs, hist)
+    return _fu_view(user, f, outs, hist) or {**_fu_out(f, [], {}), "embryos": [], "outcomes": []}
 
 @app.get("/api/trf-files")
 def list_trf_files_for_sync(since_id: int = 0, db: Session = Depends(get_db)):

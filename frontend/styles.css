@@ -2118,3 +2118,8 @@ body.vault-staff #vaultUpload{display:none!important}
 .trf-signedbar.ok{background:#eef6f3}.trf-signedbar.late{background:#fdeeed;color:#8d2f26}.tsb-actions{display:flex;gap:8px;align-items:center}
 .trf-sign-dialog{width:min(480px,94vw)}.tsd-lead{margin:0 0 10px;font-size:14px}.tsd-steps{margin:0 0 14px;padding-left:20px;line-height:1.8;font-size:14px}
 .tsd-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.tsd-note{margin:12px 0 0;font-size:12.5px;color:var(--muted)}
+
+.oe-share{display:inline-flex;align-items:center;gap:8px;margin:0 0 0 auto;padding:3px 6px 3px 12px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:500;color:var(--muted);background:#fff}
+.oe-share select{border:0!important;background:transparent;font:600 12.5px "Inter",sans-serif;padding:3px 4px;box-shadow:none!important;cursor:pointer}
+.oe-share.yes{border-color:#9fd0c8;background:#eef7f5;color:#0b5660}.oe-share.no{background:#f4f6f7}
+.fu-shareall{display:flex;align-items:center;gap:12px;margin-top:8px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}

@@ -62,20 +62,22 @@ function testsHtml(t){
    ${k==='tera'?`<label class="fu-f"><span>Biopsy time</span><input class="ot-time" type="time" value="${esc(v.biopsyTime||'')}"></label>
    <label class="fu-f"><span>Result</span><select class="ot-result"><option value="">— Select —</option>${[...TERA_RESULTS,...(v.result&&!TERA_RESULTS.includes(v.result)?[v.result]:[])].map(r=>`<option${v.result===r?' selected':''}>${esc(r)}</option>`).join('')}</select></label>`:`<label class="fu-f"><span>Result</span><input class="ot-result" value="${esc(v.result||'')}" placeholder="Result"></label>`}
    <label class="fu-f"><span>Other details</span><input class="ot-note" value="${esc(v.note||'')}" placeholder="Report no., remarks…"></label></div></div>`}).join('')}</div></div>`}
+const isClient=()=>currentUser&&currentUser.role==='embryologist';
+const shareCtl=e=>isClient()?`<label class="oe-share${e.share==='Yes'?' yes':e.share==='No'?' no':''}" title="Anderson can see this embryo's follow-up only if you choose Yes"><span>Share with Anderson</span><select class="oe-share-sel">${e.share?'':'<option value="" selected disabled>Choose…</option>'}<option${e.share==='Yes'?' selected':''}>Yes</option><option${e.share==='No'?' selected':''}>No</option></select></label>`:'';
 let editorSeq=0;
 function editorHtml(embryos,om){
  const uid='oe'+(++editorSeq);
  if(!embryos.length)return'<div class="chart-empty">No embryos are listed for this patient.</div>';
  return `<div class="oe-list" data-uid="${uid}">${embryos.map((e,i)=>{const o=om[norm(e.label)]||{};
-  return `<div class="oe-card" data-label="${esc(e.label)}"><div class="oe-head"><strong>${esc(e.label)}</strong>${resChip(e.result)}<button type="button" class="oe-clear" title="Clear this embryo's outcome">Clear</button></div>
+  return `<div class="oe-card" data-label="${esc(e.label)}"><div class="oe-head"><strong>${esc(e.label)}</strong>${resChip(e.result)}${shareCtl(e)}<button type="button" class="oe-clear" title="Clear this embryo's outcome">Clear</button></div>
   <div class="oe-status"><label class="fu-f"><span>Current status <small>(choose one)</small></span><select class="oe-sel">${`<option value="">— Not recorded —</option>`+GROUPS.map(([g,list])=>`<optgroup label="${g}">${list.map(s=>`<option${o.status===s?' selected':''}>${esc(s)}</option>`).join('')}</optgroup>`).join('')}</select></label><span class="oe-now">${statusChip(o.status||'')}</span></div>
   <div class="oe-extra"><label class="fu-f"><span>Date of this outcome</span><input class="oe-date" type="date" value="${esc(o.date||'')}"></label><label class="fu-f"><span>Note</span><input class="oe-note" value="${esc(o.note||'')}" placeholder="Optional"></label></div>${testsHtml(o.tests||{})}<div class="oe-foot"><button type="button" class="primary compact oe-rec">Record outcome</button><button type="button" class="oe-hist-btn">History <b>${(o.history||[]).length}</b></button><span class="oe-saved"></span></div><div class="oe-hist" hidden>${histHtml(o.history)}</div></div>`}).join('')}</div>`}
 const readTests=c=>{const t={};c.querySelectorAll('.oe-test').forEach(b=>{t[b.dataset.t]={where:b.querySelector('.ot-where').value,lab:b.querySelector('.ot-lab').value,date:b.querySelector('.ot-date').value,biopsyTime:b.querySelector('.ot-time')?.value||'',result:b.querySelector('.ot-result').value,note:b.querySelector('.ot-note').value}});return t};
 const readCard=c=>({embryo:c.dataset.label,status:c.querySelector('.oe-sel')?.value||'',date:c.querySelector('.oe-date').value,note:c.querySelector('.oe-note').value,tests:readTests(c)});
 const readEditor=root=>[...root.querySelectorAll('.oe-card')].map(c=>({embryo:c.dataset.label,status:c.querySelector('.oe-sel')?.value||'',date:c.querySelector('.oe-date').value,note:c.querySelector('.oe-note').value,tests:readTests(c)}));
-function wireEditor(root,onChange,onRecord){
+function wireEditor(root,onChange,onRecord,onShare){
  root.addEventListener('click',async e=>{const hb=e.target.closest('.oe-hist-btn');if(hb){const h=hb.closest('.oe-card').querySelector('.oe-hist');h.hidden=!h.hidden;return}const rb=e.target.closest('.oe-rec');if(rb&&onRecord){rb.disabled=true;try{await onRecord(rb.closest('.oe-card'))}finally{rb.disabled=false}}});
- root.addEventListener('change',e=>{const sl=e.target.closest('.oe-sel');if(sl){const c=sl.closest('.oe-card');c.querySelector('.oe-now').innerHTML=statusChip(sl.value)}const w=e.target.closest('.ot-where');if(w){const b=w.closest('.oe-test'),v=w.value;b.querySelector('.ot-lab-wrap').hidden=v!=='Other lab';b.querySelector('.ot-done').hidden=!(v==='Anderson'||v==='Other lab')}onChange&&onChange()});
+ root.addEventListener('change',e=>{const sh=e.target.closest('.oe-share-sel');if(sh){const lab=sh.closest('.oe-share');lab.classList.toggle('yes',sh.value==='Yes');lab.classList.toggle('no',sh.value==='No');if(onShare)onShare(sh.closest('.oe-card').dataset.label,sh.value);return}const sl=e.target.closest('.oe-sel');if(sl){const c=sl.closest('.oe-card');c.querySelector('.oe-now').innerHTML=statusChip(sl.value)}const w=e.target.closest('.ot-where');if(w){const b=w.closest('.oe-test'),v=w.value;b.querySelector('.ot-lab-wrap').hidden=v!=='Other lab';b.querySelector('.ot-done').hidden=!(v==='Anderson'||v==='Other lab')}onChange&&onChange()});
  root.addEventListener('click',e=>{const b=e.target.closest('.oe-clear');if(!b)return;const c=b.closest('.oe-card');c.querySelector('.oe-sel').value='';c.querySelector('.oe-now').innerHTML=statusChip('');onChange&&onChange()})}
 const sumCards=(out)=>{const n=out.length,c=l=>out.filter(x=>l.includes(x.status)).length,rec=out.filter(x=>x.status).length;
  return [['Embryos',n],['Transferred',c(TRANSFERRED)],['Implantation +',c(IMPLANTED)],['Clinical pregnancy',c(CLINICAL)],['Live birth',c(['Live birth'])],['Not recorded',n-rec]].map(([l,v])=>`<div class="fu-sc"><strong>${v}</strong><small>${l}</small></div>`).join('')};
@@ -87,7 +89,7 @@ function openRecordDialog(f,after,focusLabel){
  d.innerHTML=`<div class="vu-dhead"><div><h3>${esc(f.patient||'Patient')}</h3><small>${esc(f.clinic||'')}${f.test?' · '+esc(f.test):''}${f.trfRef?' · '+esc(f.trfRef):''}</small></div><div>${isNew?'':chip(taskStatus(f))} <button type="button" class="secondary compact" data-close>Close</button></div></div>
  <div class="vu-dbody fu-body">
   <div class="fu-sum" id="fuSum"></div>
-  <section class="fu-block"><div class="fu-block-head"><h4>Individual embryo outcomes</h4><small>Choose what happened to each embryo. Leave an embryo blank if nothing is known yet.</small></div><div id="fuEditor">${editorHtml(emb,om)}</div></section>
+  <section class="fu-block"><div class="fu-block-head"><h4>Individual embryo outcomes</h4><small>Choose what happened to each embryo. Leave an embryo blank if nothing is known yet.</small>${isClient()?'<div class="fu-shareall"><span>Anderson sees the follow-up only for embryos you share.</span><button type="button" class="secondary compact" id="fuShareAll">Share all embryos</button></div>':''}</div><div id="fuEditor">${editorHtml(emb,om)}</div></section>
   <section class="fu-block"><div class="fu-block-head"><h4>Clinic contact &amp; follow-up</h4></div>
   <div class="fu-grid">
    <label class="fu-f"><span>Clinic contact person</span><input id="fuContact" value="${esc(f.contactName)}"></label>
@@ -111,7 +113,9 @@ function openRecordDialog(f,after,focusLabel){
   const meta=isNew?{patient:f.patient,clinic:f.clinic,region:f.region,embryologist:f.embryologist,test:f.test,month:f.month,embryos:f.embryos,consent:'Yes',dueDate:f.dueDate}:{};
   try{const j=await postSave({caseKey:f.caseKey,followup:meta,outcomes:[readCard(card)]});f._new=false;const om2=outcomeMap(j),o2=om2[norm(card.dataset.label)]||{};
    card.querySelector('.oe-hist').innerHTML=histHtml(o2.history);card.querySelector('.oe-hist-btn b').textContent=(o2.history||[]).length;
-   const sv=card.querySelector('.oe-saved');sv.textContent='Saved ✓';setTimeout(()=>{sv.textContent=''},2500);refreshSum();if(after)after(j,true)}catch(err){toast(err.message||'Could not save')}});
+   const sv=card.querySelector('.oe-saved');sv.textContent='Saved ✓';setTimeout(()=>{sv.textContent=''},2500);refreshSum();if(after)after(j,true)}catch(err){toast(err.message||'Could not save')}},
+  async(label,val)=>{try{const j=await postSave({caseKey:f.caseKey,share:{[label]:val}});(f.embryos||[]).forEach(x=>{if(norm(x.label)===norm(label))x.share=val});toast(val==='Yes'?`${label} shared with Anderson`:`${label} not shared`);if(after)after(j,true)}catch(err){toast(err.message||'Could not save')}});
+ const sa=d.querySelector('#fuShareAll');if(sa)sa.onclick=async()=>{const share={};(f.embryos||[]).forEach(x=>{share[x.label]='Yes'});try{const j=await postSave({caseKey:f.caseKey,share});(f.embryos||[]).forEach(x=>{x.share='Yes'});d.querySelectorAll('.oe-share').forEach(l=>{l.classList.add('yes');l.classList.remove('no');const sel=l.querySelector('select');sel.querySelector('[disabled]')?.remove();sel.value='Yes'});toast('All embryos shared with Anderson');if(after)after(j,true)}catch(err){toast(err.message||'Could not save')}};
  const collect=state=>{
   const meta={contactName:d.querySelector('#fuContact').value,contactDetail:d.querySelector('#fuDetail').value,expectedPeriod:d.querySelector('#fuPeriod').value,age:d.querySelector('#fuAge').value,dueDate:d.querySelector('#fuDue').value,consent:d.querySelector('#fuConsent').value,note:d.querySelector('#fuNote').value};
   if(isNew)Object.assign(meta,{patient:f.patient,clinic:f.clinic,region:f.region,embryologist:f.embryologist,test:f.test,month:f.month,embryos:f.embryos});
@@ -126,7 +130,7 @@ function openRecordDialog(f,after,focusLabel){
  if(focusLabel){const card=[...d.querySelectorAll('.oe-card')].find(c=>c.dataset.label===focusLabel);if(card){card.classList.add('oe-focus');setTimeout(()=>card.scrollIntoView({block:'center'}),60)}}}
 async function postSave(body){
  const r=await fetch('/api/followups/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||'Save failed');
- const i=FU.items.findIndex(x=>x.caseKey===j.caseKey);if(i>=0)FU.items[i]=j;else FU.items.unshift(j);return j}
+ const i=FU.items.findIndex(x=>x.caseKey===j.caseKey),hidden=!(j.embryos&&j.embryos.length);if(hidden){if(i>=0)FU.items.splice(i,1)}else if(i>=0)FU.items[i]=j;else FU.items.unshift(j);return j}
 
 // ---------------- Shared bits for the redesigned pages ----------------
 const IC=n=>`<img class="ico" src="/static/icons/${n}.png" alt="">`;
