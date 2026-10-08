@@ -2222,3 +2222,16 @@ body.role-coordinator #patientDetail .case-run-badge,body.role-coordinator #pati
 .bu-track i{position:absolute;left:0;top:50%;transform:translateY(-50%);display:block;border-radius:0 6px 6px 0;min-width:3px}
 .bu-t{height:26px;background:#cfdadb}.bu-i{height:16px;background:#23898a}.bu-l{height:8px;background:#0a3f47}
 .bu-n{grid-area:n;font-size:12px;color:var(--muted)}.bu-n b{color:#1b2a33}
+/* Softer, consistent status colours: PGT-A result chips and outcome chips */
+.fu-res{font-weight:600;background:#f1f3f3;color:#6a777b}
+.fu-res-euploid{background:#e4f2ec;color:#2f6f57}.fu-res-aneuploid{background:#f6e4e2;color:#a2463f}.fu-res-mosaic{background:#f8eddc;color:#8a6224}.fu-res-inconclusive{background:#eceeee;color:#5f6e73}.fu-res-noresult,.fu-res-none{background:#f1f3f3;color:#7b8a91;font-weight:500}
+.fu-os{background:#eaeff1;color:#4f6068}
+.fu-os-none{background:#f3f5f5;color:#8a979b;font-weight:400}
+.fu-os-nottransferred{background:#eaeff1;color:#4f6068}
+.fu-os-transferred{background:#e3edf3;color:#3d6479}
+.fu-os-implantationsuccessful{background:#dff0ee;color:#1f6f6b}
+.fu-os-implantationunsuccessful{background:#f4e6e1;color:#9a5a45}
+.fu-os-clinicalpregnancy{background:#d3ebe8;color:#145c58}
+.fu-os-miscarriage{background:#f1e1e0;color:#8e403c}
+.fu-os-livebirth{background:#d7ecdf;color:#1e6b43}
+.fu-os-outcomeunknown{background:#eef0f0;color:#6a777b}
