@@ -37,10 +37,10 @@ function trfPagesHtml(d,meta={},opts={}){
   :`<span class="td-check"><span class="td-box${radio?' td-radio':''}${on?' on':''}">${on?'✓':''}</span>${esc(label)}</span>`;
  // A blank filled in *inline*, mid-sentence (Form G's fill-in-the-blank legal wording).
  const blank=(key,ch=16)=>edit
-  ?`<input class="td-input td-inline" data-f="${key}" style="width:${ch}ch" value="${esc(d[key])}">`
-  :`<span class="td-blank">${d[key]?esc(d[key]):''}</span>`;
+  ?`<input class="td-input td-inline" data-f="${key}" style="width:${ch}ch;${fitStyle(d[key],ch)}" value="${esc(d[key])}">`
+  :`<span class="td-blank"${fitAttr(d[key])}>${d[key]?esc(d[key]):''}</span>`;
  // Mirrors a value entered elsewhere on the form (e.g. patientName from Patient Information); never its own input.
- const mirror=(key,type)=>`<span class="td-blank">${d[key]?(type==='date'?fmtDate(d[key]):esc(d[key])):''}</span>`;
+ const mirror=(key,type)=>`<span class="td-blank"${type==='date'?'':fitAttr(d[key])}>${d[key]?(type==='date'?fmtDate(d[key]):esc(d[key])):''}</span>`;
  const section=(title,body)=>`<section class="td-section"><h3>${title}</h3><div class="td-body">${body}</div></section>`;
  // Groups sections into one continuous outlined panel, like the paper form's single bordered column.
  const panel=(...sections)=>`<div class="td-panel">${sections.join('')}</div>`;
@@ -185,7 +185,12 @@ function trfFormHtml(d={}){
  <p class="tf-foot">Storage and transport: store and ship refrigerated at -20ºC. CONFIDENTIAL WHEN COMPLETED — the personal health information is collected for clinical laboratory testing only.</p>
  </div>`}
 // Wires the digital form: add / remove embryo rows (always keeping one).
+// A name typed into a fill-in-the-blank gets a smaller font the longer it is, so it stays inside its blank.
+const fitPct=(v,ch=16)=>{const n=String(v||'').length;return n<=ch?100:Math.max(60,Math.floor(ch/n*100))};
+const fitStyle=(v,ch=16)=>{const p=fitPct(v,ch);return p<100?`font-size:${p}%`:''};
+const fitAttr=v=>{const p=fitPct(v);return p<100?` style="font-size:${p}%;white-space:nowrap"`:''};
 function trfWire(root,onChange=()=>{}){
+ root.addEventListener('input',e=>{const i=e.target.closest?.('input.td-inline');if(i){const ch=parseInt(i.style.width)||16,p=fitPct(i.value,ch);i.style.fontSize=p<100?p+'%':''}});
  const rowsEl=root.querySelector('.td-embryo-rows'),renumber=()=>[...rowsEl.rows].forEach((r,i)=>{r.cells[0].textContent=i+1});
  const blankRow=()=>{const t=document.createElement('tbody');t.innerHTML=trfEmbryoRowHtml({},rowsEl.rows.length,root.querySelector('.tf-form')?.dataset.type||'PGT-A');return t.firstElementChild};
  root.querySelector('.td-add').onclick=()=>{rowsEl.appendChild(blankRow());renumber();rowsEl.lastElementChild.querySelector('input')?.focus();onChange()};

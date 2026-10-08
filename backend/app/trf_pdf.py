@@ -61,16 +61,23 @@ def _box(value_on: bool, label: str, radio: bool = False) -> str:
     return f'<span class="td-check"><span class="td-box{" td-radio" if radio else ""}{" on" if value_on else ""}">{"✓" if value_on else ""}</span>{esc(label)}</span>'
 
 
+def _fit(v) -> str:
+    """Longer text in a fill-in-the-blank gets a smaller font so it stays inside the blank (same rule as trf-doc.js)."""
+    n = len(str(v or ""))
+    p = 100 if n <= 16 else max(60, int(16 / n * 100))
+    return f' style="font-size:{p}%;white-space:nowrap"' if p < 100 else ""
+
+
 def _blank(d: dict, key: str) -> str:
     v = d.get(key)
-    return f'<span class="td-blank">{esc(v) if v else ""}</span>'
+    return f'<span class="td-blank"{_fit(v)}>{esc(v) if v else ""}</span>'
 
 
 def _mirror(d: dict, key: str, date=False) -> str:
     v = d.get(key)
     if not v:
         return '<span class="td-blank"></span>'
-    return f'<span class="td-blank">{fmt_date(v) if date else esc(v)}</span>'
+    return f'<span class="td-blank"{"" if date else _fit(v)}>{fmt_date(v) if date else esc(v)}</span>'
 
 
 def _section(title: str, body: str) -> str:

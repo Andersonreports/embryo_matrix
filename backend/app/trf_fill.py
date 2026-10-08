@@ -56,7 +56,7 @@ class Overlay:
         value = str(value or "").strip()
         if not value:
             return
-        w = lambda s: len(value) * s * (0.56 if bold else 0.5)
+        w = lambda s: len(value) * s * (0.6 if bold else 0.52)
         if maxw:
             while w(size) > maxw and size > min_size:
                 size = round(size - 0.25, 2)
