@@ -166,7 +166,7 @@ function tasksHtml(){
     <div><small>Clinic contact</small><b>${esc(f.contactName)||'—'}</b><em>${link||''}</em></div>
    </div>
    <div class="tk-prog"><div class="tk-prog-bar"><i style="width:${total?rec/total*100:0}%"></i></div><span>${rec} of ${total} embryo${total===1?'':'s'} recorded</span></div>
-   <div class="tk-foot"><span class="tk-ref">${esc(f.trfRef||f.caseKey)}</span><button type="button" class="primary compact" data-rec="1">Record outcome</button></div>
+   <div class="tk-foot"><span class="tk-ref">${esc(f.trfRef||f.caseKey)}</span></div>
   </article>`};
  const empty=FU.items.length?`<div class="tk-empty">${IC('stages-results__qc-pass')}<h3>Nothing here</h3><p>No tasks match this view.</p></div>`:`<div class="tk-empty">${IC('navigation__patient')}<h3>No follow-ups yet</h3><p>A task is created automatically when a TRF with follow-up consent is submitted, or when a team lead starts one from a patient page.</p></div>`;
  const embAll=items.flatMap(({f})=>{const om=outcomeMap(f);return(f.embryos||[]).map(e=>om[norm(e.label)]?.status?1:0)}),needN=embAll.filter(x=>!x).length;
@@ -179,7 +179,7 @@ function embryoTable(list){
  const rows=[];list.forEach(({f,s})=>{const om=outcomeMap(f);(f.embryos||[]).forEach(e=>{const o=om[norm(e.label)]||{};rows.push({f,s,e,o})})});
  const shown=rows.filter(r=>(!onlyNeeds||!r.o.status)&&(taskFilter!=='recorded'||!!r.o.status)&&(taskFilter!=='pending'||(!r.o.status&&r.s!=='na')));
  const tchip=(t,k)=>{const v=(t||{})[k];if(!v||!v.where)return'<span class="fu-os fu-os-none">—</span>';return v.where==='Not done'?'<span class="fu-os fu-os-none">Not done</span>':`<span class="fu-os">${v.where==='Anderson'?'Anderson':esc(v.lab||'Other lab')}${v.result?' · '+esc(v.result):''}</span>`};
- return `<div class="fu-table-wrap fu-tasks"><table class="fu-table"><thead><tr><th>Patient</th><th>Embryo</th><th>PGT-A result</th><th>Outcome</th><th>TERA</th><th>NIPS</th><th></th></tr></thead><tbody>${shown.map(({f,s,e,o})=>`<tr data-key="${esc(f.caseKey)}" data-emb="${esc(e.label)}"><td class="strong">${esc(f.patient)}<small>${esc(f.clinic)}</small></td><td class="strong">${esc(e.label)}</td><td>${resChip(e.result)}</td><td>${statusChip(o.status)}</td><td>${tchip(o.tests,'tera')}</td><td>${tchip(o.tests,'nips')}</td><td><button type="button" class="primary compact" data-fill="1">Record outcome</button></td></tr>`).join('')||'<tr><td colspan="7" class="chart-empty">No embryos to show.</td></tr>'}</tbody></table></div>`}
+ return `<div class="fu-table-wrap fu-tasks"><table class="fu-table"><thead><tr><th>Patient</th><th>Embryo</th><th>PGT-A result</th><th>Outcome</th><th>TERA</th><th>NIPS</th></tr></thead><tbody>${shown.map(({f,s,e,o})=>`<tr data-key="${esc(f.caseKey)}" data-emb="${esc(e.label)}"><td class="strong">${esc(f.patient)}<small>${esc(f.clinic)}</small></td><td class="strong">${esc(e.label)}</td><td>${resChip(e.result)}</td><td>${statusChip(o.status)}</td><td>${tchip(o.tests,'tera')}</td><td>${tchip(o.tests,'nips')}</td></tr>`).join('')||'<tr><td colspan="6" class="chart-empty">No embryos to show.</td></tr>'}</tbody></table></div>`}
 
 function wireTasks(root,redraw){
  const tg=root.querySelector('#fuView');if(tg)tg.onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;taskView=b.dataset.v;viewChosen=true;redraw()};
