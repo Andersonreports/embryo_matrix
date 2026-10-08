@@ -1,6 +1,6 @@
 // Coordinator home: the six status cards (embryo wise / sample wise) and the sample list below them.
 let coView='embryos',coQ='',coLimit=200,coMonth='';
-function coRows(){
+function coRows(){const out=[];
 
  allEmbryos().forEach(e=>{if(e._stale)return;if(coMonth&&recordMonth(e)!==coMonth)return;(coView==='samples'?[e]:embryoRowsOf(e)).forEach(r=>out.push({r:Object.assign(r,{_case:e._case}),e}))});
  return out}
