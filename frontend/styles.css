@@ -2199,3 +2199,11 @@ body.vault-staff #vaultUpload{display:none!important}
 /* Coordinator: the patient/sample window shows only the header and the status tracker */
 body.role-coordinator #patientDetail .progress-stepper ~ *{display:none!important}
 body.role-coordinator #patientDetail .case-run-badge,body.role-coordinator #patientDetail #copyPatientId{display:none!important}
+
+.co-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:0 0 12px}
+.co-list-bar .export-wrap{position:relative}
+#coStats{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:16px!important;width:100%;margin:0 0 8px}
+#coStats article{width:auto!important;min-width:0}
+@media(max-width:900px){#coStats{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+.co-table thead th{background:linear-gradient(90deg,#0a7180,#12968f)!important;color:#fff!important;border-bottom:0!important}
+.co-table thead tr th:first-child{border-top-left-radius:10px}.co-table thead tr th:last-child{border-top-right-radius:10px}
