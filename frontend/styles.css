@@ -2137,3 +2137,10 @@ body.vault-staff #vaultUpload{display:none!important}
 .trf-pdf-loading{margin:0;padding:40px;text-align:center;color:var(--muted)}
 
 .fu-tasks tbody tr[data-key]{cursor:pointer}.fu-tasks tbody tr[data-key]:hover{background:#f3f8f8}
+#homeView .home-toolbar{position:relative!important}
+#homeView .home-toolbar .home-unit-toggle{position:absolute;right:0;top:50%;transform:translateY(-50%);margin:0;white-space:nowrap}
+@media(max-width:1100px){#homeView .home-toolbar .home-unit-toggle{position:static;transform:none}}
+
+.co-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px}
+.co-list-bar{margin-top:22px}.co-list-bar .db-h{margin:0;flex:1 1 auto}.co-list-bar .search-wrap{max-width:320px;flex:1 1 220px}
+.co-table th,.co-table td{white-space:nowrap}

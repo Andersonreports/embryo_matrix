@@ -293,10 +293,8 @@ function dashHtml(){
 </div>
  <div class="journey">${journey}</div>
  ${gauges}
- <div class="mk2"><article class="db-card"><h3>Month by month <small>${isEmb?'your embryos':filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>
- <div class="ft-stack">${ftChip('tera','TERA')}${ftChip('nips','NIPS')}</div>
-</div>
-`}
+ <div class="mk2 mk2-one"><article class="db-card"><h3>Month by month <small>${isEmb?'your embryos':filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>
+</div>`}
 function breakdownHtml(){
  const rows=embryoRows();
  const grp=(keyFn)=>{const m=new Map();rows.forEach(r=>{const k=keyFn(r)||'—',x=m.get(k)||{k,patients:new Set(),n:0,t:0,i:0,p:0,l:0};x.patients.add(r.f.caseKey);x.n++;if(TRANSFERRED.includes(r.status))x.t++;if(IMPLANTED.includes(r.status))x.i++;if(CLINICAL.includes(r.status))x.p++;if(r.status==='Live birth')x.l++;m.set(k,x)});return[...m.values()]};
@@ -350,8 +348,8 @@ function monitorHtml(){
  <h3 class="db-h">Outcomes by clinic and by month</h3>${breakdownHtml()}
  <h3 class="db-h">Embryo by embryo</h3>
  <div class="tk-bar"><div class="seg-toggle" id="monOnly">${[['all','All'],['filled','Entered'],['waiting','Waiting']].map(([k,l])=>`<button type="button" class="${monOnly===k?'on':''}" data-v="${k}">${l}</button>`).join('')}</div><label class="mon-f"><span>Client</span><select id="monClient"><option value="">All clients</option>${[...new Set(all.map(r=>r.f.clinic).filter(Boolean))].sort().map(c=>`<option${monClient===c?' selected':''}>${esc(c)}</option>`).join('')}</select></label><label class="mon-f"><span>Embryologist</span><select id="monEmb"><option value="">All embryologists</option>${[...new Set(all.map(r=>r.f.embryologist).filter(Boolean))].sort().map(c=>`<option${monEmb===c?' selected':''}>${esc(c)}</option>`).join('')}</select></label><div class="search-wrap fu-search"><span>⌕</span><input id="monSearch" type="search" placeholder="Search patient, clinic or embryo…" value="${esc(monQ)}"></div>${(monStatus||monGroup||monClient||monEmb)?'<button type="button" class="db-fclear" id="monClear">Clear filters</button>':''}</div>
- <div class="fu-table-wrap fu-tasks"><table class="fu-table"><thead><tr><th>Patient</th><th>Client</th><th>Embryo</th><th>PGT-A result</th><th>Current state</th><th>Date</th><th>TERA</th><th>NIPS</th><th>Updated by</th></tr></thead><tbody>${shown.map(({f,e,o,s})=>{const tc=k=>{const v=o.tests?.[k];return !v||!v.where?'<span class="fu-os fu-os-none">—</span>':v.where==='Not done'?'<span class="fu-os fu-os-none">Not done</span>':`<span class="fu-os">${v.where==='Anderson'?'Anderson':esc(v.lab||'Other lab')}${v.result?' · '+esc(v.result):''}</span>`};
-  return `<tr data-key="${esc(f.caseKey)}"><td class="strong">${esc(f.patient)}</td><td><span class="cl-tag" title="${esc(f.clinic)}">${esc(f.clinic)||'—'}</span></td><td class="strong">${esc(e.label)}</td><td>${resChip(e.result)}</td><td>${statusChip(s)}</td><td>${fmtDate(o.date)}</td><td>${tc('tera')}</td><td>${tc('nips')}</td><td>${o.by?esc(o.by)+'<small>'+fmtDate(String(o.at||'').slice(0,10))+'</small>':'—'}</td></tr>`}).join('')||'<tr><td colspan="9" class="chart-empty">No embryos match.</td></tr>'}</tbody></table></div>
+ <div class="fu-table-wrap fu-tasks"><table class="fu-table"><thead><tr><th>Patient</th><th>Client</th><th>Embryo</th><th>PGT-A result</th><th>Current state</th><th>Date</th><th>Updated by</th></tr></thead><tbody>${shown.map(({f,e,o,s})=>{const tc=k=>{const v=o.tests?.[k];return !v||!v.where?'<span class="fu-os fu-os-none">—</span>':v.where==='Not done'?'<span class="fu-os fu-os-none">Not done</span>':`<span class="fu-os">${v.where==='Anderson'?'Anderson':esc(v.lab||'Other lab')}${v.result?' · '+esc(v.result):''}</span>`};
+  return `<tr data-key="${esc(f.caseKey)}"><td class="strong">${esc(f.patient)}</td><td><span class="cl-tag" title="${esc(f.clinic)}">${esc(f.clinic)||'—'}</span></td><td class="strong">${esc(e.label)}</td><td>${resChip(e.result)}</td><td>${statusChip(s)}</td><td>${fmtDate(o.date)}</td><td>${o.by?esc(o.by)+'<small>'+fmtDate(String(o.at||'').slice(0,10))+'</small>':'—'}</td></tr>`}).join('')||'<tr><td colspan="7" class="chart-empty">No embryos match.</td></tr>'}</tbody></table></div>
  ${rows.length>shown.length?`<div style="text-align:center;margin:12px"><button type="button" class="secondary" id="monMore">Show more (${rows.length-shown.length} left)</button></div>`:''}`}
 function wireMonitor(root,redraw){
  root.querySelector('.mon-tiles').onclick=e=>{const b=e.target.closest('[data-s]');if(!b)return;monStatus=monStatus===b.dataset.s?'':b.dataset.s;monLimit=100;redraw()};

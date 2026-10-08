@@ -101,6 +101,11 @@ _ROLE_RULES = {
         ("GET", r"/api/(store/.+|cases|cases/[^/]+/images|images|case-runs|dashboard|cell-edits|edits-sheet|result-file-months|sync-sheet/status)"),
         ("GET", r"/uploads/.+"), ("POST", r"/api/sync-sheet"), ("POST", r"/api/cases/[^/]+/images"),
     ],
+    # Coordinator: read-only home page (same data the member role can read).
+    "coordinator": [
+        ("GET", r"/api/(store/.+|cases|case-runs|dashboard|cell-edits|edits-sheet|result-file-months|sync-sheet/status)"),
+        ("POST", r"/api/sync-sheet"),
+    ],
     "embryologist": [
         ("POST", r"/api/(trf|trf-image|trf/preview-pdf)"), ("GET", r"/api/trf-image/[^/]+"),
         ("GET", r"/api/followups"), ("POST", r"/api/followups/save"),
