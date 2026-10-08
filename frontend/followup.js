@@ -400,7 +400,8 @@ window.renderPatientFollowup=async function(c,resolvedAll){
  const labels=(resolvedAll||[]).map(r=>{const id=resultIdentity(r);return{label:id.patient?`${id.patient}-${id.embryo}`:id.embryo,result:RESULT_NAME[conclusionClass(r)]||'No result'}}).filter(x=>x.label);
  const list=labels.length?labels:Array.from({length:c.samples||0},(_,i)=>({label:`Embryo ${i+1}`,result:'No result'}));
  const month=(c.embryos||[]).map(recordMonth).find(m=>/^\d{4}-\d{2}$/.test(m))||'';
- const draw=()=>{const f=FU.items.find(x=>x.caseKey===c.id),om=f?outcomeMap(f):{},emb=(f&&f.embryos&&f.embryos.length)?f.embryos:list;
+ // Only embryos the client has agreed to share are ever returned to staff, so no shared follow-up = no section.
+ const draw=()=>{const f=FU.items.find(x=>x.caseKey===c.id);if(!f||!(f.embryos||[]).length){sec.remove();return}const om=outcomeMap(f),emb=f.embryos;
   sec.innerHTML=`<div class="fu-sec-head"><div class="embryo-table-title"><h3>Outcome follow-up</h3>${f?chip(taskStatus(f)):'<span class="fu-chip fu-scheduled">Not started</span>'}</div>${f?'':'<button type="button" class="secondary compact" id="fuStart">Send to the embryologist</button>'}</div>
   <p class="fu-note" style="margin:0 0 10px">${f?'The embryologist fills in what happened to each embryo. This is its current state.':'Nothing recorded yet. Send this patient to the embryologist\'s list so they can fill in the outcomes.'}</p>
   <div class="fu-sum">${sumCards(emb.map(e=>({status:om[norm(e.label)]?.status||''})))}</div>
