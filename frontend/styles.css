@@ -2247,3 +2247,29 @@ body.role-coordinator #patientDetail .case-run-badge,body.role-coordinator #pati
 .co-card small{font-size:12px;color:#76868a}
 body.role-coordinator dialog.patient-dialog{height:fit-content!important;max-height:calc(100vh - 48px)!important}
 body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
+
+.tsd-actions{display:flex;flex-wrap:nowrap;align-items:center;gap:10px;margin-top:14px}.tsd-actions .compact{white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;margin:0}.tsd-note{margin:12px 0 0}
+.trf-sign-dialog{width:min(560px,94vw)}
+
+/* Overview (monthly trends layout) */
+.ov2{display:flex!important;flex-direction:column;gap:16px}
+.ov2-top{display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:16px}
+.ov2-mid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media(max-width:1000px){.ov2-top,.ov2-mid{grid-template-columns:1fr}}
+.ov2-card{padding:22px 24px!important;border-radius:20px!important}
+.ov2-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.ov2-head h2{font:600 22px "Lora",serif;margin:0 0 4px;color:#14262b}.ov2-head p{margin:0;font-size:13px;color:#8a979b}
+.ov2-head .chart-filter{flex:0 0 auto}
+.ov2-kpis{display:flex;flex-direction:column;justify-content:space-between}
+.ov2-kpi{padding:6px 0 20px;border-bottom:1px solid #e8eeee}.ov2-kpi:last-child{border-bottom:0;padding-bottom:0}
+.ov2-kpi strong{display:block;font:500 54px/1.05 "Lora",serif;color:#14262b;letter-spacing:-.5px}.ov2-kpi strong.bad{color:#c25450}
+.ov2-kpi b{display:block;margin-top:6px;font-size:14px;color:#14262b}.ov2-kpi>span{display:block;margin-top:2px;font-size:13px;color:#8a979b}
+.ov2-leg{display:flex;gap:18px;margin:0 0 12px;font-size:13px;color:#33474e}.ov2-leg span{display:inline-flex;align-items:center;gap:7px}.ov2-leg i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.ov2-foot{display:flex;align-items:center;justify-content:space-between;margin-top:16px;font-size:13px;color:#8a979b}
+.hb-list{display:flex;flex-direction:column;gap:2px}
+.hb-row{display:grid;grid-template-columns:minmax(120px,190px) 1fr 56px;align-items:center;gap:16px;padding:7px 0}
+.hb-name{font-size:13.5px;color:#46575f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb-track{display:block;height:12px;background:#eef2f1;border-radius:999px;overflow:hidden}
+.hb-bar{display:flex;height:100%;min-width:3px;border-radius:999px;overflow:hidden;gap:1px}
+.hb-pass{display:block;background:#3f8c6f}.hb-fail{display:block;background:#c25450}.hb-one{background:#0f766e}
+.hb-n{font-weight:700;font-size:13.5px;color:#14262b;text-align:right}
