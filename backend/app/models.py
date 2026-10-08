@@ -118,6 +118,12 @@ class TrfSubmission(Base):
     pdf_file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # Remark the approver typed when approving / rejecting.
     status_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Login that submitted the form, and the patient-signed scanned copy uploaded afterwards.
+    submitted_by: Mapped[str] = mapped_column(String(120), default="")
+    signed_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    signed_file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    signed_by: Mapped[str] = mapped_column(String(120), default="")
 
 class ActivityLog(Base):
     """Who did what, when. Written server-side from the login token."""

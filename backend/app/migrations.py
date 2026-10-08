@@ -15,6 +15,11 @@ def _migrate_added_columns():
         "pdf_filename": "VARCHAR(255)",
         "pdf_file_path": "VARCHAR(500)",
         "status_note": "TEXT",
+        "submitted_by": "VARCHAR(120) DEFAULT ''",
+        "signed_filename": "VARCHAR(255)",
+        "signed_file_path": "VARCHAR(500)",
+        "signed_at": "DATETIME",
+        "signed_by": "VARCHAR(120) DEFAULT ''",
     }
     with engine.begin() as conn:
         for col, coltype in add.items():

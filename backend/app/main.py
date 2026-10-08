@@ -104,6 +104,7 @@ _ROLE_RULES = {
     "embryologist": [
         ("POST", r"/api/(trf|trf-image|trf/preview-pdf)"), ("GET", r"/api/trf-image/[^/]+"),
         ("GET", r"/api/followups"), ("POST", r"/api/followups/save"),
+        ("GET", r"/api/my-trfs"), ("POST", r"/api/trf/\d+/signed"), ("GET", r"/api/trf/\d+/signed"),
     ],
 }
 _ALWAYS_OK = {("GET", "/api/whoami"), ("POST", "/api/logout")}
@@ -738,6 +739,12 @@ def _clean_trf(raw: dict) -> dict:
     data["embryos"] = embryos
     return data
 
+SIGNED_COPY_DEADLINE = timedelta(hours=24)
+
+def _signed_overdue(t: TrfSubmission) -> bool:
+    """No patient-signed copy within 24 hours of submission (rejected forms no longer need one)."""
+    return not t.signed_file_path and t.status != "Rejected" and datetime.utcnow() - t.submitted_at > SIGNED_COPY_DEADLINE
+
 def _trf_summary(t: TrfSubmission) -> dict:
     d = t.data or {}
     return {
@@ -746,6 +753,10 @@ def _trf_summary(t: TrfSubmission) -> dict:
         "tests": d.get("tests", []), "formType": d.get("formType", "PGT-A"), "biopsyDate": d.get("biopsyDate", ""), "embryos": len(d.get("embryos", [])),
         "statusBy": t.status_by, "statusAt": _iso_utc(t.status_at), "statusNote": t.status_note or "",
         "caseCode": t.case_code, "pdfUrl": f"/api/trf/{t.id}/pdf" if t.pdf_file_path else None,
+        "submittedBy": t.submitted_by or "",
+        "signedUrl": f"/api/trf/{t.id}/signed" if t.signed_file_path else None, "signedName": t.signed_filename or "",
+        "signedAt": _iso_utc(t.signed_at), "signedBy": t.signed_by or "",
+        "signedOverdue": _signed_overdue(t),
     }
 
 def _generate_trf_pdf(db: Session, t: TrfSubmission):
@@ -798,13 +809,14 @@ async def submit_trf(request: Request, db: Session = Depends(get_db)):
         ref = f"TRF-{datetime.utcnow():%y%m%d}-{secrets.token_hex(2).upper()}"
         if not db.query(TrfSubmission.id).filter(TrfSubmission.ref == ref).first():
             break
-    t = TrfSubmission(ref=ref, clinic=data["hospital"][:255], patient_name=data["patientName"][:255], data=data)
+    t = TrfSubmission(ref=ref, clinic=data["hospital"][:255], patient_name=data["patientName"][:255], data=data,
+                      submitted_by=(request.state.user or {}).get("username") or "")
     db.add(t); db.commit(); db.refresh(t)
     _generate_trf_pdf(db, t)
     _create_followup_from_trf(db, t, (request.state.user or {}).get("username") or "")
     _trf_recent[ip] = recent + [now]
     log_activity(db, "trf_submit", f"{t.ref} · {t.patient_name} · {t.clinic}", request=request)
-    return {"ref": t.ref, "submittedAt": _iso_utc(t.submitted_at)}
+    return {"id": t.id, "ref": t.ref, "submittedAt": _iso_utc(t.submitted_at)}
 
 @app.post("/api/trf-image")
 async def upload_trf_image(request: Request, file: UploadFile = File(...)):
@@ -863,7 +875,7 @@ def delete_trf(trf_id: int, request: Request, db: Session = Depends(get_db)):
     t = db.get(TrfSubmission, trf_id)
     if not t:
         raise HTTPException(404, "Not found")
-    ref, patient, pdf = t.ref, t.patient_name, t.pdf_file_path
+    ref, patient, pdf, signed = t.ref, t.patient_name, t.pdf_file_path, t.signed_file_path
     images = [i for e in (t.data or {}).get("embryos", []) for i in e.get("images", [])]
     db.delete(t)
     db.commit()
@@ -871,10 +883,11 @@ def delete_trf(trf_id: int, request: Request, db: Session = Depends(get_db)):
         p = (UPLOADS / f"trfimg-{i}.gz").resolve()
         if UPLOADS.resolve() in p.parents and p.is_file():
             p.unlink()
-    if pdf:
-        path = (UPLOADS / pdf).resolve()
-        if UPLOADS.resolve() in path.parents and path.is_file():
-            path.unlink()
+    for f in (pdf, signed):
+        if f:
+            path = (UPLOADS / f).resolve()
+            if UPLOADS.resolve() in path.parents and path.is_file():
+                path.unlink()
     log_activity(db, "trf_delete", f"{ref} · {patient} deleted", request=request)
     return {"ok": True}
 
@@ -906,6 +919,68 @@ async def preview_trf_pdf(request: Request):
         print(f"TRF preview failed: {exc}")
         raise HTTPException(500, "The TRF could not be rendered")
     return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": 'inline; filename="TRF.pdf"'})
+
+def _can_touch_signed(user: dict, t: TrfSubmission):
+    """Staff may use any TRF's signed copy; an embryologist only the forms they submitted themselves."""
+    if user.get("role") == "embryologist" and (t.submitted_by or "") != (user.get("username") or ""):
+        raise HTTPException(403, "You can only use the TRFs you submitted")
+
+@app.get("/api/my-trfs")
+def my_trfs(request: Request, db: Session = Depends(get_db)):
+    """The signed-in embryologist's own submitted TRFs (no patient detail beyond the summary)."""
+    user = _require_lab_user(request)
+    rows = db.query(TrfSubmission).filter(TrfSubmission.submitted_by == (user.get("username") or "")) \
+        .order_by(TrfSubmission.submitted_at.desc()).limit(200).all()
+    return [_trf_summary(t) for t in rows]
+
+@app.post("/api/trf/{trf_id}/signed")
+async def upload_signed_trf(trf_id: int, request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """The printed TRF, signed by the patient, scanned (PDF or photo). Replaces an earlier upload."""
+    user = _require_lab_user(request)
+    t = db.get(TrfSubmission, trf_id)
+    if not t:
+        raise HTTPException(404, "Not found")
+    _can_touch_signed(user, t)
+    data = await file.read(15 * 1024 * 1024 + 1)
+    if len(data) > 15 * 1024 * 1024:
+        raise HTTPException(413, "File is too large (max 15 MB)")
+    if data[:5] == b"%PDF-":
+        ext = "pdf"
+    elif data[:3] == b"\xff\xd8\xff":
+        ext = "jpg"
+    elif data[:8] == b"\x89PNG\r\n\x1a\n":
+        ext = "png"
+    elif data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        ext = "webp"
+    else:
+        raise HTTPException(415, "Please upload a PDF, JPG or PNG scan")
+    old = t.signed_file_path
+    t.signed_file_path = storage.write_compressed_bytes(UPLOADS, f"signed-{uuid.uuid4().hex}.{ext}", data)
+    t.signed_filename = f"{t.ref}-signed.{ext}"
+    t.signed_at, t.signed_by = datetime.utcnow(), user.get("username") or ""
+    db.commit()
+    if old:
+        p = (UPLOADS / old).resolve()
+        if UPLOADS.resolve() in p.parents and p.is_file():
+            p.unlink()
+    log_activity(db, "trf_signed", f"{t.ref} · {t.patient_name} · signed copy uploaded", request=request)
+    return _trf_summary(t)
+
+@app.get("/api/trf/{trf_id}/signed")
+def download_signed_trf(trf_id: int, request: Request, db: Session = Depends(get_db)):
+    user = _require_lab_user(request)
+    t = db.get(TrfSubmission, trf_id)
+    if not t or not t.signed_file_path:
+        raise HTTPException(404, "Not found")
+    _can_touch_signed(user, t)
+    full = (UPLOADS / t.signed_file_path).resolve()
+    if UPLOADS.resolve() not in full.parents or not full.is_file():
+        raise HTTPException(404, "Not found")
+    ext = (t.signed_filename or "x.pdf").rsplit(".", 1)[-1]
+    mt = {"pdf": "application/pdf", "jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}.get(ext, "application/octet-stream")
+    safe = re.sub(r'[^A-Za-z0-9._ -]+', "", f"TRF {t.ref} {t.patient_name} signed".strip()) or "TRF signed"
+    return Response(content=storage.read_decompressed(full), media_type=mt,
+                    headers={"Content-Disposition": f'inline; filename="{safe}.{ext}"'})
 
 @app.get("/api/trf/{trf_id}/pdf")
 def download_trf_pdf(trf_id: int, request: Request, db: Session = Depends(get_db)):
