@@ -2160,3 +2160,4 @@ body.vault-staff #vaultUpload{display:none!important}
 .fu-share{font-size:12.5px;font-weight:600}.fu-share-yes{color:#0b5660}.fu-share-no{color:#7b8a91}.fu-share-unset{color:#b36b00}
 .fb-bar button b{margin-left:8px;padding:1px 8px;border-radius:999px;background:#dde5e7;color:#4d6361;font-size:12px;font-weight:700}
 .fb-bar button.on b{background:#e3f1ee;color:#0b5660}
+#coordNav{display:none!important}
