@@ -139,7 +139,7 @@ const TILES=[
  ['pending','Still to record','navigation__internal-transfer','No outcome entered yet','blue'],
  ['completed','Completed','stages-results__normal','Final outcome known','teal'],
  ['na','No consent','stages-results__na-result','Not followed up','grey']];
-let clQ='',clAll=false,filtersOpen=false,dashHome=false,taskSort='patient',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
+let bkQ='',bkKey='n',bkDir=-1,bkAll=false,clQ='',clAll=false,filtersOpen=false,dashHome=false,taskSort='patient',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
 
 // ---------------- Tasks (card queue) ----------------
 function tasksHtml(){
@@ -305,9 +305,18 @@ function breakdownHtml(){
  const rows=embryoRows();
  const grp=(keyFn)=>{const m=new Map();rows.forEach(r=>{const k=keyFn(r)||'—',x=m.get(k)||{k,patients:new Set(),n:0,t:0,i:0,p:0,l:0};x.patients.add(r.f.caseKey);x.n++;if(TRANSFERRED.includes(r.status))x.t++;if(IMPLANTED.includes(r.status))x.i++;if(CLINICAL.includes(r.status))x.p++;if(r.status==='Live birth')x.l++;m.set(k,x)});return[...m.values()]};
  const table=(title,list,first)=>`<article class="db-card"><h3>${title}</h3><div class="fu-table-wrap fu-clinics"><table class="fu-table"><thead><tr><th>${first}</th><th>Patients</th><th>Embryos</th><th>Transferred</th><th>Implant.</th><th>Clin. preg.</th><th>Live birth</th></tr></thead><tbody>${list.map(x=>`<tr><td class="strong">${esc(first==='Month'?monthLabel(x.k):x.k)}</td><td>${x.patients.size}</td><td>${x.n}</td><td>${x.t}</td><td>${pct(x.i,x.t)}</td><td>${pct(x.p,x.t)}</td><td>${pct(x.l,x.t)}</td></tr>`).join('')||'<tr><td colspan="7" class="chart-empty">No data for these filters.</td></tr>'}</tbody></table></div></article>`;
- const clinics=grp(r=>r.f.clinic).sort((a,b)=>b.n-a.n),months=grp(r=>r.f.month).sort((a,b)=>String(b.k).localeCompare(String(a.k)));
- return `<div class="db-two db-two-eq">${table('By clinic',clinics,'Clinic')}${table('By month',months,'Month')}</div>`}
+ const months=grp(r=>r.f.month).sort((a,b)=>String(b.k).localeCompare(String(a.k)));
+ // By clinic: searchable, sortable by any column, top 10 until "Show all"
+ const rate=(n,d)=>d?n/d:-1,val={k:x=>x.k.toLowerCase(),patients:x=>x.patients.size,n:x=>x.n,t:x=>x.t,i:x=>rate(x.i,x.t),p:x=>rate(x.p,x.t),l:x=>rate(x.l,x.t)};
+ const q=bkQ.trim().toLowerCase(),all=grp(r=>r.f.clinic).filter(x=>!q||x.k.toLowerCase().includes(q)).sort((a,b)=>{const f=val[bkKey]||val.n,va=f(a),vb=f(b);return(va<vb?-1:va>vb?1:0)*bkDir||a.k.localeCompare(b.k)});
+ const shownC=q||bkAll?all:all.slice(0,10);
+ const th=(k,l)=>`<th class="srt${bkKey===k?' on':''}" data-bsort="${k}" tabindex="0" role="button" aria-sort="${bkKey===k?(bkDir>0?'ascending':'descending'):'none'}">${l}<i>${bkKey===k?(bkDir>0?'\u25B2':'\u25BC'):''}</i></th>`;
+ const clinicCard=`<article class="db-card"><div class="bk-head"><h3>By clinic</h3><div class="search-wrap bk-search"><span>\u2315</span><input id="bkQ" type="search" placeholder="Search clinic\u2026" value="${esc(bkQ)}" aria-label="Search clinics"></div></div><div class="fu-table-wrap fu-clinics"><table class="fu-table"><thead><tr>${th('k','Clinic')}${th('patients','Patients')}${th('n','Embryos')}${th('t','Transferred')}${th('i','Implant.')}${th('p','Clin. preg.')}${th('l','Live birth')}</tr></thead><tbody>${shownC.map(x=>`<tr><td class="strong">${esc(x.k)}</td><td>${x.patients.size}</td><td>${x.n}</td><td>${x.t}</td><td>${pct(x.i,x.t)}</td><td>${pct(x.p,x.t)}</td><td>${pct(x.l,x.t)}</td></tr>`).join('')||`<tr><td colspan="7" class="chart-empty">${q?'No clinic matches.':'No data for these filters.'}</td></tr>`}</tbody></table></div>${!q&&all.length>10?`<div style="text-align:center;margin-top:10px"><button type="button" class="secondary compact" id="bkAllBtn">${bkAll?'Show top 10':`Show all ${all.length} clinics`}</button></div>`:''}</article>`;
+ return `<div class="db-two db-two-eq">${clinicCard}${table('By month',months,'Month')}</div>`}
 function wireDash(root,redraw){
+ const bq=root.querySelector('#bkQ');if(bq)bq.oninput=()=>{bkQ=bq.value;const pos=bq.selectionStart;redraw();const n=root.querySelector('#bkQ');n.focus();n.setSelectionRange(pos,pos)};
+ root.querySelectorAll('[data-bsort]').forEach(h=>{const go=()=>{const k=h.dataset.bsort;if(bkKey===k)bkDir=-bkDir;else{bkKey=k;bkDir=k==='k'?1:-1}redraw()};h.onclick=go;h.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}});
+ const bab=root.querySelector('#bkAllBtn');if(bab)bab.onclick=()=>{bkAll=!bkAll;redraw()};
  {let tp=document.getElementById('mcTip');if(!tp){tp=document.createElement('div');tp.id='mcTip';tp.className='mc-tip';tp.hidden=true;document.body.append(tp)}
   const show=(g,x,y)=>{const [head,...rows]=g.dataset.tip.split('~');tp.innerHTML=`<b>${esc(head)}</b>${rows.map(r=>{const [l,v]=r.split('|');return `<span><em>${esc(l)}</em>${esc(v)}</span>`}).join('')}`;tp.hidden=false;const w=tp.offsetWidth,h=tp.offsetHeight;tp.style.left=Math.min(innerWidth-w-8,x+14)+'px';tp.style.top=Math.max(8,y-h-10)+'px'};
   root.querySelectorAll('.mc-g,.oc-row').forEach(g=>{g.onmousemove=e=>show(g,e.clientX,e.clientY);g.onmouseleave=()=>{tp.hidden=true};g.onfocus=()=>{const r=g.getBoundingClientRect();show(g,r.left+r.width/2,r.top)};g.onblur=()=>{tp.hidden=true}})}

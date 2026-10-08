@@ -2207,3 +2207,6 @@ body.role-coordinator #patientDetail .case-run-badge,body.role-coordinator #pati
 @media(max-width:900px){#coStats{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 .co-table thead th{background:linear-gradient(90deg,#0a7180,#12968f)!important;color:#fff!important;border-bottom:0!important}
 .co-table thead tr th:first-child{border-top-left-radius:10px}.co-table thead tr th:last-child{border-top-right-radius:10px}
+
+.bk-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}.bk-head h3{margin:0}.bk-search{flex:0 1 240px;min-width:170px;height:34px}
+.fu-table th.srt{cursor:pointer;user-select:none}.fu-table th.srt:hover{color:#0a7180}.fu-table th.srt i{font-style:normal;font-size:9px;margin-left:5px;color:#0a7180}
