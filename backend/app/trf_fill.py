@@ -52,7 +52,7 @@ class Overlay:
     def __init__(self):
         self.parts: list[str] = []
 
-    def text(self, x, base, value, size=9.0, maxw=None, bold=True, min_size=5.5, align="left", color=INK, italic=False):
+    def text(self, x, base, value, size=9.0, maxw=None, bold=True, min_size=5.5, align="left", color=INK, italic=False, blank=False):
         value = str(value or "").strip()
         if not value:
             return
@@ -64,6 +64,8 @@ class Overlay:
         if align == "center" and maxw:
             left = x + max(0, (maxw - w(size))) / 2
         top = base - size * 0.84
+        if blank:  # wipe the dotted leader under the typed value so the text reads cleanly
+            self.parts.append(f'<span class="w" style="left:{left - 1:.2f}pt;top:{top - 0.5:.2f}pt;width:{w(size) * 0.9 + 3:.2f}pt;height:{size * 1.25:.2f}pt"></span>')
         style = (f"left:{left:.2f}pt;top:{top:.2f}pt;font-size:{size}pt;"
                  f"font-weight:{'700' if bold else '400'};color:{color};{'font-style:italic;' if italic else ''}")
         self.parts.append(f'<span class="t" style="{style}">{esc(value)}</span>')
@@ -221,23 +223,25 @@ def _embryo_pages(d: dict, kind: str, meta: dict) -> list[Overlay]:
 def _page3(d: dict, kind: str) -> Overlay:
     o = Overlay()
     rel = str(d.get("consentRelation") or "")
+    # The form's own wording is 12 pt, so what is typed on the dotted blanks is 11 pt (shrinking only when it would not fit).
+    t = lambda x, base, v, size, maxw, **k: o.text(x, base + 1.6, v, size, maxw, blank=True, **k)
     if kind == "A":
-        o.text(98, 138.1, d.get("patientName"), 9, 138)
-        o.text(337, 138.1, d.get("consentGuardianName"), 9, 125)
-        o.text(14, 154.1, d.get("consentAge"), 9, 52)
-        o.text(180, 154.1, d.get("patientAddress"), 8.5, 340, min_size=5.5)
-        o.text(58, 558.6, d.get("companionName"), 8.5, 140)
-        o.text(273, 558.6, d.get("companionAddress"), 8.5, 248, min_size=5.5)
-        o.text(168, 573.1, d.get("companionRelation"), 8.5, 120)
+        t(98, 138.1, d.get("patientName"), 11, 138, min_size=6)
+        t(337, 138.1, d.get("consentGuardianName"), 11, 125, min_size=6)
+        t(14, 154.1, d.get("consentAge"), 11, 52)
+        t(180, 154.1, d.get("patientAddress"), 10, 340, min_size=6)
+        t(58, 558.6, d.get("companionName"), 10, 140, min_size=6)
+        t(273, 558.6, d.get("companionAddress"), 10, 248, min_size=6)
+        t(168, 573.1, d.get("companionRelation"), 10, 120, min_size=6)
         wife_x = 262
     else:
-        o.text(98, 138.1, d.get("patientName"), 9, 160)
-        o.text(362, 138.1, d.get("consentGuardianName"), 9, 165)
-        o.text(112, 154.1, d.get("consentAge"), 9, 52)
-        o.text(278, 154.1, d.get("patientAddress"), 8.5, 250, min_size=5.5)
-        o.text(58, 560.4, d.get("companionName"), 8.5, 198)
-        o.text(312, 560.4, d.get("companionAddress"), 8.5, 202, min_size=5.5)
-        o.text(352, 576.5, d.get("companionRelation"), 8.5, 164)
+        t(98, 138.1, d.get("patientName"), 11, 160, min_size=6)
+        t(362, 138.1, d.get("consentGuardianName"), 11, 165, min_size=6)
+        t(112, 154.1, d.get("consentAge"), 11, 52)
+        t(278, 154.1, d.get("patientAddress"), 10, 250, min_size=6)
+        t(58, 560.4, d.get("companionName"), 10, 198, min_size=6)
+        t(312, 560.4, d.get("companionAddress"), 10, 202, min_size=6)
+        t(352, 576.5, d.get("companionRelation"), 10, 164, min_size=6)
         wife_x = 285
     if rel in ("Wife", "Daughter"):
         o.text(wife_x, 124.2, f"({rel})", 6.2, 60, bold=True)
