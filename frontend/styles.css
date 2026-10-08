@@ -2194,3 +2194,8 @@ body.vault-staff #vaultUpload{display:none!important}
 @media(max-width:700px){.oc-row{grid-template-columns:1fr;gap:6px}}
 .oc-explain{margin:0 0 12px;font-size:13.5px;color:#46575f;line-height:1.5}.oc-s{font-size:13px}
 .oc-m b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.oc-m{min-width:0}.db-two .oc-row{grid-template-columns:150px 1fr}
+.co-table tbody tr.co-row{cursor:pointer}.co-table tbody tr.co-row:hover{background:#eaf5f4}
+
+/* Coordinator: the patient/sample window shows only the header and the status tracker */
+body.role-coordinator #patientDetail .progress-stepper ~ *{display:none!important}
+body.role-coordinator #patientDetail .case-run-badge,body.role-coordinator #patientDetail #copyPatientId{display:none!important}
