@@ -2199,7 +2199,7 @@ body.vault-staff #vaultUpload{display:none!important}
 
 /* Coordinator: the patient/sample window shows only the header and the status tracker */
 body.role-coordinator #patientDetail .progress-stepper ~ *{display:none!important}
-body.role-coordinator #patientDetail .case-run-badge,body.role-coordinator #patientDetail #copyPatientId{display:none!important}
+body.role-coordinator #patientDetail .case-run-badge,body.role-coordinator #patientDetail .case-sheet-badge,body.role-coordinator #patientDetail #copyPatientId{display:none!important}
 
 .co-filters{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin:0 0 12px}
 .co-list-bar .export-wrap{position:relative}
