@@ -1425,7 +1425,8 @@ button.vg-btn{line-height:1.2;font-family:"Inter";height:auto}
 .stats.stats-3col article.stat-card{background:#fff;transform:none}
 .stats.stats-3col article.stat-card::before{display:none}
 .filter-field:has(#samplesMonthFilter){display:none!important}
-.transfer-cards{grid-template-columns:repeat(4,minmax(0,1fr))!important}.transfer-cards .stat-card.stat-active{box-shadow:0 0 0 2px var(--c),0 6px 18px -10px rgba(20,60,50,.35)}
+.transfer-cards{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+@media(max-width:1300px){.transfer-cards{grid-template-columns:repeat(3,minmax(0,1fr))!important}}.transfer-cards .stat-card.stat-active{box-shadow:0 0 0 2px var(--c),0 6px 18px -10px rgba(20,60,50,.35)}
 @media(max-width:900px){.transfer-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 /* TRF: mode tabs, form picker, note and actions share one row */
 .trf-tabbar{position:sticky;top:0;z-index:3;flex-wrap:nowrap!important;gap:14px;padding:10px 14px;margin-bottom:12px;border:1px solid #d5ebe7;border-radius:12px;background:#eef8f6}
@@ -2235,3 +2236,14 @@ body.role-coordinator #patientDetail .case-run-badge,body.role-coordinator #pati
 .fu-os-miscarriage{background:#f1e1e0;color:#8e403c}
 .fu-os-livebirth{background:#d7ecdf;color:#1e6b43}
 .fu-os-outcomeunknown{background:#eef0f0;color:#6a777b}
+.co-bar:not(.co-list-bar){justify-content:flex-end}
+.co-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin:0 0 10px}
+@media(max-width:900px){.co-cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.co-card{display:flex;flex-direction:column;align-items:center;text-align:center;gap:2px;padding:20px 14px 16px;border-radius:18px;background:linear-gradient(180deg,#fff 0%,color-mix(in srgb,var(--c) 7%,#fff) 100%);border:2px solid color-mix(in srgb,var(--c) 38%,#fff);box-shadow:0 6px 16px -10px color-mix(in srgb,var(--c) 70%,transparent);transition:transform .15s,box-shadow .15s}
+.co-card:hover{transform:translateY(-2px);box-shadow:0 12px 22px -12px color-mix(in srgb,var(--c) 80%,transparent);border-color:var(--c)}
+.co-card .ico{width:52px;height:52px;margin-bottom:4px}
+.co-card strong{font-size:38px;line-height:1.1;color:var(--c);font-family:var(--serif,'Lora',Georgia,serif)}
+.co-card .co-card-label{font-size:12.5px;font-weight:800;letter-spacing:.06em;color:#102432}
+.co-card small{font-size:12px;color:#76868a}
+body.role-coordinator dialog.patient-dialog{height:fit-content!important;max-height:calc(100vh - 48px)!important}
+body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
