@@ -1,5 +1,5 @@
 """Manage dashboard logins.
-  python tools/manage_users.py add <username> [--role admin|team_lead|member|embryologist] [--password XXXX]
+  python tools/manage_users.py add <username> [--role admin|senior_executive|team_lead|member|embryologist] [--password XXXX]
   python tools/manage_users.py passwd <username> [--password XXXX]
   python tools/manage_users.py remove <username>
   python tools/manage_users.py list
@@ -15,7 +15,7 @@ from app.auth import hash_password
 ap = argparse.ArgumentParser()
 ap.add_argument("cmd", choices=["add", "passwd", "remove", "list", "setname"])
 ap.add_argument("username", nargs="?")
-ap.add_argument("--role", default="member", choices=["admin", "team_lead", "member", "embryologist"])
+ap.add_argument("--role", default="member", choices=["admin", "senior_executive", "team_lead", "member", "embryologist"])
 ap.add_argument("--password")
 ap.add_argument("--client", help="fertility centre name (or part of it) for a login that represents a centre, e.g. MAMTA")
 ap.add_argument("--embryologist", help="name in the sheets' Embryologist column (for embryologist logins)")

@@ -88,7 +88,12 @@ def log_activity(db: Session, action: str, detail: str = "", user: dict | None =
     db.add(ActivityLog(username=user.get("username") or "", role=user.get("role") or "", action=action, detail=detail))
     db.commit()
 
-FULL_ACCESS_ROLES = {"admin", "team_lead"}
+FULL_ACCESS_ROLES = {"admin", "senior_executive", "team_lead"}
+# Only these may edit an embryo's result/sheet cells and manage logins. Team leads see and upload
+# everything but cannot change results.
+RESULT_EDIT_ROLES = {"admin", "senior_executive"}
+USER_ADMIN_ROLES = {"admin", "senior_executive"}
+ALL_ROLES = ["admin", "senior_executive", "team_lead", "member", "embryologist"]
 # Role -> (method, path regex) pairs it may call. admin and team_lead may call everything;
 # a role not listed here can only sign in/out and ask who it is.
 _ROLE_RULES = {
@@ -104,8 +109,10 @@ _ROLE_RULES = {
 _ALWAYS_OK = {("GET", "/api/whoami"), ("POST", "/api/logout")}
 
 def role_allows(role: str, method: str, path: str) -> bool:
-    if role in FULL_ACCESS_ROLES or (method, path) in _ALWAYS_OK:
+    if (method, path) in _ALWAYS_OK:
         return True
+    if role in FULL_ACCESS_ROLES:
+        return role in RESULT_EDIT_ROLES or not (method in ("POST", "DELETE") and path == "/api/cell-edits")
     return any(m == method and re.fullmatch(rx, path) for m, rx in _ROLE_RULES.get(role, []))
 
 @app.middleware("http")
@@ -123,6 +130,10 @@ async def identify_user(request: Request, call_next):
     if settings.builtin_login:
         # Own login: identity comes only from the signed session cookie; the X-Auth headers are ignored.
         sess = auth.read_token(request.cookies.get(auth.COOKIE, ""))
+        if sess:  # the role is re-read on every request so a role change or removal applies at once
+            with SessionLocal() as _db:
+                _u = _db.query(User.role).filter(User.username == sess["username"]).first()
+            sess = {"username": sess["username"], "role": _u[0]} if _u else None
         request.state.user = sess or {}
         if not sess and path not in ("/login", "/api/login", "/api/health") and not path.startswith("/static/login"):
             if path.startswith("/api/"):
@@ -436,6 +447,7 @@ def get_edits_sheet():
 
 @app.post("/api/cell-edits")
 def post_cell_edit(payload: CellEditIn, request: Request, db: Session = Depends(get_db)):
+    _require_result_editor(request)
     user = request.state.user or {}
     try:
         entry = cell_edits.save_edit(
@@ -457,6 +469,7 @@ def post_cell_edit(payload: CellEditIn, request: Request, db: Session = Depends(
 
 @app.delete("/api/cell-edits")
 def remove_cell_edit(sampleId: str, column: str, embryo: str = "", request: Request = None, db: Session = Depends(get_db)):
+    _require_result_editor(request)
     ok = cell_edits.delete_edit(sampleId, embryo, column)
     edits_sheet.push_revert(sampleId, embryo, column)
     if ok:
@@ -465,8 +478,12 @@ def remove_cell_edit(sampleId: str, column: str, embryo: str = "", request: Requ
     return {"ok": ok}
 
 def _require_admin(request: Request):
-    if (request.state.user or {}).get("role") != "admin":
-        raise HTTPException(403, "Only the admin can reset logs")
+    if (request.state.user or {}).get("role") not in USER_ADMIN_ROLES:
+        raise HTTPException(403, "Only an admin or senior executive can reset logs")
+
+def _require_result_editor(request: Request):
+    if (request.state.user or {}).get("role") not in RESULT_EDIT_ROLES:
+        raise HTTPException(403, "Only an admin or senior executive can edit results")
 
 @app.delete("/api/upload-log")
 def reset_upload_log(request: Request, db: Session = Depends(get_db)):
@@ -1174,6 +1191,87 @@ def list_followups(request: Request, db: Session = Depends(get_db)):
         hist.setdefault(h.case_key, {}).setdefault(h.embryo_label, []).append(_hist_out(h))
     rows = [f for f in db.query(Followup).order_by(Followup.updated_at.desc()).all() if _embryologist_sees(db, user, f)]
     return {"statuses": list(OUTCOME_STATUSES), "items": [_fu_out(f, outs.get(f.case_key, []), hist.get(f.case_key)) for f in rows]}
+
+# --- User management (admin / senior executive) ---
+
+def _require_user_admin(request: Request):
+    if (request.state.user or {}).get("role") not in USER_ADMIN_ROLES:
+        raise HTTPException(403, "Only an admin or senior executive can manage users")
+
+def _user_row(u: User):
+    return {"username": u.username, "role": u.role, "name": u.embryologist_name or "", "client": u.client_name or ""}
+
+def _check_role(role: str) -> str:
+    role = str(role or "").strip()
+    if role not in ALL_ROLES:
+        raise HTTPException(400, "Role must be one of: " + ", ".join(ALL_ROLES))
+    return role
+
+def _staff_count(db: Session, excluding: str = "") -> int:
+    return db.query(User).filter(User.role.in_(list(USER_ADMIN_ROLES)), User.username != excluding).count()
+
+@app.get("/api/users")
+def list_users(request: Request, db: Session = Depends(get_db)):
+    _require_user_admin(request)
+    return {"roles": ALL_ROLES, "users": [_user_row(u) for u in db.query(User).order_by(User.username).all()]}
+
+@app.post("/api/users")
+def create_user(payload: dict, request: Request, db: Session = Depends(get_db)):
+    _require_user_admin(request)
+    name = str(payload.get("username", "")).strip().lower()
+    password = str(payload.get("password", ""))
+    if not re.fullmatch(r"[a-z0-9._@-]{2,80}", name):
+        raise HTTPException(400, "Username: 2-80 letters, digits or . _ @ -")
+    if len(password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters")
+    if db.query(User).filter(User.username == name).first():
+        raise HTTPException(409, "That username already exists")
+    role = _check_role(payload.get("role"))
+    u = User(username=name, password_hash=auth.hash_password(password), role=role,
+             embryologist_name=str(payload.get("name", "")).strip()[:120] or None,
+             client_name=str(payload.get("client", "")).strip()[:120] or None)
+    db.add(u); db.commit()
+    log_activity(db, "user_manage", f"Added user {name} as {role}", request=request)
+    return _user_row(u)
+
+@app.patch("/api/users/{username}")
+def update_user(username: str, payload: dict, request: Request, db: Session = Depends(get_db)):
+    _require_user_admin(request)
+    u = db.query(User).filter(User.username == username.strip().lower()).first()
+    if not u:
+        raise HTTPException(404, "No such user")
+    notes = []
+    if "role" in payload and payload["role"] != u.role:
+        role = _check_role(payload["role"])
+        if u.role in USER_ADMIN_ROLES and role not in USER_ADMIN_ROLES and _staff_count(db, u.username) == 0:
+            raise HTTPException(400, "At least one admin or senior executive must remain")
+        notes.append(f"role {u.role} → {role}"); u.role = role
+    if payload.get("password"):
+        if len(str(payload["password"])) < 6:
+            raise HTTPException(400, "Password must be at least 6 characters")
+        u.password_hash = auth.hash_password(str(payload["password"])); notes.append("password reset")
+    if "name" in payload:
+        u.embryologist_name = str(payload["name"]).strip()[:120] or None
+    if "client" in payload:
+        u.client_name = str(payload["client"]).strip()[:120] or None
+    db.commit()
+    log_activity(db, "user_manage", f"Changed user {u.username}: " + (", ".join(notes) or "details"), request=request)
+    return _user_row(u)
+
+@app.delete("/api/users/{username}")
+def delete_user(username: str, request: Request, db: Session = Depends(get_db)):
+    _require_user_admin(request)
+    name = username.strip().lower()
+    if name == (request.state.user or {}).get("username"):
+        raise HTTPException(400, "You cannot remove your own login")
+    u = db.query(User).filter(User.username == name).first()
+    if not u:
+        raise HTTPException(404, "No such user")
+    if u.role in USER_ADMIN_ROLES and _staff_count(db, name) == 0:
+        raise HTTPException(400, "At least one admin or senior executive must remain")
+    db.delete(u); db.commit()
+    log_activity(db, "user_manage", f"Removed user {name}", request=request)
+    return {"ok": True}
 
 @app.get("/api/embryologist-links")
 def embryologist_links(request: Request, db: Session = Depends(get_db)):

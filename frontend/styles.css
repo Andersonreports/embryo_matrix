@@ -2077,3 +2077,12 @@ body.vault-staff #vaultUpload{display:none!important}
 /* Top-bar Back: same look as the run page's Back */
 .top-back{gap:7px!important;height:auto!important;border:1px solid var(--line)!important;background:#fff!important;color:#0b5660!important;border-radius:999px!important;padding:7px 14px 7px 11px!important;font:600 13px "Inter"!important;box-shadow:var(--shadow)!important}
 .top-back svg{flex:0 0 auto}.top-back span{display:none}
+
+.users-admin .activity-log-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.users-form{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;padding:12px;border:1px solid var(--line,#dde5e2);border-radius:12px}
+.users-form.hidden{display:none}
+.users-form input,.users-form select{padding:8px 10px;border:1px solid var(--line,#cfd9d5);border-radius:8px;font:inherit;min-width:160px}
+.users-table-wrap{overflow-x:auto}
+.users-table{width:100%;border-collapse:collapse}
+.users-table th,.users-table td{padding:10px 12px;border-bottom:1px solid var(--line,#e3ebe8);text-align:left;vertical-align:middle}
+.users-note{margin-top:14px;font-size:13px;line-height:1.7;color:#5b6b66}
