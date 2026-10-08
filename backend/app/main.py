@@ -801,11 +801,14 @@ async def submit_trf(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(400, "Invalid form data")
     data = _clean_trf(raw if isinstance(raw, dict) else {})
     missing = [label for key, label in (("hospital", "Hospital / IVF centre"), ("referringDoctor", "Referring doctor"),
-               ("phone", "Phone"), ("patientName", "Patient name"), ("biopsyDate", "Date of biopsy")) if not data[key]]
+               ("phone", "Phone"), ("email", "Email"), ("patientName", "Patient name"), ("biopsyDate", "Date of biopsy")) if not data[key]]
     if not data["tests"]:
         missing.append("Test requested")
     if not data["embryos"]:
         missing.append("At least one embryo in the biopsy worksheet")
+    if data["email"] and (not mailer.clean_addresses(data["email"]) or any(
+            x and not mailer.clean_addresses(x) for x in re.split(r"[,;\s]+", data["email"]))):
+        raise HTTPException(422, "Please enter a valid email address")
     if data["aadhaar"] and len(data["aadhaar"]) != 12:
         raise HTTPException(422, "Aadhaar number must be 12 digits")
     if missing:

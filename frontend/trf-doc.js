@@ -18,7 +18,7 @@ const TRF_TEST_LABELS_M={
 };
 const trfLabelsFor=type=>type==='PGT-M'?TRF_TEST_LABELS_M:TRF_TEST_LABELS;
 // Required to submit (marked * on the form); the server checks the same list.
-const TRF_REQUIRED={hospital:'Hospital / IVF centre',referringDoctor:'Referring doctor',phone:'Phone',patientName:'Patient name',biopsyDate:'Date of biopsy'};
+const TRF_REQUIRED={hospital:'Hospital / IVF centre',referringDoctor:'Referring doctor',phone:'Phone',email:'Email (approval status is emailed here)',patientName:'Patient name',biopsyDate:'Date of biopsy'};
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // "2026-09-25" -> "25 / 09 / 2026", the template's date style.
 const fmtDate=v=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v||''));return m?`${m[3]} / ${m[2]} / ${m[1]}`:esc(v)};
@@ -205,6 +205,7 @@ function trfWire(root,onChange=()=>{}){
 }
 function trfProblems(d){const p=Object.entries(TRF_REQUIRED).filter(([k])=>!d[k]).map(([,l])=>l);
  if(!d.tests.length)p.push('Test requested');if(!d.embryos.some(e=>e.label))p.push('At least one embryo label in the biopsy worksheet');
+ if(d.email&&String(d.email).split(/[,;\s]+/).filter(Boolean).some(x=>!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)))p.push('Email (enter a valid email address)');
  const a=String(d.aadhaar||'').replace(/\D/g,'');if(a&&a.length!==12)p.push('Aadhaar number (must be 12 digits)');
  if(!d.followupConsent)p.push('Patient consent for outcome follow-up (Yes / No)');else if(d.followupConsent==='Yes'&&(!d.followupContact||!d.followupPhoneEmail))p.push('Clinic contact person and follow-up email / phone (needed when follow-up consent is Yes)');return p}
 // Opens the TRF in a new window laid out for A4 and brings up the print dialog (Save as PDF).
