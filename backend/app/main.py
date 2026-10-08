@@ -1,4 +1,5 @@
 import asyncio
+import html
 import json
 import re
 import secrets
@@ -18,7 +19,7 @@ from .placement import Placement, safe as _safe_name
 from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment, User, Followup, EmbryoOutcome, OutcomeHistory
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn
 from .sheet_sync import parse_sources, sync_sources
-from . import auth, cell_edits, edits_sheet, storage, trf_fill, trf_pdf
+from . import auth, cell_edits, edits_sheet, mailer, storage, trf_fill, trf_pdf
 from sqlalchemy import inspect, text
 import mimetypes
 
@@ -1001,6 +1002,60 @@ def download_trf_pdf(trf_id: int, request: Request, db: Session = Depends(get_db
     return Response(content=storage.read_decompressed(full), media_type="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{safe}.pdf"'})
 
+def _trf_email_text(t: TrfSubmission, status: str):
+    """Plain text + HTML bodies of the approved / not approved notice to the client."""
+    d = t.data or {}
+    who = d.get("referringDoctor") or t.clinic or "Sir/Madam"
+    when = t.submitted_at.strftime("%d %b %Y")
+    note = (t.status_note or "").strip()
+    if status == "Approved":
+        head = f"Your Test Requisition Form {t.ref} has been approved."
+        lines = [f"The TRF for patient {t.patient_name} (submitted {when}) has been approved by Anderson Diagnostics & Labs."]
+        if note:
+            lines.append(f"Remark: {note}")
+        if not t.signed_file_path:
+            lines.append("We have not yet received the patient-signed copy of this TRF. Please print it, have the patient sign it, and upload the scanned copy.")
+    else:
+        head = f"Your Test Requisition Form {t.ref} could not be approved."
+        lines = [f"The TRF for patient {t.patient_name} (submitted {when}) could not be approved by Anderson Diagnostics & Labs.",
+                 f"Reason: {note or 'not specified'}", "Please correct the form and submit it again."]
+    text = f"Dear {who},\n\n" + "\n\n".join(lines) + "\n\nRegards,\nAnderson Diagnostics & Labs\n"
+    e = html.escape
+    body = "".join(f"<p>{e(l)}</p>" for l in lines)
+    colour = "#0a7180" if status == "Approved" else "#b83a2e"
+    page = (f'<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1b2a33;max-width:560px">'
+            f'<p>Dear {e(who)},</p><h3 style="margin:16px 0;color:{colour}">{e(head)}</h3>{body}'
+            f'<p style="margin-top:24px">Regards,<br>Anderson Diagnostics &amp; Labs</p></div>')
+    subject = f"TRF {'approved' if status == 'Approved' else 'not approved'} - {t.ref} ({t.patient_name})"
+    return subject, text, page
+
+def _notify_trf_client(t: TrfSubmission, status: str) -> str:
+    """Emails the clinic / embryologist addresses on the TRF about the decision. Returns what happened:
+    'sending' (queued), 'no-address' or 'not-configured'. The send itself runs in the background."""
+    d = t.data or {}
+    to = mailer.clean_addresses(d.get("email"), d.get("embryologistEmail"))
+    if not to:
+        return "no-address"
+    if not mailer.configured():
+        return "not-configured"
+    subject, text, page = _trf_email_text(t, status)
+    ref, patient = t.ref, t.patient_name
+
+    def work():
+        db = SessionLocal()
+        try:
+            try:
+                mailer.send(to, subject, text, page)
+                log_activity(db, "trf_email", f"{ref} · {patient} · {status} email sent to {', '.join(to)}", user={"username": "System", "role": ""})
+            except Exception as exc:
+                db.rollback()
+                log_activity(db, "trf_email", f"{ref} · {patient} · {status} email FAILED: {str(exc)[:200]}", user={"username": "System", "role": ""})
+        finally:
+            db.close()
+    import threading
+    threading.Thread(target=work, daemon=True).start()
+    return "sending"
+
 @app.patch("/api/trf/{trf_id}")
 def update_trf_status(trf_id: int, payload: KVValue, request: Request, db: Session = Depends(get_db)):
     user = _require_lab_user(request)
@@ -1015,10 +1070,13 @@ def update_trf_status(trf_id: int, payload: KVValue, request: Request, db: Sessi
     note = str(payload.value.get("note") or "").strip()[:1000]
     if status == "Rejected" and not note:
         raise HTTPException(422, "Please give a reason for rejecting this TRF")
+    changed = t.status != status
     t.status, t.status_by, t.status_at, t.status_note = status, user.get("username") or "", datetime.utcnow(), note
     db.commit()
     log_activity(db, "trf_status", f"{t.ref} · {t.patient_name} → {status}" + (f" · {note}" if note else ""), request=request)
-    return _trf_summary(t)
+    out = _trf_summary(t)
+    out["emailStatus"] = _notify_trf_client(t, status) if changed and status in ("Approved", "Rejected") else ""
+    return out
 
 @app.patch("/api/trf/{trf_id}/case")
 def link_trf_case(trf_id: int, payload: KVValue, request: Request, db: Session = Depends(get_db)):

@@ -33,6 +33,14 @@ class Settings(BaseSettings):
     builtin_login: bool = False
     # Where the "Edits sheet" button in the registry opens. Blank = the sheet the Apps Script created. Kept in .env (not in git: the sheet is link-readable).
     edits_sheet_url: str = ""
+    # Outgoing email (TRF approved / not approved notices to the client). Blank SMTP_HOST = email off.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_security: str = "starttls"  # starttls | ssl | none
+    smtp_from: str = ""
+    smtp_from_name: str = "Anderson Diagnostics & Labs"
     model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", extra="ignore")
 
 settings = Settings()

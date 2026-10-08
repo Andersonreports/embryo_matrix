@@ -23,3 +23,17 @@ Browser -> HTTPS reverse proxy -> FastAPI application -> PostgreSQL database
 - database dumps containing patient data
 - TLS private keys
 - passwords/API keys
+
+## Email notifications (TRF approved / not approved)
+Set these in `backend/.env` to email the clinic and embryologist addresses typed on a TRF when it is approved or rejected.
+Leave `SMTP_HOST` blank to turn email off (the app then tells the approver that nobody was emailed).
+
+    SMTP_HOST=smtp.example.com
+    SMTP_PORT=587
+    SMTP_SECURITY=starttls     # starttls | ssl | none
+    SMTP_USER=...
+    SMTP_PASSWORD=...
+    SMTP_FROM=trf@yourdomain.in
+    SMTP_FROM_NAME=Anderson Diagnostics & Labs
+
+Every send (or failure) is recorded in the Activity log as "TRF email to client".
