@@ -973,6 +973,9 @@ async def upload_signed_trf(trf_id: int, request: Request, file: UploadFile = Fi
         if UPLOADS.resolve() in p.parents and p.is_file():
             p.unlink()
     log_activity(db, "trf_signed", f"{t.ref} · {t.patient_name} · signed copy uploaded", request=request)
+    if not old:  # first upload only, not a replacement
+        subject, text, page = _trf_simple_email(t, "received")
+        _send_trf_mail(t, "signed-copy received", subject, text, page)
     return _trf_summary(t)
 
 @app.get("/api/trf/{trf_id}/signed")
@@ -1032,16 +1035,15 @@ def _trf_email_text(t: TrfSubmission, status: str):
     subject = f"TRF {'approved' if status == 'Approved' else 'not approved'} - {t.ref} ({t.patient_name})"
     return subject, text, page
 
-def _notify_trf_client(t: TrfSubmission, status: str) -> str:
-    """Emails the clinic / embryologist addresses on the TRF about the decision. Returns what happened:
-    'sending' (queued), 'no-address' or 'not-configured'. The send itself runs in the background."""
+def _send_trf_mail(t: TrfSubmission, label: str, subject: str, text: str, page: str) -> str:
+    """Emails the clinic / embryologist addresses typed on the TRF. Returns 'sending' (queued in the background),
+    'no-address' or 'not-configured'; every result is written to the activity log."""
     d = t.data or {}
     to = mailer.clean_addresses(d.get("email"), d.get("embryologistEmail"))
     if not to:
         return "no-address"
     if not mailer.configured():
         return "not-configured"
-    subject, text, page = _trf_email_text(t, status)
     ref, patient = t.ref, t.patient_name
 
     def work():
@@ -1049,15 +1051,70 @@ def _notify_trf_client(t: TrfSubmission, status: str) -> str:
         try:
             try:
                 mailer.send(to, subject, text, page)
-                log_activity(db, "trf_email", f"{ref} · {patient} · {status} email sent to {', '.join(to)}", user={"username": "System", "role": ""})
+                log_activity(db, "trf_email", f"{ref} · {patient} · {label} email sent to {', '.join(to)}", user={"username": "System", "role": ""})
             except Exception as exc:
                 db.rollback()
-                log_activity(db, "trf_email", f"{ref} · {patient} · {status} email FAILED: {str(exc)[:200]}", user={"username": "System", "role": ""})
+                log_activity(db, "trf_email", f"{ref} · {patient} · {label} email FAILED: {str(exc)[:200]}", user={"username": "System", "role": ""})
         finally:
             db.close()
     import threading
     threading.Thread(target=work, daemon=True).start()
     return "sending"
+
+def _notify_trf_client(t: TrfSubmission, status: str) -> str:
+    subject, text, page = _trf_email_text(t, status)
+    return _send_trf_mail(t, status, subject, text, page)
+
+def _trf_simple_email(t: TrfSubmission, kind: str):
+    """'received' (signed copy arrived) and 'reminder' (24 hours passed without it) emails."""
+    d = t.data or {}
+    who = d.get("referringDoctor") or t.clinic or "Sir/Madam"
+    if kind == "received":
+        head, lines = "Signed copy received", [f"We have received the patient-signed copy of TRF {t.ref} for patient {t.patient_name}. Thank you."]
+        subject = f"Signed TRF received - {t.ref} ({t.patient_name})"
+    else:
+        head = "Signed copy still needed"
+        lines = [f"We have not yet received the patient-signed copy of TRF {t.ref} for patient {t.patient_name} (submitted {t.submitted_at.strftime('%d %b %Y')}).",
+                 "Please print the TRF, have the patient sign it, and upload the scanned copy as soon as possible."]
+        subject = f"Signed copy needed - {t.ref} ({t.patient_name})"
+    text = f"Dear {who},\n\n" + "\n\n".join(lines) + "\n\nRegards,\nAnderson Diagnostics & Labs\n"
+    e = html.escape
+    colour = "#0a7180" if kind == "received" else "#b36b00"
+    page = (f'<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1b2a33;max-width:560px">'
+            f'<p>Dear {e(who)},</p><h3 style="margin:16px 0;color:{colour}">{e(head)}</h3>{"".join(f"<p>{e(l)}</p>" for l in lines)}'
+            f'<p style="margin-top:24px">Regards,<br>Anderson Diagnostics &amp; Labs</p></div>')
+    return subject, text, page
+
+def _signed_reminder_pass():
+    """Once per TRF: 24 hours after submission with no signed copy, email the clinic a reminder. Only forms submitted
+    through the signed-copy flow (a recorded submitter) in the last 14 days are considered, so old forms are never mailed."""
+    if not mailer.configured():
+        return
+    db = SessionLocal()
+    try:
+        now = datetime.utcnow()
+        rows = db.query(TrfSubmission).filter(
+            TrfSubmission.signed_file_path.is_(None), TrfSubmission.signed_reminder_at.is_(None), TrfSubmission.status != "Rejected",
+            TrfSubmission.submitted_by != "", TrfSubmission.submitted_at < now - SIGNED_COPY_DEADLINE,
+            TrfSubmission.submitted_at > now - timedelta(days=14)).all()
+        for t in rows:
+            t.signed_reminder_at = now
+            db.commit()
+            subject, text, page = _trf_simple_email(t, "reminder")
+            _send_trf_mail(t, "signed-copy reminder", subject, text, page)
+    except Exception as exc:
+        db.rollback()
+        print(f"Signed-copy reminder pass failed: {exc}")
+    finally:
+        db.close()
+
+@app.on_event("startup")
+async def _startup_signed_reminders():
+    async def loop():
+        while True:
+            await asyncio.to_thread(_signed_reminder_pass)
+            await asyncio.sleep(1800)
+    _background_tasks.add(asyncio.create_task(loop()))
 
 @app.patch("/api/trf/{trf_id}")
 def update_trf_status(trf_id: int, payload: KVValue, request: Request, db: Session = Depends(get_db)):

@@ -124,6 +124,7 @@ class TrfSubmission(Base):
     signed_file_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     signed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     signed_by: Mapped[str] = mapped_column(String(120), default="")
+    signed_reminder_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # when the 24-hour reminder email went out
 
 class ActivityLog(Base):
     """Who did what, when. Written server-side from the login token."""

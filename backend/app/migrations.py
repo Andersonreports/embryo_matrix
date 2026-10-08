@@ -20,6 +20,7 @@ def _migrate_added_columns():
         "signed_file_path": "VARCHAR(500)",
         "signed_at": "DATETIME",
         "signed_by": "VARCHAR(120) DEFAULT ''",
+        "signed_reminder_at": "DATETIME",
     }
     with engine.begin() as conn:
         for col, coltype in add.items():

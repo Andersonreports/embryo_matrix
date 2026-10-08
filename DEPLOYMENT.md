@@ -37,3 +37,6 @@ Leave `SMTP_HOST` blank to turn email off (the app then tells the approver that 
     SMTP_FROM_NAME=Anderson Diagnostics & Labs
 
 Every send (or failure) is recorded in the Activity log as "TRF email to client".
+
+Emails sent automatically once SMTP is set: TRF approved / not approved, "signed copy received" (first upload only), and a single
+"signed copy still needed" reminder 24 hours after submission (checked every 30 minutes; only forms from the last 14 days).
