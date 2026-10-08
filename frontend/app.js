@@ -525,7 +525,7 @@ function testIconFor(name){const t=String(name||'').toUpperCase().replace(/[^A-Z
 function canonicalTestName(raw){const t=String(raw||'').trim();return t?TEST_CANON_BY_KEY.get(testNormKey(t))||t:''}
 function testNameOf(e){return canonicalTestName(field(e,['test','test name']))||e._case.test}
 function mergeTestNameVariants(counts){const groups=new Map;for(const[name,count]of Object.entries(counts)){const normKey=testNormKey(name),key=TEST_NAME_ALIAS_KEY.get(normKey)||normKey;const g=groups.get(key);if(g){g.total+=count;if(count>g.bestCount){g.bestCount=count;g.canonical=name}}else groups.set(key,{canonical:name,bestCount:count,total:count})}const merged={};for(const g of groups.values())merged[g.canonical]=g.total;return merged}
-function renderTestChart(allRows){const rows=monthFiltered(allRows,$('#testMonthFilter')?.value||'');lastTestCounts=countBy(rows,testNameOf);renderTestBarList('#testChart',lastTestCounts,rows.length)}
+function renderTestChart(allRows){const rows=monthFiltered(allRows,$('#testMonthFilter')?.value||'');lastTestCounts=countBy(rows,testNameOf);if($('#testChart'))renderTestBarList('#testChart',lastTestCounts,rows.length)}
 // Test-wise overview: one horizontal bar per standard test name, with count and share; click opens those samples.
 function renderTestBarList(id,counts,total){
  const el=$(id);if(!el)return;
