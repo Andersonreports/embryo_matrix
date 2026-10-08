@@ -34,12 +34,8 @@ function taskStatus(f){
  if(f.state==='completed')return'completed';
  const om=outcomeMap(f),vals=(f.embryos||[]).map(e=>om[norm(e.label)]?.status||'');
  if(vals.some(v=>TERMINAL.includes(v))&&!vals.some(v=>ACTIVE.includes(v)))return'completed';
- if(f.state==='awaiting')return'awaiting';
- const due=f.dueDate||'';
- if(due&&due<today())return'overdue';
- if(!due||due<=addDays(today(),14))return'due';
- return'scheduled'}
-const chip=s=>`<span class="fu-chip fu-${s}">${STATUS_LABEL[s]}</span>`;
+ return'open'}
+const chip=s=>STATUS_LABEL[s]&&s!=='open'?`<span class="fu-chip fu-${s}">${STATUS_LABEL[s]}</span>`:'';
 const resChip=r=>r?`<span class="fu-res fu-res-${norm(r).toLowerCase()}">${esc(r)}</span>`:'<span class="fu-res fu-res-none">—</span>';
 const statusChip=s=>s?`<span class="fu-os fu-os-${norm(s).toLowerCase()}">${esc(s)}</span>`:'<span class="fu-os fu-os-none">Not recorded</span>';
 const ageGroup=a=>a==null?'Unknown':a<30?'Under 30':a<=34?'30–34':a<=37?'35–37':a<=40?'38–40':'41 and over';
@@ -98,13 +94,11 @@ function openRecordDialog(f,after,focusLabel){
    <label class="fu-f"><span>Follow-up email / phone</span><input id="fuDetail" value="${esc(f.contactDetail)}"></label>
    <label class="fu-f"><span>Expected transfer period</span><select id="fuPeriod"><option value="">—</option>${PERIODS.map(p=>`<option${f.expectedPeriod===p?' selected':''}>${p}</option>`).join('')}</select></label>
    <label class="fu-f"><span>Patient age</span><input id="fuAge" type="number" min="10" max="80" value="${f.age??''}"></label>
-   <label class="fu-f"><span>Next follow-up due</span><input id="fuDue" type="date" value="${esc(f.dueDate||'')}"></label>
    <label class="fu-f"><span>Follow-up consent</span><select id="fuConsent"><option${f.consent!=='No'?' selected':''}>Yes</option><option${f.consent==='No'?' selected':''}>No</option></select></label>
   </div>
   <label class="fu-f fu-wide"><span>Follow-up note (calls, clinic replies)</span><textarea id="fuNote" rows="2">${esc(f.note)}</textarea></label></section>
   <div class="fu-actions">
    <button type="button" class="primary" data-act="save">Save outcomes</button>
-   <button type="button" class="secondary" data-act="awaiting">Awaiting clinic update</button>
    <button type="button" class="secondary" data-act="completed">Mark completed</button>
    <button type="button" class="secondary" data-act="not_applicable">Not applicable</button>
    ${f.state&&!isNew?'<button type="button" class="secondary" data-act="reopen">Reopen</button>':''}
@@ -112,14 +106,14 @@ function openRecordDialog(f,after,focusLabel){
  </div>`;
  const ed=d.querySelector('#fuEditor'),refreshSum=()=>{d.querySelector('#fuSum').innerHTML=sumCards(readEditor(ed))};
  refreshSum();wireEditor(ed,refreshSum,async card=>{
-  const meta=isNew?{patient:f.patient,clinic:f.clinic,region:f.region,embryologist:f.embryologist,test:f.test,month:f.month,embryos:f.embryos,consent:'Yes',dueDate:f.dueDate}:{};
+  const meta=isNew?{patient:f.patient,clinic:f.clinic,region:f.region,embryologist:f.embryologist,test:f.test,month:f.month,embryos:f.embryos,consent:'Yes'}:{};
   try{const j=await postSave({caseKey:f.caseKey,followup:meta,outcomes:[readCard(card)]});f._new=false;const om2=outcomeMap(j),o2=om2[norm(card.dataset.label)]||{};
    card.querySelector('.oe-hist').innerHTML=histHtml(o2.history);card.querySelector('.oe-hist-btn b').textContent=(o2.history||[]).length;
    const sv=card.querySelector('.oe-saved');sv.textContent='Saved ✓';setTimeout(()=>{sv.textContent=''},2500);refreshSum();if(after)after(j,true)}catch(err){toast(err.message||'Could not save')}},
   async(label,val)=>{try{const j=await postSave({caseKey:f.caseKey,share:{[label]:val}});(f.embryos||[]).forEach(x=>{if(norm(x.label)===norm(label))x.share=val});toast(val==='Yes'?`${label} shared with Anderson`:`${label} not shared`);if(after)after(j,true)}catch(err){toast(err.message||'Could not save')}});
  const sa=d.querySelector('#fuShareAll');if(sa)sa.onclick=async()=>{const share={};(f.embryos||[]).forEach(x=>{share[x.label]='Yes'});try{const j=await postSave({caseKey:f.caseKey,share});(f.embryos||[]).forEach(x=>{x.share='Yes'});d.querySelectorAll('.oe-share').forEach(l=>setShareUi(l,'Yes'));toast('All embryos shared with Anderson');if(after)after(j,true)}catch(err){toast(err.message||'Could not save')}};
  const collect=state=>{
-  const meta={contactName:d.querySelector('#fuContact').value,contactDetail:d.querySelector('#fuDetail').value,expectedPeriod:d.querySelector('#fuPeriod').value,age:d.querySelector('#fuAge').value,dueDate:d.querySelector('#fuDue').value,consent:d.querySelector('#fuConsent').value,note:d.querySelector('#fuNote').value};
+  const meta={contactName:d.querySelector('#fuContact').value,contactDetail:d.querySelector('#fuDetail').value,expectedPeriod:d.querySelector('#fuPeriod').value,age:d.querySelector('#fuAge').value,consent:d.querySelector('#fuConsent').value,note:d.querySelector('#fuNote').value};
   if(isNew)Object.assign(meta,{patient:f.patient,clinic:f.clinic,region:f.region,embryologist:f.embryologist,test:f.test,month:f.month,embryos:f.embryos});
   if(state!==undefined)meta.state=state;
   return{caseKey:f.caseKey,followup:meta,outcomes:readEditor(ed)}};
@@ -145,7 +139,7 @@ const TILES=[
  ['pending','Still to record','navigation__internal-transfer','No outcome entered yet','blue'],
  ['completed','Completed','stages-results__normal','Final outcome known','teal'],
  ['na','No consent','stages-results__na-result','Not followed up','grey']];
-let clQ='',clAll=false,filtersOpen=false,dashHome=false,taskSort='due',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
+let clQ='',clAll=false,filtersOpen=false,dashHome=false,taskSort='patient',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
 
 // ---------------- Tasks (card queue) ----------------
 function tasksHtml(){
@@ -160,16 +154,15 @@ function tasksHtml(){
  if(!TILES.some(t=>t[0]===taskFilter))taskFilter='all';
  let list=items.filter(keep(taskFilter));
  if(q)list=list.filter(x=>`${x.f.patient} ${x.f.clinic} ${x.f.test} ${x.f.trfRef||''} ${x.f.contactName}`.toLowerCase().includes(q));
- const cmp={due:(a,b)=>(a.f.dueDate||'9999').localeCompare(b.f.dueDate||'9999'),patient:(a,b)=>a.f.patient.localeCompare(b.f.patient),clinic:(a,b)=>a.f.clinic.localeCompare(b.f.clinic)}[taskSort];
+ const cmp={patient:(a,b)=>a.f.patient.localeCompare(b.f.patient),clinic:(a,b)=>a.f.clinic.localeCompare(b.f.clinic)}[taskSort];
  list=[...list].sort(cmp);
- const attention=items.filter(x=>x.s==='due'||x.s==='overdue').length;
+ const attention=items.filter(x=>x.s==='open'&&recN(x)<emN(x)).length;
  const tiles=TILES.map(([k,l,ic,help,tone])=>`<button type="button" class="st-tile st-${tone}${k===taskFilter?' on':''}" data-k="${k}">${IC(ic)}<span class="st-n">${cnt(k)}</span><span class="st-l">${l}</span><small>${help}</small></button>`).join('');
- const card=({f,s})=>{const om=outcomeMap(f),total=(f.embryos||[]).length,rec=(f.embryos||[]).filter(e=>om[norm(e.label)]?.status).length,rel=relDue(f.dueDate),detail=f.contactDetail||'';
+ const card=({f,s})=>{const om=outcomeMap(f),total=(f.embryos||[]).length,rec=(f.embryos||[]).filter(e=>om[norm(e.label)]?.status).length,detail=f.contactDetail||'';
   const link=/@/.test(detail)?`<a href="mailto:${esc(detail)}">${esc(detail)}</a>`:/\d{6,}/.test(detail.replace(/\D/g,''))?`<a href="tel:${esc(detail.replace(/[^\d+]/g,''))}">${esc(detail)}</a>`:esc(detail);
   return `<article class="tk tk-${s}" data-key="${esc(f.caseKey)}" tabindex="0" role="button">
    <div class="tk-top"><div><h3>${esc(f.patient)||'Patient'}</h3><p>${esc(f.clinic)||'—'}${f.test?` · ${esc(f.test)}`:''}</p></div>${chip(s)}</div>
    <div class="tk-grid">
-    <div><small>Follow-up due</small><b class="${s==='overdue'?'late':''}">${fmtDate(f.dueDate)}</b><em class="${s==='overdue'?'late':''}">${esc(s==='completed'||s==='na'?'':rel)}</em></div>
     <div><small>Clinic contact</small><b>${esc(f.contactName)||'—'}</b><em>${link||''}</em></div>
    </div>
    <div class="tk-prog"><div class="tk-prog-bar"><i style="width:${total?rec/total*100:0}%"></i></div><span>${rec} of ${total} embryo${total===1?'':'s'} recorded</span></div>
@@ -177,25 +170,23 @@ function tasksHtml(){
   </article>`};
  const empty=FU.items.length?`<div class="tk-empty">${IC('stages-results__qc-pass')}<h3>Nothing here</h3><p>No tasks match this view.</p></div>`:`<div class="tk-empty">${IC('navigation__patient')}<h3>No follow-ups yet</h3><p>A task is created automatically when a TRF with follow-up consent is submitted, or when a team lead starts one from a patient page.</p></div>`;
  const embAll=items.flatMap(({f})=>{const om=outcomeMap(f);return(f.embryos||[]).map(e=>om[norm(e.label)]?.status?1:0)}),needN=embAll.filter(x=>!x).length;
- const hero=mine?``:`<div class="fu-hero"><div><h2>${attention?`${attention} patient${attention===1?'':'s'} need${attention===1?'s':''} a follow-up`:'You are all caught up'}</h2><p>Ask each clinic what happened to the embryos after transfer, then record it with <b>Record outcome</b>.</p></div>${isStaff()?'<div class="hero-btns"><button type="button" class="hero-btn" id="fuFromSheet">＋ Add patients from the sheet</button></div>':''}</div>`;
+ const hero=mine?``:`<div class="fu-hero"><div><h2>${attention?`${attention} patient${attention===1?'':'s'} with outcomes still to record`:'You are all caught up'}</h2><p>Ask each clinic what happened to the embryos after transfer, then record it with <b>Record outcome</b>.</p></div>${isStaff()?'<div class="hero-btns"><button type="button" class="hero-btn" id="fuFromSheet">＋ Add patients from the sheet</button></div>':''}</div>`;
  return `${hero}
  <div class="st-tiles">${tiles}</div>
- <div class="tk-bar"><div class="seg-toggle" id="fuView"><button type="button" class="${taskView==='patient'?'on':''}" data-v="patient">By patient</button><button type="button" class="${taskView==='embryo'?'on':''}" data-v="embryo">By embryo</button></div><div class="search-wrap fu-search"><span>⌕</span><input id="fuSearch" type="search" placeholder="Search patient, clinic or contact…" value="${esc(taskQuery)}"></div>${!mine&&embs.length>1?`<label class="tk-sort">Embryologist <select id="fuEmb"><option value="">All</option>${embs.map(n=>`<option${taskEmb===n?' selected':''}>${esc(n)}</option>`).join('')}</select></label>`:''}${taskView==='embryo'?`<label class="tk-sort"><input type="checkbox" id="fuNeeds"${onlyNeeds?' checked':''}> Only embryos needing details</label>`:''}<label class="tk-sort">Sort by <select id="fuSort"><option value="due"${taskSort==='due'?' selected':''}>Due date</option><option value="patient"${taskSort==='patient'?' selected':''}>Patient name</option><option value="clinic"${taskSort==='clinic'?' selected':''}>Clinic</option></select></label></div>
+ <div class="tk-bar"><div class="seg-toggle" id="fuView"><button type="button" class="${taskView==='patient'?'on':''}" data-v="patient">By patient</button><button type="button" class="${taskView==='embryo'?'on':''}" data-v="embryo">By embryo</button></div><div class="search-wrap fu-search"><span>⌕</span><input id="fuSearch" type="search" placeholder="Search patient, clinic or contact…" value="${esc(taskQuery)}"></div>${!mine&&embs.length>1?`<label class="tk-sort">Embryologist <select id="fuEmb"><option value="">All</option>${embs.map(n=>`<option${taskEmb===n?' selected':''}>${esc(n)}</option>`).join('')}</select></label>`:''}</div>
  ${taskView==='embryo'?embryoTable(list):`<div class="tk-list">${list.map(card).join('')||empty}</div>`}`}
 function embryoTable(list){
  const rows=[];list.forEach(({f,s})=>{const om=outcomeMap(f);(f.embryos||[]).forEach(e=>{const o=om[norm(e.label)]||{};rows.push({f,s,e,o})})});
  const shown=rows.filter(r=>(!onlyNeeds||!r.o.status)&&(taskFilter!=='recorded'||!!r.o.status)&&(taskFilter!=='pending'||(!r.o.status&&r.s!=='na')));
  const tchip=(t,k)=>{const v=(t||{})[k];if(!v||!v.where)return'<span class="fu-os fu-os-none">—</span>';return v.where==='Not done'?'<span class="fu-os fu-os-none">Not done</span>':`<span class="fu-os">${v.where==='Anderson'?'Anderson':esc(v.lab||'Other lab')}${v.result?' · '+esc(v.result):''}</span>`};
- return `<div class="fu-table-wrap fu-tasks"><table class="fu-table"><thead><tr><th>Patient</th><th>Embryo</th><th>PGT-A result</th><th>Outcome</th><th>TERA</th><th>NIPS</th><th>Task</th><th></th></tr></thead><tbody>${shown.map(({f,s,e,o})=>`<tr data-key="${esc(f.caseKey)}" data-emb="${esc(e.label)}"><td class="strong">${esc(f.patient)}<small>${esc(f.clinic)}</small></td><td class="strong">${esc(e.label)}</td><td>${resChip(e.result)}</td><td>${statusChip(o.status)}</td><td>${tchip(o.tests,'tera')}</td><td>${tchip(o.tests,'nips')}</td><td>${chip(s)}</td><td><button type="button" class="primary compact" data-fill="1">Record outcome</button></td></tr>`).join('')||'<tr><td colspan="8" class="chart-empty">No embryos to show.</td></tr>'}</tbody></table></div>`}
+ return `<div class="fu-table-wrap fu-tasks"><table class="fu-table"><thead><tr><th>Patient</th><th>Embryo</th><th>PGT-A result</th><th>Outcome</th><th>TERA</th><th>NIPS</th><th></th></tr></thead><tbody>${shown.map(({f,s,e,o})=>`<tr data-key="${esc(f.caseKey)}" data-emb="${esc(e.label)}"><td class="strong">${esc(f.patient)}<small>${esc(f.clinic)}</small></td><td class="strong">${esc(e.label)}</td><td>${resChip(e.result)}</td><td>${statusChip(o.status)}</td><td>${tchip(o.tests,'tera')}</td><td>${tchip(o.tests,'nips')}</td><td><button type="button" class="primary compact" data-fill="1">Record outcome</button></td></tr>`).join('')||'<tr><td colspan="7" class="chart-empty">No embryos to show.</td></tr>'}</tbody></table></div>`}
 
 function wireTasks(root,redraw){
  const tg=root.querySelector('#fuView');if(tg)tg.onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;taskView=b.dataset.v;viewChosen=true;redraw()};
  const ef=root.querySelector('#fuEmb');if(ef)ef.onchange=()=>{taskEmb=ef.value;redraw()};
- const nd=root.querySelector('#fuNeeds');if(nd)nd.onchange=()=>{onlyNeeds=nd.checked;redraw()};
  const fs=root.querySelector('#fuFromSheet');if(fs)fs.onclick=()=>openSheetImport(redraw);
  root.querySelector('.st-tiles').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;taskFilter=b.dataset.k;redraw()};
  const s=root.querySelector('#fuSearch');s.oninput=()=>{taskQuery=s.value;const pos=s.selectionStart;redraw();const n=root.querySelector('#fuSearch');n.focus();n.setSelectionRange(pos,pos)};
- root.querySelector('#fuSort').onchange=e=>{taskSort=e.target.value;redraw()};
  const open=el=>{const f=FU.items.find(x=>x.caseKey===el.dataset.key);if(f)openRecordDialog(f,()=>redraw())};
  const list=root.querySelector('.tk-list');
  if(list){list.onclick=e=>{if(e.target.closest('a'))return;const t=e.target.closest('.tk');if(t)open(t)};list.onkeydown=e=>{if(e.key==='Enter'){const t=e.target.closest('.tk');if(t)open(t)}}}
