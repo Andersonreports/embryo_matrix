@@ -1944,8 +1944,8 @@ function setupRunReportsView(){const sel=$('#rrMonth'),body=$('#rrBody');if(!sel
 
 
 // ---------------- User management (admin / senior executive) ----------------
-const ROLE_LABELS={admin:'Admin',senior_executive:'Senior executive',team_lead:'Team lead',member:'Member',embryologist:'Embryologist'};
-const ROLE_NOTES={admin:'Full access, edits results, manages users',senior_executive:'Same access as admin',team_lead:'Views all sheets, uploads results, images and protocols; cannot edit results',member:'Samples, PGT-M, cases and image vault only',embryologist:'Own follow-up tasks and TRFs'};
+const ROLE_LABELS={admin:'Admin',senior_executive:'Senior executive',team_lead:'Team lead',member:'Member',coordinator:'Coordinator',embryologist:'Embryologist'};
+const ROLE_NOTES={admin:'Full access, edits results, manages users',senior_executive:'Same access as admin',team_lead:'Views all sheets, uploads results, images and protocols; cannot edit results',member:'Samples, PGT-M, cases and image vault only',coordinator:'Home page only: status cards and sample list (read-only)',embryologist:'Own follow-up tasks and TRFs'};
 function usersMarkup(){return `<section class="users-admin"><div class="users-head"><div><h3>Logins</h3><span id="usersCount" class="users-count"></span></div><div class="users-tools"><input id="usersSearch" type="search" placeholder="Search users…" autocomplete="off"><button type="button" class="primary compact" id="userAddBtn">Add user</button></div></div><div class="users-form hidden" id="userForm"></div><div id="usersList"><div class="chart-empty">Loading…</div></div></section>`}
 async function setupUsersView(){
  const listEl=$('#usersList'),formEl=$('#userForm');let data={roles:[],users:[]};

@@ -93,7 +93,7 @@ FULL_ACCESS_ROLES = {"admin", "senior_executive", "team_lead"}
 # everything but cannot change results.
 RESULT_EDIT_ROLES = {"admin", "senior_executive"}
 USER_ADMIN_ROLES = {"admin", "senior_executive"}
-ALL_ROLES = ["admin", "senior_executive", "team_lead", "member", "embryologist"]
+ALL_ROLES = ["admin", "senior_executive", "team_lead", "member", "coordinator", "embryologist"]
 # Role -> (method, path regex) pairs it may call. admin and team_lead may call everything;
 # a role not listed here can only sign in/out and ask who it is.
 _ROLE_RULES = {
