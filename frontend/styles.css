@@ -2181,3 +2181,14 @@ body.vault-staff #vaultUpload{display:none!important}
 .prep-search{position:relative}
 .prep-search::before{content:"";position:absolute;left:15px;top:50%;width:16px;height:16px;transform:translateY(-50%);pointer-events:none;background:#6b7f86;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") center/contain no-repeat}
 .prep-search input{padding-left:40px!important}
+
+/* Month by month: outcome mix of the transferred embryos (100% stacked bars) */
+.oc-leg{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin:2px 0 16px;font-size:13px;color:#33474e}
+.oc-leg span{display:inline-flex;align-items:center;gap:7px}.oc-leg i{width:12px;height:12px;border-radius:3px;display:inline-block}.oc-leg .oc-unit{margin-left:auto;color:var(--muted);font-size:12.5px}
+.oc-row{display:grid;grid-template-columns:130px 1fr;align-items:center;gap:16px;padding:9px 10px;border-radius:12px;outline:0}
+.oc-row:hover,.oc-row:focus-visible{background:#f4f8f8}
+.oc-m b{display:block;font-size:13.5px;color:#1b2a33}.oc-m small{font-size:12px;color:var(--muted)}
+.oc-bar{display:flex;gap:2px;height:30px}
+.oc-s{display:flex;align-items:center;justify-content:center;min-width:3px;font-style:normal;font-size:12px;font-weight:700;border-radius:3px;overflow:hidden;white-space:nowrap}
+.oc-s:first-child{border-radius:8px 3px 3px 8px}.oc-s:last-child{border-radius:3px 8px 8px 3px}.oc-s:only-child{border-radius:8px}
+@media(max-width:700px){.oc-row{grid-template-columns:1fr;gap:6px}}

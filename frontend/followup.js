@@ -265,7 +265,7 @@ function dashHtml(){
   return `<article class="db-card db-further"><h3>${label} <small>after PGT-A</small></h3>${tileGrid(seg,tot)}<p class="dn-wait"><b>${nr}</b> of ${rows.length} embryos not recorded yet.</p>${Object.keys(labs).length?`<p class="db-labs">Other labs: ${Object.entries(labs).sort((a,b)=>b[1]-a[1]).map(([l,n])=>`<b>${esc(l)}</b> (${n})`).join(', ')}</p>`:''}</article>`};
  const isEmb=currentUser&&currentUser.role==='embryologist';
  const P=(n,d)=>d?Math.round(n/d*100):null;
- const byM=new Map();rows.forEach(r=>{const m=r.f.month||'';if(!/^\d{4}-\d{2}$/.test(m))return;const x=byM.get(m)||{m,n:0,tr:0,im:0,cp:0,lb:0};x.n++;if(TRANSFERRED.includes(r.status))x.tr++;if(IMPLANTED.includes(r.status))x.im++;if(CLINICAL.includes(r.status))x.cp++;if(r.status==='Live birth')x.lb++;byM.set(m,x)});
+ const byM=new Map();rows.forEach(r=>{const m=r.f.month||'';if(!/^\d{4}-\d{2}$/.test(m))return;const x=byM.get(m)||{m,n:0,tr:0,im:0,cp:0,lb:0,st:{}};x.n++;if(TRANSFERRED.includes(r.status)){x.tr++;x.st[r.status]=(x.st[r.status]||0)+1}if(IMPLANTED.includes(r.status))x.im++;if(CLINICAL.includes(r.status))x.cp++;if(r.status==='Live birth')x.lb++;byM.set(m,x)});
  const ms=[...byM.values()].sort((x,y)=>x.m.localeCompare(y.m));
  // headline cards with change against the previous month that has transfers
  const withTr=ms.filter(x=>x.tr>0),cur=withTr[withTr.length-1],prv=withTr[withTr.length-2];
@@ -275,13 +275,13 @@ function dashHtml(){
  const gauge=(label,n,d,col,fn)=>{const p=d?n/d:0,R=60,L=Math.PI*R,dash=`${(L*p).toFixed(1)} ${L.toFixed(1)}`;
   return `<div class="gg" style="--c:${col}"><svg viewBox="0 0 150 90" width="100%" class="gg-svg"><path d="M15,80 A60,60 0 0 1 135,80" fill="none" stroke="#e6eeed" stroke-width="14" stroke-linecap="round"/>${p>0?`<path d="M15,80 A60,60 0 0 1 135,80" fill="none" stroke="${col}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${dash}"/>`:''}<text x="75" y="74" text-anchor="middle" font-size="30" font-weight="700" fill="#17302f" font-family="Lora,serif">${d?Math.round(p*100)+'%':'—'}</text></svg><b>${label}</b><span>${n} of ${d}</span></div>`};
  const gauges=`<div class="gg-row">${gauge('Transfer rate',tr.length,rows.length,'#3b8fd0',x=>x.n?x.tr/x.n*100:0)}${gauge('Implantation rate',im.length,tr.length,'#14b8a6',x=>x.tr?x.im/x.tr*100:0)}${gauge('Clinical pregnancy rate',cp.length,tr.length,'#7c5cbf',x=>x.tr?x.cp/x.tr*100:0)}${gauge('Miscarriage rate',mc.length,cp.length,'#d12f2f',null)}${gauge('Live-birth rate',lb.length,tr.length,'#1f8a52',x=>x.tr?x.lb/x.tr*100:0)}</div>`;
- const trend=(()=>{const pts=ms.filter(x=>x.tr>0).slice(-12);if(!pts.length)return '<div class="chart-empty">The month-by-month chart appears once transfers are recorded.</div>';
-  // Funnel stages = ordered magnitudes, so one teal ramp (light -> dark) rather than three unrelated hues.
-  const ser=[['im','Implantation','#74c6c0'],['cp','Clinical pregnancy','#23898a'],['lb','Live birth','#0a3f47']],val=(x,k)=>x.tr?x[k]/x.tr*100:0,showVals=pts.length<=4;
+ const trend=(()=>{const pts=ms.filter(x=>x.tr>0).slice(-8);if(!pts.length)return '<div class="chart-empty">The month-by-month chart appears once transfers are recorded.</div>';
+  // What happened to the transferred embryos of each month: one 100% bar per month, successes in a teal ramp, the rest neutral / rust.
+  const cats=[['Live birth','Live birth','#0a3f47','#fff'],['Clinical pregnancy','Clinical pregnancy','#23898a','#fff'],['Implantation successful','Implantation','#74c6c0','#0b2f35'],['Miscarriage','Miscarriage','#b4573f','#fff'],['Implantation unsuccessful','No implantation','#8d9a9f','#fff'],['Transferred','Awaiting result','#dfe5e6','#33474e']];
+  const tip=x=>[`${monthLabel(x.m)} \u00b7 ${x.tr} transferred`,...cats.filter(([k])=>x.st[k]).map(([k,l])=>`${l}|${x.st[k]} (${Math.round(x.st[k]/x.tr*100)}%)`)].join('~');
   const monthTxt=m=>monthLabel(m).replace(' 20',' \u2019');
-  const tip=x=>[`${monthLabel(x.m)} \u00b7 ${x.tr} transferred`,...ser.map(([k,l])=>`${l}|${Math.round(val(x,k))}% (${x[k]} of ${x.tr})`)].join('~');
-  const groups=pts.map(x=>`<div class="mc-g" data-tip="${esc(tip(x))}" tabindex="0"><div class="mc-bars">${ser.map(([k,l,col])=>`<i class="mc-b" style="height:${Math.max(val(x,k),val(x,k)>0?1.5:0)}%;background:${col}">${showVals?`<em>${Math.round(val(x,k))}%</em>`:''}</i>`).join('')}</div><div class="mc-x">${esc(monthTxt(x.m))}<small>${x.tr} transferred</small></div></div>`).join('');
-  return `<div class="mc"><div class="mc-leg">${ser.map(([,l,col])=>`<span><i style="background:${col}"></i>${l}</span>`).join('')}<span class="mc-unit">% of transferred embryos</span></div><div class="mc-plot"><div class="mc-y">${[100,75,50,25,0].map(t=>`<span>${t}%</span>`).join('')}</div><div class="mc-area"><div class="mc-grid">${[0,1,2,3,4].map(()=>'<i></i>').join('')}</div><div class="mc-groups">${groups}</div></div></div></div>`})();
+  const rowsH=pts.map(x=>`<div class="oc-row" data-tip="${esc(tip(x))}" tabindex="0"><div class="oc-m"><b>${esc(monthTxt(x.m))}</b><small>${x.tr} transferred</small></div><div class="oc-bar">${cats.filter(([k])=>x.st[k]).map(([k,l,col,ink])=>{const p=x.st[k]/x.tr*100;return `<i class="oc-s" style="flex:${x.st[k]} 1 0;background:${col};color:${ink}">${p>=9?`${Math.round(p)}%`:''}</i>`}).join('')}</div></div>`).join('');
+  return `<div class="oc"><div class="oc-leg">${cats.map(([,l,col])=>`<span><i style="background:${col}"></i>${l}</span>`).join('')}<span class="oc-unit">share of transferred embryos</span></div>${rowsH}</div>`})();
  const cmap=new Map();rows.forEach(r=>{const k=r.f.clinic||'—',x=cmap.get(k)||{k,n:0,rec:0,tr:0,im:0,lb:0};x.n++;if(r.status)x.rec++;if(TRANSFERRED.includes(r.status))x.tr++;if(IMPLANTED.includes(r.status))x.im++;if(r.status==='Live birth')x.lb++;cmap.set(k,x)});
  const clients=[...cmap.values()].sort((x,y)=>y.n-x.n);
  const attn=[...clients].map(x=>({...x,w:x.n-x.rec})).filter(x=>x.w>0).sort((x,y)=>y.w-x.w).slice(0,6);
@@ -306,7 +306,7 @@ function breakdownHtml(){
 function wireDash(root,redraw){
  {let tp=document.getElementById('mcTip');if(!tp){tp=document.createElement('div');tp.id='mcTip';tp.className='mc-tip';tp.hidden=true;document.body.append(tp)}
   const show=(g,x,y)=>{const [head,...rows]=g.dataset.tip.split('~');tp.innerHTML=`<b>${esc(head)}</b>${rows.map(r=>{const [l,v]=r.split('|');return `<span><em>${esc(l)}</em>${esc(v)}</span>`}).join('')}`;tp.hidden=false;const w=tp.offsetWidth,h=tp.offsetHeight;tp.style.left=Math.min(innerWidth-w-8,x+14)+'px';tp.style.top=Math.max(8,y-h-10)+'px'};
-  root.querySelectorAll('.mc-g').forEach(g=>{g.onmousemove=e=>show(g,e.clientX,e.clientY);g.onmouseleave=()=>{tp.hidden=true};g.onfocus=()=>{const r=g.getBoundingClientRect();show(g,r.left+r.width/2,r.top)};g.onblur=()=>{tp.hidden=true}})}
+  root.querySelectorAll('.mc-g,.oc-row').forEach(g=>{g.onmousemove=e=>show(g,e.clientX,e.clientY);g.onmouseleave=()=>{tp.hidden=true};g.onfocus=()=>{const r=g.getBoundingClientRect();show(g,r.left+r.width/2,r.top)};g.onblur=()=>{tp.hidden=true}})}
  const cqi=root.querySelector('#clQ');if(cqi)cqi.oninput=()=>{clQ=cqi.value;const pos=cqi.selectionStart;redraw();const n=root.querySelector('#clQ');n.focus();n.setSelectionRange(pos,pos)};
  root.querySelectorAll('[data-ft]').forEach(b=>b.onclick=()=>openTestList(b.dataset.ft,b.dataset.ft==='tera'?'TERA':'NIPS',window._ftRows||[]));
  const cab=root.querySelector('#clAllBtn');if(cab)cab.onclick=()=>{clAll=!clAll;redraw()};
