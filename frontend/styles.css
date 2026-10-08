@@ -2144,3 +2144,17 @@ body.vault-staff #vaultUpload{display:none!important}
 .co-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px}
 .co-list-bar{margin-top:22px}.co-list-bar .db-h{margin:0;flex:1 1 auto}.co-list-bar .search-wrap{max-width:320px;flex:1 1 220px}
 .co-table th,.co-table td{white-space:nowrap}
+
+/* Client (embryologist) follow-up page: quiet and minimal */
+.cl-page{max-width:1180px;margin:0 auto}
+.cl-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:6px 0 18px}
+.cl-head h2{font:600 24px "Lora",serif;margin:0 0 4px;color:#0b3444}.cl-head p{margin:0;font-size:14px;color:var(--muted)}.cl-head p b{color:#0b3444;font-weight:600}
+.cl-bar{display:inline-flex;gap:2px;padding:3px;background:#eef2f3;border-radius:999px}
+.cl-bar button{border:0;background:transparent;font:600 13px "Inter",sans-serif;padding:7px 18px;border-radius:999px;color:#5b6b66;cursor:pointer}
+.cl-bar button.on{background:#fff;color:#0b5660;box-shadow:0 1px 4px rgba(16,36,50,.12)}
+.cl-page .tk-bar{margin-bottom:14px}
+.cl-table{max-height:none!important;border:1px solid var(--line);border-radius:14px;overflow:visible}
+.cl-table .fu-table th{background:transparent;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.8px;color:#7b8a91;padding:14px 20px}
+.cl-table .fu-table td{padding:14px 20px;border-bottom:1px solid #f0f3f3}
+.cl-table .fu-table tr:last-child td{border-bottom:0}
+.fu-share{font-size:12.5px;font-weight:600}.fu-share-yes{color:#0b5660}.fu-share-no{color:#7b8a91}.fu-share-unset{color:#b36b00}
