@@ -212,6 +212,7 @@ def _embryo_pages(d: dict, kind: str, meta: dict) -> list[Overlay]:
             o.text(110, 712.0, d.get("embryologistName"), 9, 190)
             o.text(170, 737.6, d.get("embryologistEmail"), 9, 360, min_size=6)
         else:
+            o.text(172, 683.4, d.get("embryologistName"), 9, 300, min_size=6)  # next to "Biopsy performed by"
             o.text(90, 732.4, d.get("embryologistEmail"), 9, 360, min_size=6)
         pages.append(o)
     return pages
