@@ -275,14 +275,17 @@ function dashHtml(){
  const gauge=(label,n,d,col,fn)=>{const p=d?n/d:0,R=60,L=Math.PI*R,dash=`${(L*p).toFixed(1)} ${L.toFixed(1)}`;
   return `<div class="gg" style="--c:${col}"><svg viewBox="0 0 150 90" width="100%" class="gg-svg"><path d="M15,80 A60,60 0 0 1 135,80" fill="none" stroke="#e6eeed" stroke-width="14" stroke-linecap="round"/>${p>0?`<path d="M15,80 A60,60 0 0 1 135,80" fill="none" stroke="${col}" stroke-width="14" stroke-linecap="round" stroke-dasharray="${dash}"/>`:''}<text x="75" y="74" text-anchor="middle" font-size="30" font-weight="700" fill="#17302f" font-family="Lora,serif">${d?Math.round(p*100)+'%':'—'}</text></svg><b>${label}</b><span>${n} of ${d}</span></div>`};
  const gauges=`<div class="gg-row">${gauge('Transfer rate',tr.length,rows.length,'#3b8fd0',x=>x.n?x.tr/x.n*100:0)}${gauge('Implantation rate',im.length,tr.length,'#14b8a6',x=>x.tr?x.im/x.tr*100:0)}${gauge('Clinical pregnancy rate',cp.length,tr.length,'#7c5cbf',x=>x.tr?x.cp/x.tr*100:0)}${gauge('Miscarriage rate',mc.length,cp.length,'#d12f2f',null)}${gauge('Live-birth rate',lb.length,tr.length,'#1f8a52',x=>x.tr?x.lb/x.tr*100:0)}</div>`;
- const trend=(()=>{const pts=ms.filter(x=>x.tr>0).slice(-8);if(!pts.length)return '<div class="chart-empty">This chart appears once embryo transfers have been recorded.</div>';
-  // Plain-language outcome groups for the embryos transferred in each month (one bar per month).
-  const cats=[[['Live birth'],'Live birth','#0a3f47','#fff'],[['Clinical pregnancy'],'Pregnancy','#23898a','#fff'],[['Implantation successful'],'Implanted','#74c6c0','#0b2f35'],[['Implantation unsuccessful','Miscarriage'],'Not successful','#8d9a9f','#fff'],[['Transferred'],'Awaiting result','#dfe5e6','#33474e']];
-  const cnt=(x,keys)=>keys.reduce((t,k)=>t+(x.st[k]||0),0),plural=n=>`${n} embryo${n===1?'':'s'}`;
-  const tip=x=>[`${monthLabel(x.m)} \u00b7 ${plural(x.tr)} transferred`,...cats.filter(([k])=>cnt(x,k)).map(([k,l])=>`${l}|${cnt(x,k)} of ${x.tr} (${Math.round(cnt(x,k)/x.tr*100)}%)`)].join('~');
-  const monthTxt=m=>monthLabel(m).replace(' 20',' \u2019');
-  const rowsH=pts.map(x=>`<div class="oc-row" data-tip="${esc(tip(x))}" tabindex="0"><div class="oc-m"><b>${esc(monthTxt(x.m))}</b><small>${plural(x.tr)} transferred</small></div><div class="oc-bar">${cats.filter(([k])=>cnt(x,k)).map(([k,l,col,ink])=>{const n=cnt(x,k),p=n/x.tr*100;return `<i class="oc-s" style="flex:${n} 1 0;background:${col};color:${ink}">${p>=7?n:''}</i>`}).join('')}</div></div>`).join('');
-  return `<p class="oc-explain">Each bar is one month. It shows what happened to the embryos transferred that month. The number in each block is the number of embryos.</p><div class="oc"><div class="oc-leg">${cats.map(([,l,col])=>`<span><i style="background:${col}"></i>${l}</span>`).join('')}</div>${rowsH}</div>`})();
+ // Plain-language outcome groups for the transferred embryos: one bar per month (or per client).
+ const OC=[[['Live birth'],'Live birth','#0a3f47','#fff'],[['Clinical pregnancy'],'Pregnancy','#23898a','#fff'],[['Implantation successful'],'Implanted','#74c6c0','#0b2f35'],[['Implantation unsuccessful','Miscarriage'],'Not successful','#8d9a9f','#fff'],[['Transferred'],'Awaiting result','#dfe5e6','#33474e']];
+ const ocCnt=(x,keys)=>keys.reduce((t,k)=>t+(x.st[k]||0),0),ocPl=n=>`${n} embryo${n===1?'':'s'}`;
+ const stackChart=(pts,labelOf,explain,empty)=>{if(!pts.length)return `<div class="chart-empty">${empty}</div>`;
+  const tip=x=>[`${labelOf(x)} \u00b7 ${ocPl(x.tr)} transferred`,...OC.filter(([k])=>ocCnt(x,k)).map(([k,l])=>`${l}|${ocCnt(x,k)} of ${x.tr} (${Math.round(ocCnt(x,k)/x.tr*100)}%)`)].join('~');
+  const rowsH=pts.map(x=>`<div class="oc-row" data-tip="${esc(tip(x))}" tabindex="0"><div class="oc-m"><b title="${esc(labelOf(x))}">${esc(labelOf(x))}</b><small>${ocPl(x.tr)} transferred</small></div><div class="oc-bar">${OC.filter(([k])=>ocCnt(x,k)).map(([k,l,col,ink])=>{const n=ocCnt(x,k),p=n/x.tr*100;return `<i class="oc-s" style="flex:${n} 1 0;background:${col};color:${ink}">${p>=7?n:''}</i>`}).join('')}</div></div>`).join('');
+  return `<p class="oc-explain">${explain}</p><div class="oc"><div class="oc-leg">${OC.map(([,l,col])=>`<span><i style="background:${col}"></i>${l}</span>`).join('')}</div>${rowsH}</div>`};
+ const monthTxt=m=>monthLabel(m).replace(' 20',' \u2019');
+ const trend=stackChart(ms.filter(x=>x.tr>0).slice(-8).map(x=>({...x,label:monthTxt(x.m)})),x=>x.label,'Each bar is one month. It shows what happened to the embryos transferred that month. The number in each block is the number of embryos.','This chart appears once embryo transfers have been recorded.');
+ const byC=new Map();rows.forEach(r=>{if(!TRANSFERRED.includes(r.status))return;const k=r.f.clinic||'\u2014',x=byC.get(k)||{label:k,tr:0,st:{}};x.tr++;x.st[r.status]=(x.st[r.status]||0)+1;byC.set(k,x)});
+ const clientTrend=stackChart([...byC.values()].sort((x,y)=>y.tr-x.tr).slice(0,10),x=>x.label,'Each bar is one client (the ten with the most transfers). It shows what happened to the embryos transferred. The number in each block is the number of embryos.','No transfers recorded for any client yet.');
  const cmap=new Map();rows.forEach(r=>{const k=r.f.clinic||'—',x=cmap.get(k)||{k,n:0,rec:0,tr:0,im:0,lb:0};x.n++;if(r.status)x.rec++;if(TRANSFERRED.includes(r.status))x.tr++;if(IMPLANTED.includes(r.status))x.im++;if(r.status==='Live birth')x.lb++;cmap.set(k,x)});
  const clients=[...cmap.values()].sort((x,y)=>y.n-x.n);
  const attn=[...clients].map(x=>({...x,w:x.n-x.rec})).filter(x=>x.w>0).sort((x,y)=>y.w-x.w).slice(0,6);
@@ -296,7 +299,7 @@ function dashHtml(){
 </div>
  <div class="journey">${journey}</div>
  ${gauges}
- <div class="mk2 mk2-one"><article class="db-card"><h3>Month by month <small>${isEmb?'your embryos':filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>
+ <div class="${isEmb?'mk2 mk2-one':'db-two db-two-eq'}"><article class="db-card"><h3>Month by month <small>${isEmb?'your embryos':filtersOn&&flt.clinic?esc(flt.clinic):'all clients together'}</small></h3>${trend}</article>${isEmb?'':`<article class="db-card"><h3>Client by client <small>top 10 by transfers</small></h3>${clientTrend}</article>`}
 </div>`}
 function breakdownHtml(){
  const rows=embryoRows();
