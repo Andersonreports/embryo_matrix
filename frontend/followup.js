@@ -52,7 +52,7 @@ const fmtWhen=iso=>{if(!iso)return'';const d=new Date(iso);return isNaN(d)?'':d.
 const histHtml=list=>list&&list.length?`<ol class="hist">${[...list].reverse().map(histItem).join('')}</ol>`:'<p class="fu-note" style="margin:0">No changes recorded yet.</p>';
 const TERA_RESULTS=['Pre-receptive','Receptive','Post-receptive'];
 const FURTHER=[['tera','TERA'],['nips','NIPS']];
-const WHERE=[['','— Not recorded —'],['Not done','Not done'],['Anderson','Done at Anderson'],['Other lab','Done at another lab']];
+const WHERE=[['','— Not recorded —'],['Not done','Not done'],['Anderson','Done at Anderson'],['Other lab','Done at other labs']];
 function testsHtml(t){
  return `<div class="oe-tests"><small class="oe-tests-title">Further testing after PGT-A</small><div class="oe-tests-grid">${FURTHER.map(([k,label])=>{const v=t[k]||{},done=v.where==='Anderson'||v.where==='Other lab';
   return `<div class="oe-test" data-t="${k}"><h5>${label}</h5>
@@ -219,7 +219,7 @@ function openSheetImport(redraw){
 const RESULT_NAME={Normal:'Euploid',Abnormal:'Aneuploid',Mosaic:'Mosaic',Inconclusive:'Inconclusive'};
 
 
-// Click on the TERA / NIPS chip: every embryo it was done on, at Anderson or at another lab (with the lab name).
+// Click on the TERA / NIPS chip: every embryo it was done on, at Anderson or at other labs (with the lab name).
 function openTestList(k,label,rows){
  const done=rows.filter(r=>['Anderson','Other lab'].includes(r.tests?.[k]?.where));
  let f='all';const d=dlgEl();d.classList.add('vu-dialog-wide');
@@ -262,7 +262,7 @@ function dashHtml(){
  const cntOf=s=>rows.filter(r=>r.status===s).length,stageCard=(title,list,sub,note)=>{const segs=list.map(s=>[cntOf(s),OS_COLOR[s],s]),tot=segs.reduce((t,x)=>t+x[0],0);return `<article class="db-card"><h3>${title} <small>${sub}</small></h3>${tileGrid(segs,tot)}${note?`<p class="dn-wait">${note}</p>`:''}</article>`};
  const unknownN=cntOf('Outcome unknown'),noOutN=rows.filter(r=>!r.status).length;
  const furtherCard=(k,label)=>{const g=w=>rows.filter(r=>(r.tests?.[k]?.where||'')===w).length,an=g('Anderson'),ot=g('Other lab'),nd=g('Not done'),nr=rows.length-an-ot-nd,labs={};rows.forEach(r=>{const t=r.tests?.[k];if(t?.where==='Other lab'&&t.lab)labs[t.lab]=(labs[t.lab]||0)+1});
-  const seg=[[an,'#0a7180','Done at Anderson'],[ot,'#e08a1e','Done at another lab'],[nd,'#9aa6a0','Not done']],done=an+ot,tot=an+ot+nd;
+  const seg=[[an,'#0a7180','Done at Anderson'],[ot,'#e08a1e','Done at other labs'],[nd,'#9aa6a0','Not done']],done=an+ot,tot=an+ot+nd;
   return `<article class="db-card db-further"><h3>${label} <small>after PGT-A</small></h3>${tileGrid(seg,tot)}<p class="dn-wait"><b>${nr}</b> of ${rows.length} embryos not recorded yet.</p>${Object.keys(labs).length?`<p class="db-labs">Other labs: ${Object.entries(labs).sort((a,b)=>b[1]-a[1]).map(([l,n])=>`<b>${esc(l)}</b> (${n})`).join(', ')}</p>`:''}</article>`};
  const isEmb=currentUser&&currentUser.role==='embryologist';
  const P=(n,d)=>d?Math.round(n/d*100):null;
@@ -289,7 +289,7 @@ function dashHtml(){
  const attention=attn.length?`<ul class="at">${attn.map(x=>`<li data-clinic="${esc(x.k)}"><span class="at-n">${esc(x.k)}</span><div class="at-bar"><i style="width:${x.n?x.rec/x.n*100:0}%"></i></div><b>${x.w}</b><small>waiting</small></li>`).join('')}</ul>`:'<div class="chart-empty">Every embryo has an outcome. Nothing is waiting.</div>';
  const cq=clQ.trim().toLowerCase(),cl=clients.filter(x=>!cq||x.k.toLowerCase().includes(cq)),shownC=cq||clAll?cl:cl.slice(0,10);
  const clientTable=`<div class="fu-table-wrap"><table class="fu-table cl"><thead><tr><th>Client</th><th>Embryos</th><th>Outcomes recorded</th><th>Transferred</th><th>Implantation</th><th>Live birth</th></tr></thead><tbody>${shownC.map(x=>`<tr data-clinic="${esc(x.k)}"><td class="strong">${esc(x.k)}</td><td>${x.n}</td><td><div class="cl-bar"><i style="width:${x.n?x.rec/x.n*100:0}%"></i></div><small>${x.rec} of ${x.n}</small></td><td>${x.tr}</td><td>${x.tr?P(x.im,x.tr)+'%':'—'}</td><td>${x.tr?P(x.lb,x.tr)+'%':'—'}</td></tr>`).join('')||'<tr><td colspan="6" class="chart-empty">No client matches.</td></tr>'}</tbody></table></div>${!cq&&cl.length>10?`<div style="text-align:center;margin-top:10px"><button type="button" class="secondary compact" id="clAllBtn">${clAll?'Show top 10':`Show all ${cl.length} clients`}</button></div>`:''}<p class="fu-note" style="margin:8px 0 0">Click a client to filter the whole dashboard to it.</p>`;
- const ftChip=(k,label)=>{const an=rows.filter(r=>r.tests?.[k]?.where==='Anderson').length,ot=rows.filter(r=>r.tests?.[k]?.where==='Other lab').length;return `<button type="button" class="ft" data-ft="${k}" title="Click to list the embryos"><b>${label}</b><span><strong>${an+ot}</strong> done</span><small>${an} at Anderson · ${ot} at another lab</small><i class="ft-go">View list ›</i></button>`};
+ const ftChip=(k,label)=>{const an=rows.filter(r=>r.tests?.[k]?.where==='Anderson').length,ot=rows.filter(r=>r.tests?.[k]?.where==='Other lab').length;return `<button type="button" class="ft" data-ft="${k}" title="Click to list the embryos"><b>${label}</b><span><strong>${an+ot}</strong> done</span><small>${an} at Anderson · ${ot} at other labs</small><i class="ft-go">View list ›</i></button>`};
  window._ftRows=rows;
  return `<div class="db-h-row"><h3 class="db-h">The journey of the embryos</h3><div class="db-h-tools">${chips}${nOn?'<button type="button" class="db-fclear" id="fuClear">Clear all</button>':''}<button type="button" class="db-ftoggle${filtersOpen?' on':''}" id="fuFToggle" aria-expanded="${filtersOpen}">${IC('navigation__filter')}<span>Filters</span>${nOn?`<b>${nOn}</b>`:''}<i>${filtersOpen?'▴':'▾'}</i></button></div>
  <div class="db-pop"${filtersOpen?'':' hidden'}><div class="db-pop-head"><b>Filter the dashboard</b><button type="button" class="secondary compact" id="fuFClose">Done</button></div><div class="db-pop-grid">${sel('month','Month',monthLabel)}${sel('clinic','Clinic')}${sel('region','Region')}${sel('embryologist','Embryologist')}${sel('test','Test')}${sel('age','Age group')}${sel('result','Embryo result')}</div>${nOn?'<button type="button" class="db-fclear" id="fuClear2">Clear all filters</button>':''}</div>
@@ -322,9 +322,9 @@ function wireDash(root,redraw){
 
 // ---------------- Read-only state blocks (admin / team lead see what the embryologist entered) ----------------
 const stepper=status=>`<div class="stp">${STATUSES.map(s=>{const on=s===status;return `<span class="stp-i${on?' on':''}"${on?` style="background:${OS_COLOR[s]};border-color:${OS_COLOR[s]}"`:''}>${esc(s)}</span>`}).join('')}${status?'':'<span class="stp-i on stp-none">Not entered yet</span>'}</div>`;
-const WHERE_LBL={Anderson:'Done at Anderson','Other lab':'Done at another lab','Not done':'Not done'};
+const WHERE_LBL={Anderson:'Done at Anderson','Other lab':'Done at other labs','Not done':'Not done'};
 const testLine=(label,t)=>{if(!t||!t.where)return`<span class="es-t"><b>${label}</b> not recorded</span>`;if(t.where==='Not done')return`<span class="es-t"><b>${label}</b> not done</span>`;
- return `<span class="es-t"><b>${label}</b> ${t.where==='Anderson'?'done at Anderson':`done at ${esc(t.lab||'another lab')}`}${t.date?' · '+fmtDate(t.date):''}${t.biopsyTime?' · biopsy '+esc(t.biopsyTime):''}${t.result?' · result: '+esc(t.result):''}${t.note?' · '+esc(t.note):''}</span>`};
+ return `<span class="es-t"><b>${label}</b> ${t.where==='Anderson'?'done at Anderson':`done at ${esc(t.lab||'other labs')}`}${t.date?' · '+fmtDate(t.date):''}${t.biopsyTime?' · biopsy '+esc(t.biopsyTime):''}${t.result?' · result: '+esc(t.result):''}${t.note?' · '+esc(t.note):''}</span>`};
 const whoWhen=o=>o&&o.at?`Updated${o.by?' by <b>'+esc(o.by)+'</b>':''} on ${fmtDate(String(o.at).slice(0,10))}`:'Not entered yet';
 function embryoState(e,o){o=o||{};
  return `<div class="es"><div class="es-head"><strong>${esc(e.label)}</strong>${resChip(e.result)}<span class="es-who">${whoWhen(o)}</span></div>${stepper(o.status||'')}<div class="es-meta">${o.date?`<span class="es-t"><b>Outcome date</b> ${fmtDate(o.date)}</span>`:''}${o.note?`<span class="es-t"><b>Note</b> ${esc(o.note)}</span>`:''}${testLine('TERA',o.tests?.tera)}${testLine('NIPS',o.tests?.nips)}</div>${(o.history||[]).length?`<details class="es-hist"><summary>History (${o.history.length})</summary>${histHtml(o.history)}</details>`:''}</div>`}
