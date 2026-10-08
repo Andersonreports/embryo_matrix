@@ -982,7 +982,7 @@ function showView(view){if(!viewAllowed(view))view=roleHomeView();
  $('#regionSortHeader')?.classList.toggle('hidden',view!=='regions');
  if(view==='home'){ $('#homeView').classList.remove('hidden');$('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');$('#genericView').classList.add('hidden');requestAnimationFrame(()=>{alignHomeSearch();capStatusColumns()});return }
  $('#homeView').classList.add('hidden');
- if(view==='overview'){ $('#overviewView').classList.remove('hidden');$('#samplesView').classList.add('hidden');$('#genericView').classList.add('hidden');return }
+ if(view==='overview'){ $('#overviewView').classList.remove('hidden');$('#samplesView').classList.add('hidden');$('#genericView').classList.add('hidden');requestAnimationFrame(()=>{if(typeof renderAnalytics==='function')renderAnalytics()});return }
  if(view==='cases'||view==='samples'){ $('#overviewView').classList.add('hidden');$('#genericView').classList.add('hidden');$('#samplesView').classList.remove('hidden');fitTableHeight($('#caseTable .embryo-columns-table'));return }
  if(view==='coord'){ $('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');const g=$('#genericView');g.classList.remove('hidden');renderCoordView(g);return }
  if(view==='followup'||view==='fuTasks'||view==='fuDash'||view==='dashboard'){ $('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');const g=$('#genericView');g.classList.remove('hidden');renderFollowupView(g,view);return }
@@ -1975,3 +1975,6 @@ async function setupUsersView(){
  $('#usersSearch').oninput=draw;
  load();
 }
+
+// The overview charts are drawn to their container's width, so redraw them when the window is resized.
+{let t;window.addEventListener('resize',()=>{clearTimeout(t);t=setTimeout(()=>{if(!$('#overviewView')?.classList.contains('hidden')&&typeof renderAnalytics==='function')renderAnalytics()},200)})}
