@@ -2146,7 +2146,7 @@ body.vault-staff #vaultUpload{display:none!important}
 .co-table th,.co-table td{white-space:nowrap}
 
 /* Client (embryologist) follow-up page: quiet and minimal */
-.fb-page{max-width:1180px;margin:0 auto}
+.fb-page{max-width:none;margin:0}
 .fb-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:6px 0 18px}
 .fb-head h2{font:600 24px "Lora",serif;margin:0 0 4px;color:#0b3444}.fb-head p{margin:0;font-size:14px;color:var(--muted)}.fb-head p b{color:#0b3444;font-weight:600}
 .fb-bar{display:inline-flex;gap:2px;padding:3px;background:#eef2f3;border-radius:999px}
