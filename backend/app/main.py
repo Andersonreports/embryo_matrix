@@ -1242,7 +1242,7 @@ def _hist_out(h: OutcomeHistory) -> dict:
 def _fu_out(f: Followup, outs: list, hist: dict | None = None) -> dict:
     return {
         "caseKey": f.case_key, "source": f.source, "trfRef": f.trf_ref, "patient": f.patient, "clinic": f.clinic, "region": f.region,
-        "embryologist": f.embryologist, "test": f.test, "month": f.month, "age": f.age, "embryos": f.embryos or [],
+        "embryologist": _emb_display(f.embryologist), "test": f.test, "month": f.month, "age": f.age, "embryos": f.embryos or [],
         "consent": f.consent, "contactName": f.contact_name, "contactDetail": f.contact_detail, "expectedPeriod": f.expected_period,
         "dueDate": f.due_date, "state": f.state, "note": f.note, "updatedBy": f.updated_by, "updatedAt": _iso_utc(f.updated_at),
         "createdAt": _iso_utc(f.created_at),
@@ -1276,8 +1276,8 @@ def _embryologist_sees(db: Session, user: dict, f: Followup) -> bool:
     u = db.query(User).filter(User.username == uname.lower()).first()
     if u and u.client_name and _norm_name(u.client_name) in _norm_name(f.clinic):
         return True
-    mine = _norm_name((u.embryologist_name if u and u.embryologist_name else uname))
-    theirs = _norm_name(f.embryologist)
+    mine = _canon_embryologist((u.embryologist_name if u and u.embryologist_name else uname))
+    theirs = _canon_embryologist(f.embryologist)
     unmapped = not (u and (u.embryologist_name or u.client_name))
     if unmapped and mine and mine in _norm_name(f.clinic):
         return True
@@ -1292,6 +1292,11 @@ _sheet_cache: dict = {"at": 0.0, "rows": []}
 def _canon_embryologist(raw: str) -> str:
     n = _norm_name(raw)
     return _norm_name(_EMB_ALIASES.get(n, raw))
+
+def _emb_display(raw) -> str:
+    """The embryologist's real name for display: a known misspelling is replaced by the correct name, anything else is kept."""
+    raw = str(raw or "").strip()
+    return _EMB_ALIASES.get(_norm_name(raw), raw)
 
 def _sheet_rows(db: Session) -> list:
     if time.time() - _sheet_cache["at"] > 60:
@@ -1373,7 +1378,7 @@ def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = "", loo
             continue
         r = c["r"]
         db.add(Followup(case_key=c["key"][:120], source="sheet", patient=c["patient"][:255], clinic=_field(r, "center name", "hospital clinic name", "client")[:255],
-                        region=_field(r, "location", "region")[:120], embryologist=(_field(r, "embryologist name", "embryologist") or emb_name)[:120], test=_field(r, "test name", "test")[:255],
+                        region=_field(r, "location", "region")[:120], embryologist=_emb_display(_field(r, "embryologist name", "embryologist") or emb_name)[:120], test=_field(r, "test name", "test")[:255],
                         month=_month_of(r.get("_importSource")), embryos=[{"label": k, "result": v} for k, v in c["embryos"].items()], consent="Yes",
                         due_date=due, updated_by="Sheet"))
         added += 1

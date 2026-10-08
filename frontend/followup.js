@@ -26,7 +26,7 @@ const flt={month:'',clinic:'',region:'',embryologist:'',test:'',age:'',result:''
 
 async function loadFollowups(force){
  if(FU.loaded&&!force)return FU;
- try{const r=await fetch('/api/followups');if(!r.ok)throw 0;const j=await r.json();FU={items:j.items||[],loaded:true}}catch(e){toast('Could not load follow-up data')}
+ try{const r=await fetch('/api/followups');if(!r.ok)throw 0;const j=await r.json();FU={items:(j.items||[]).map(f=>({...f,embryologist:typeof canonEmbryologist==='function'?canonEmbryologist(f.embryologist):f.embryologist})),loaded:true}}catch(e){toast('Could not load follow-up data')}
  return FU}
 const outcomeMap=f=>{const m={};(f.outcomes||[]).forEach(o=>{m[norm(o.embryo)]=o});return m};
 function taskStatus(f){
