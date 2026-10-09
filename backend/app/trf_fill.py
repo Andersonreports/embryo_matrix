@@ -15,6 +15,10 @@ from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 TEMPLATES = {"A": DATA_DIR / "trf_template_a.pdf", "M": DATA_DIR / "trf_template_m.pdf"}
+# Patient informed-consent forms appended after the TRF pages, by test requested (PGT-HLA has none).
+CONSENTS = {"PGT-A": "consent_pgt_a.pdf", "EMBRYO_SURE": "consent_embryo_sure.pdf", "PGT-SR": "consent_pgt_sr.pdf",
+            "PGT-M": "consent_pgt_m.pdf"}
+CONSENTS_FOR_TEST = {"PGT-A+M": ["PGT-A", "PGT-M"], "PGT-A+M+HLA": ["PGT-A", "PGT-M"]}
 PAGE_W, PAGE_H = 595.276, 841.89
 INK = "#12202b"
 
@@ -346,6 +350,15 @@ def render_trf_filled_pdf(data: dict, meta: dict | None = None) -> bytes:
         fu_pdf = HTML(string=f"<!doctype html><html><head><meta charset='utf-8'><style>{FOLLOWUP_CSS}</style></head><body>{_followup_page_html(d)}</body></html>",
                       base_url=str(STATIC_DIR) + "/").write_pdf()
         out.add_page(PdfReader(io.BytesIO(fu_pdf)).pages[0])
+    # the informed-consent form(s) for the chosen test(s), at the very end
+    seen = []
+    for t in d.get("tests") or []:
+        for key in CONSENTS_FOR_TEST.get(t, [t]):
+            if key in CONSENTS and key not in seen:
+                seen.append(key)
+    for key in seen:
+        for page in PdfReader(str(DATA_DIR / CONSENTS[key])).pages:
+            out.add_page(page)
     buf = io.BytesIO()
     out.write(buf)
     return buf.getvalue()
