@@ -143,6 +143,11 @@ def _page1(d: dict, kind: str, meta: dict) -> Overlay:
             o.text(114.5, 264.4, hosp, 7.2, 163)
     else:
         o.text(114.5, 264.4, hosp, 8.5, 163)
+    # the labels' own colons sit at different x: wipe them and set one straight colon column before the lines
+    for x_end, y0, y1, base in ((101.3, 228.5, 238.0, 236.2), (78.55, 259.5, 269.5, 267.2), (63.9, 283.0, 293.0, 290.8),
+                                (56.35, 334.5, 344.0, 342.0), (55.3, 356.0, 365.5, 363.2)):
+        o.cover(x_end - 3.4, y0, x_end - 0.5, y1)
+        o.text(REF_X - 5.2, base, ":", 9.5, bold=False, color="#222")
     # one value column (x=114.5) for every referring field, like the patient column on the right;
     # a long address shrinks until it fits on its two lines
     addr, size = str(d.get("address") or ""), 8.0
