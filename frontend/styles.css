@@ -2272,3 +2272,5 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .hb-n{font-weight:700;font-size:13.5px;color:#14262b;text-align:right}
 
 #overdueStat .ov-pct{display:block;margin-top:2px;font:600 13px "Inter",sans-serif;color:#b3433c;letter-spacing:0}
+#homeView #homeStats article[data-stage="released"]{--c:#1f8a52}
+#homeView #homeStats #homeReportPrepCard{--c:#c58800}
