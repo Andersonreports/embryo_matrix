@@ -807,7 +807,7 @@ function homeCards(){if(homeCardsMemo&&homeCardsMemo.cases===cases&&homeCardsMem
  const cards=[...groups.values()].map(g=>{
   const items=[];g.rows.forEach(({row,c})=>expandEmbryoRow(row).forEach(x=>{const label=field(x,['sample name','embryo name','embryo']);items.push({s:{patient:field(row,['patient name','patient'])||c.patient,embryo:label,received:field(row,['date sample received'])},m:{case:c,row,tag:cleanId(label),data:x},linked:[]})}));
   const b=runBreakdown(items),fileRes=b.euploid+b.aneuploid+b.mosaicInc>0,released=g.rows.filter(({row})=>rowStage(row)==='released').length;
-  const stage=g.kind==='rec'?'pending':g.kind==='wga'?'wga':released===g.rows.length?'released':'seq';
+  const stage=g.kind==='rec'?'pending':released===g.rows.length?'released':g.kind==='wga'?'wga':'seq';
   // The Run ID cell is often blank (or has a stray value); the run of each sample's uploaded result file counts too, so a lone mistyped cell can't name the whole batch.
   const runCount={};g.rows.forEach(({row})=>{const seen=new Set(runsOf(row));Object.values(row._embryoResults||{}).forEach(p=>{const f=(resultFilesCache||[]).find(x=>x.id===p._fileId),n=f&&(f.run||runNumberOf(f.fileName));if(n)seen.add(n)});seen.forEach(r=>{const k=runIdNorm(r);if(k)runCount[k]=(runCount[k]||0)+1})});const runId=Object.entries(runCount).sort((x,y)=>y[1]-x[1])[0]?.[0];
   // Embryo Sure samples sequenced on their own (per-patient files, no run number) are not a run: no batch card for them.
