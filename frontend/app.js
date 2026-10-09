@@ -174,7 +174,9 @@ const isNotReporting=e=>/not\s*reporting/i.test(String(e._importSource||''));
 const SEQ_ONLY_TESTS=/A\+M|PGTM|HLA/;
 const WGA_ONLY_TESTS=/EMBRYOSURE|VALIDATION/;
 function isCompleteOnSeq(e,c){const t=String(field(e,['test','test name'])||c?.test||'').toUpperCase().replace(/[^A-Z+]/g,'');if(field(e,['wga done on'])&&WGA_ONLY_TESTS.test(t))return true;if(!field(e,['seq date']))return false;return SEQ_ONLY_TESTS.test(t)||/mare?cs/i.test(String(e._importSource||''))||isNotReporting(e)}
-function isOverdue(e,c){if(isNotReporting(e)||isCompleteOnSeq(e,c))return false;const tat=parseSheetDate(tatDate(e,c));if(!tat||field(e,['ngs report']))return false;const today=new Date();today.setHours(0,0,0,0);return tat<today}
+// NIPGS and MaReCs samples are never counted as overdue.
+const OVERDUE_EXEMPT=/^(NIPGS|NIPGT|MARECS?)$/;
+function isOverdue(e,c){if(isNotReporting(e)||isCompleteOnSeq(e,c)||OVERDUE_EXEMPT.test(String(testNameOf(e)||'').toUpperCase().replace(/[^A-Z]/g,'')))return false;const tat=parseSheetDate(tatDate(e,c));if(!tat||field(e,['ngs report']))return false;const today=new Date();today.setHours(0,0,0,0);return tat<today}
 let homeUnit=(()=>{try{return localStorage.getItem('em-home-unit')==='samples'?'samples':'embryos'}catch{return'embryos'}})();
 const homeCount=list=>homeUnit==='samples'?list.length:list.reduce((s,e)=>s+embryoRowsOf(e).length,0);
 function syncOverdueCard(){const stat=$('#overdueStat');if(!stat)return;const all=allEmbryos(),n=all.filter(e=>isOverdue(e,e._case)).length;stat.innerHTML=`${n.toLocaleString()}<span class="ov-pct">${all.length?(n/all.length*100).toFixed(1):'0.0'}%</span>`}
