@@ -2139,7 +2139,6 @@ body.vault-staff #vaultUpload{display:none!important}
 
 .fu-tasks tbody tr[data-key]{cursor:pointer}.fu-tasks tbody tr[data-key]:hover{background:#f3f8f8}
 #homeView .home-toolbar{position:relative!important}
-@media(max-width:1100px){
 .co-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 14px}
 .co-list-bar{margin-top:22px}.co-list-bar .db-h{margin:0;flex:1 1 auto}.co-list-bar .search-wrap{max-width:320px;flex:1 1 220px}
 .co-table th,.co-table td{white-space:nowrap}
