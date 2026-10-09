@@ -2275,4 +2275,4 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 #homeView #homeStats article[data-stage="released"]{--c:#1f8a52}
 #homeView #homeStats #homeReportPrepCard{--c:#c58800}
 .embryo-kv .kv-cutoff td{padding-bottom:2px;font:600 11.5px "Inter",sans-serif;color:#2f7a55;white-space:nowrap}
-.home-period{margin:2px 2px 4px;font:500 12.5px "Inter",sans-serif;color:#6b7a73;text-align:right}
+.home-period{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:2px 2px 4px;font:500 12.5px "Inter",sans-serif;color:#6b7a73}.home-period select{font:600 12.5px "Inter",sans-serif;color:#26352f;border:1px solid #dfe6e2;border-radius:999px;padding:4px 10px;background:#fff}
