@@ -21,6 +21,7 @@ CONSENTS = {"PGT-A": "consent_pgt_a.pdf", "EMBRYO_SURE": "consent_embryo_sure.pd
 CONSENTS_FOR_TEST = {"PGT-A+M": ["PGT-A", "PGT-M"], "PGT-A+M+HLA": ["PGT-A", "PGT-M"]}
 PAGE_W, PAGE_H = 595.276, 841.89
 INK = "#12202b"
+REF_X = 111.0  # left edge of every line in Referring details
 
 # Template rows of the biopsy worksheet table (identical on both forms) and its column edges.
 ROW_EDGES = [289.0, 319.3, 348.3, 377.3, 406.3, 435.3, 464.3, 493.6, 522.6, 551.6, 580.6, 609.6]
@@ -126,7 +127,11 @@ def _page1(d: dict, kind: str, meta: dict) -> Overlay:
         o.text(466, 112.0, f'TRF ref: {meta["ref"]}', 6.4, 112, bold=True)
     if meta.get("submittedAt"):
         o.text(466, 121.0, f'Submitted {meta["submittedAt"]}', 5.8, 112, bold=False)
-    # Referring details
+    # Referring details: the paper form's lines start at five different x positions, so they are
+    # wiped and redrawn from one x (like the patient column), then the values are typed on them
+    for y, x_old in ((238.1, 109.5), (266.6, 111.5), (291.65, 68.0), (316.0, 23.5), (341.6, 56.8), (363.6, 57.0)):
+        o.cover(x_old, y - 1.0, 279.5, y + 1.0)
+        o.parts.append(f'<span class="w" style="left:{REF_X}pt;top:{y - 0.3:.2f}pt;width:{278.0 - REF_X}pt;height:0.6pt;background:#59c134"></span>')
     o.text(113.5, 236.0, d.get("referringDoctor"), 9, 164)
     hosp = str(d.get("hospital") or "")
     if len(hosp) > 30:
@@ -146,10 +151,10 @@ def _page1(d: dict, kind: str, meta: dict) -> Overlay:
         if len(lines) <= 2 or size <= 5.5:
             break
         size = round(size - 0.25, 2)
-    o.text(114.5, 289.6, lines[0] if lines else "", size, 162, min_size=5.5)
-    o.text(114.5, 313.6, " ".join(lines[1:]), size, 162, min_size=5.5)
-    o.text(114.5, 339.3, d.get("phone"), 9, 162)
-    o.text(114.5, 361.3, d.get("email"), 8.5, 162, min_size=6)
+    o.text(REF_X + 3.5, 289.6, lines[0] if lines else "", size, 162, min_size=5.5)
+    o.text(REF_X + 3.5, 313.6, " ".join(lines[1:]), size, 162, min_size=5.5)
+    o.text(REF_X + 3.5, 339.3, d.get("phone"), 9, 162)
+    o.text(REF_X + 3.5, 361.3, d.get("email"), 8.5, 162, min_size=6)
     # Patient information (right column); the hint text of the date lines is covered first
     o.text(389, 237.3, d.get("patientName"), 9.5, 175)
     for hint_y0, hint_y1, base, key in ((247.0, 262.5, 261.0, "patientDob"), (326.0, 342.5, 342.6, "husbandDob")):
