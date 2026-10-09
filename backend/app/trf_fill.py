@@ -138,13 +138,18 @@ def _page1(d: dict, kind: str, meta: dict) -> Overlay:
             o.text(114.5, 264.4, hosp, 7.2, 163)
     else:
         o.text(114.5, 264.4, hosp, 8.5, 163)
-    addr_lines = _lines_wrap(d.get("address"), 46)
-    first = addr_lines[0] if addr_lines else ""
-    rest = " ".join(addr_lines[1:])
-    o.text(71, 289.6, first, 8, 205, min_size=6)
-    o.text(26, 313.6, rest, 8, 250, min_size=6)
-    o.text(59.5, 339.3, d.get("phone"), 9, 218)
-    o.text(60, 361.3, d.get("email"), 8.5, 217, min_size=6)
+    # one value column (x=114.5) for every referring field, like the patient column on the right;
+    # a long address shrinks until it fits on its two lines
+    addr, size = str(d.get("address") or ""), 8.0
+    while True:
+        lines = _lines_wrap(addr, int(160 / (size * 0.6)))
+        if len(lines) <= 2 or size <= 5.5:
+            break
+        size = round(size - 0.25, 2)
+    o.text(114.5, 289.6, lines[0] if lines else "", size, 162, min_size=5.5)
+    o.text(114.5, 313.6, " ".join(lines[1:]), size, 162, min_size=5.5)
+    o.text(114.5, 339.3, d.get("phone"), 9, 162)
+    o.text(114.5, 361.3, d.get("email"), 8.5, 162, min_size=6)
     # Patient information (right column); the hint text of the date lines is covered first
     o.text(389, 237.3, d.get("patientName"), 9.5, 175)
     for hint_y0, hint_y1, base, key in ((247.0, 262.5, 261.0, "patientDob"), (326.0, 342.5, 342.6, "husbandDob")):
