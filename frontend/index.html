@@ -99,6 +99,7 @@
       <section class="content" id="homeView">
         <div class="home-fixed">
         <div class="home-toolbar"><h2 class="home-title">Run-wise status <small class="run-filter-note" id="runFilterNote"></small></h2><div class="search-wrap" id="runSearchWrap"><span>⌕</span><input id="runSearch" placeholder="Search run, platform or patient…"></div><button class="nav-item import-data-btn home-overview-btn" data-view="overview" title="Open the overview dashboard"><span><img class="ico" src="/static/icons/navigation__overview.png" alt=""></span> <span class="nav-label">Overview</span></button><button class="nav-item samples-go" id="samplesGo" data-view="samples" title="Open the embryo registry"><span><img class="ico" src="/static/icons/navigation__samples.png" alt=""></span> Embryo registry <b id="caseCount2">0</b></button><button class="nav-item import-data-btn" data-view="import" title="Upload result"><span><img class="ico" src="/static/icons/navigation__upload-result.png" alt=""></span> <span class="nav-label">Upload result</span></button></div>
+        <div class="home-period" id="homePeriod"></div>
         <div class="stats" id="homeStats">
           <article><div><small>PATIENTS</small><strong id="homePatientsStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/run-summary__patients.png" alt=""></span></article>
           <article><div><small>TOTAL EMBRYOS</small><strong id="homeEmbryosStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/stages-results__total-embryos.png" alt=""></span></article>
@@ -107,7 +108,6 @@
           <article id="overdueCard" class="overdue-card" tabindex="0" role="button" title="Open the overdue patients list"><div><small>OVERDUE PATIENTS</small><strong id="overdueStat">0</strong></div><span class="stat-icon red">⏰</span></article>
           <article id="homeRebiopsyCard" tabindex="0" role="button" title="Open the Re-biopsy list"><div><small>RE-BIOPSY</small><strong id="homeRebiopsyStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/tests-transfers__repeat-biopsy.png" alt=""></span></article>
         </div>
-        <div class="home-period" id="homePeriod"></div>
         </div>
         <section class="panel run-list-panel">
           <div id="runList"><div class="chart-empty">Loading…</div></div>
