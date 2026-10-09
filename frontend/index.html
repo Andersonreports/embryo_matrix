@@ -100,8 +100,8 @@
         <div class="home-fixed">
         <div class="home-toolbar"><h2 class="home-title">Run-wise status <small class="run-filter-note" id="runFilterNote"></small></h2><div class="search-wrap" id="runSearchWrap"><span>⌕</span><input id="runSearch" placeholder="Search run, platform or patient…"></div><button class="nav-item import-data-btn home-overview-btn" data-view="overview" title="Open the overview dashboard"><span><img class="ico" src="/static/icons/navigation__overview.png" alt=""></span> <span class="nav-label">Overview</span></button><button class="nav-item samples-go" id="samplesGo" data-view="samples" title="Open the embryo registry"><span><img class="ico" src="/static/icons/navigation__samples.png" alt=""></span> Embryo registry <b id="caseCount2">0</b></button><button class="nav-item import-data-btn" data-view="import" title="Upload result"><span><img class="ico" src="/static/icons/navigation__upload-result.png" alt=""></span> <span class="nav-label">Upload result</span></button></div>
         <div class="stats" id="homeStats">
+          <article><div><small>PATIENTS</small><strong id="homePatientsStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/run-summary__patients.png" alt=""></span></article>
           <article><div><small>TOTAL EMBRYOS</small><strong id="homeEmbryosStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/stages-results__total-embryos.png" alt=""></span></article>
-          <article data-stage="wga" tabindex="0" role="button" title="List samples awaiting sequencing"><div><small>SEQUENCING</small><strong id="homeSeqStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/stages-results__sequencing.png" alt=""></span></article>
           <article id="homeReportPrepCard" tabindex="0" role="button" title="Open the Report preparation list"><div><small>REPORT PREPARATION</small><strong id="homeReportPrepStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/stages-results__report-preparation.png" alt=""></span></article>
           <article data-stage="released" tabindex="0" role="button" title="List samples with a released report"><div><small>REPORT RELEASED</small><strong id="homeReleasedStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/icons/stages-results__report-sent.png" alt=""></span></article>
           <article id="overdueCard" class="overdue-card" tabindex="0" role="button" title="Open the overdue samples list"><div><small>OVERDUE SAMPLES</small><strong id="overdueStat">0</strong></div><span class="stat-icon red">⏰</span></article>
@@ -191,7 +191,7 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="/static/clients.js"></script>
   <script src="/static/trf-doc.js?v=20261007zzzzu"></script>
-  <script src="/static/app.js?v=20261008q"></script>
+  <script src="/static/app.js?v=20261008qx"></script>
   <script src="/static/followup.js?v=20261007zzzzu"></script>
   <script src="/static/coordinator.js?v=20261008p"></script>
 </body>
