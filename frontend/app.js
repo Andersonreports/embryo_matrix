@@ -1727,7 +1727,7 @@ const odMonthKey=d=>{const t=parseSheetDate(d);return t?`${t.getFullYear()}-${St
 function setupOverdueView(){
  const today=new Date();today.setHours(0,0,0,0);
  const blank=v=>!v||/^(not assigned|not recorded|—|-)$/i.test(String(v).trim())?'':v;
- const stageOf=e=>field(e,['attune upload'])&&!isCompleteOnSeq(e,e._case)?['Report pending','ready']:field(e,['seq date'])?['Sequenced','seq']:field(e,['wga done on'])?['Awaiting sequencing','seq']:['Awaiting WGA','wga'];
+ const stageOf=e=>field(e,['attune upload'])&&!isCompleteOnSeq(e,e._case)?['Report pending','ready']:field(e,['seq date'])?['Report preparation','seq']:field(e,['wga done on'])?['Awaiting sequencing','seq']:['Awaiting WGA','wga'];
  // Run(s) of each sample: the tracker's Run ID, the Sequencing Batch Record run it sits in, and the run of any result file merged into it.
  const rowRuns=new Map,addRun=(k,r)=>{const l=`RUN ${runIdNorm(r)}`,a=rowRuns.get(k)||[];if(!a.includes(l))a.push(l);rowRuns.set(k,a)};
  seqRunsView.forEach(r=>r.items.forEach(x=>{if(x.m)addRun(odRowKey(x.m.row),r.runId)}));
