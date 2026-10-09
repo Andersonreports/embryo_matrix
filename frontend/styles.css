@@ -2270,3 +2270,5 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .hb-bar{display:flex;height:100%;min-width:3px;border-radius:999px;overflow:hidden;gap:1px}
 .hb-pass{display:block;background:#3f8c6f}.hb-fail{display:block;background:#c25450}.hb-one{background:#0f766e}
 .hb-n{font-weight:700;font-size:13.5px;color:#14262b;text-align:right}
+
+#overdueStat .ov-pct{display:block;margin-top:2px;font:600 13px "Inter",sans-serif;color:#b3433c;letter-spacing:0}
