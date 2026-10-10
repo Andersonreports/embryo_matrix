@@ -2342,3 +2342,5 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .embryo-table td{overflow-wrap:anywhere;word-break:break-word}
 .embryo-table .embryo-headrow th,.embryo-table .embryo-row td:not([colspan]){border:1px solid var(--line)!important;padding:9px 12px!important;vertical-align:middle}
 .embryo-table .embryo-headrow th{background:#f4f8f7}
+.embryo-table .embryo-headrow th,.embryo-table .embryo-row td,.embryo-kv th,.embryo-kv td{text-align:center!important}
+.embryo-table .embryo-row td .result-pill{margin-inline:auto}
