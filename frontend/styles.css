@@ -2288,3 +2288,5 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 #homeView .home-toolbar{margin:0 0 8px!important}
 #homeView .home-period{position:absolute;top:8px;right:24px;margin:0!important;height:40px;align-items:center}
 @media(max-width:1100px){#homeView .home-period{position:static;height:auto;margin:0 0 6px!important}}
+.mm-month{padding:14px 0;border-top:1px solid var(--line,#e3e9e8)}.mm-month:first-of-type{border-top:0}.mm-month h4{margin:0 0 8px;font:500 16px "Lora",serif}
+.mm-row{display:grid;grid-template-columns:96px minmax(0,1fr) 34px;align-items:center;gap:12px;margin:6px 0}.mm-l{font-size:13px;color:#5c6e6c}.mm-track{height:20px;border-radius:7px;background:#eef2f2;overflow:hidden}.mm-track i{display:block;height:100%;border-radius:7px}.mm-n{text-align:right;font-size:16px;font-weight:600}
