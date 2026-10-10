@@ -2367,3 +2367,5 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 /* Overdue card: the calendar icon is drawn with more empty space, so it is shown a little larger (negative margins keep the card height) */
 #homeView #homeStats #overdueCard .stat-icon,#homeView #homeStats #overdueCard .stat-icon .ico{width:60px!important;height:60px!important}
 #homeView #homeStats #overdueCard .stat-icon{margin:-7px 0 -7px!important}
+/* Overdue card: the percentage sits beside the label */
+#homeView #homeStats #overdueCard small .ov-pct{display:inline!important;margin-left:6px;font-size:inherit!important;font-weight:800;color:#c0392b!important;letter-spacing:0}
