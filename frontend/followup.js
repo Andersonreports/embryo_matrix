@@ -40,7 +40,7 @@ function taskStatus(f){
 const chip=s=>STATUS_LABEL[s]&&s!=='open'?`<span class="fu-chip fu-${s}">${STATUS_LABEL[s]}</span>`:'';
 const resChip=r=>r?`<span class="fu-res fu-res-${norm(r).toLowerCase()}">${esc(r)}</span>`:'<span class="fu-res fu-res-none">—</span>';
 const OS_ICON={'Not transferred':'not-transferred','Transferred':'transferred','Implantation successful':'implantation-successful','Implantation unsuccessful':'implantation-unsuccessful','Clinical pregnancy':'clinical-pregnancy','Miscarriage':'miscarriage','Live birth':'live-birth','Outcome unknown':'outcome-unknown'};
-const osIcon=s=>OS_ICON[s]?`<img class="si" src="/static/icons/outcomes__${OS_ICON[s]}.png" alt="">`:'';
+const osIcon=s=>OS_ICON[s]?`<img class="si" src="/static/assets/icons/outcomes__${OS_ICON[s]}.png" alt="">`:'';
 const statusChip=s=>s?`<span class="fu-os fu-os-${norm(s).toLowerCase()}">${esc(s)}</span>`:'<span class="fu-os fu-os-none">Not recorded</span>';
 const ageGroup=a=>a==null?'Unknown':a<30?'Under 30':a<=34?'30–34':a<=37?'35–37':a<=40?'38–40':'41 and over';
 const AGE_ORDER=['Under 30','30–34','35–37','38–40','41 and over','Unknown'];
@@ -82,7 +82,7 @@ function wireEditor(root,onChange,onRecord,onShare){
  root.addEventListener('change',e=>{const sl=e.target.closest('.oe-sel');if(sl){const c=sl.closest('.oe-card');c.querySelector('.oe-now').innerHTML=statusChip(sl.value)}const w=e.target.closest('.ot-where');if(w){const b=w.closest('.oe-test'),v=w.value;b.querySelector('.ot-lab-wrap').hidden=v!=='Other lab';b.querySelector('.ot-done').hidden=!(v==='Anderson'||v==='Other lab')}onChange&&onChange()});
  root.addEventListener('click',e=>{const b=e.target.closest('.oe-clear');if(!b)return;const c=b.closest('.oe-card');c.querySelector('.oe-sel').value='';c.querySelector('.oe-now').innerHTML=statusChip('');onChange&&onChange()})}
 const sumCards=(out)=>{const n=out.length,c=l=>out.filter(x=>l.includes(x.status)).length,rec=out.filter(x=>x.status).length;
- return [['Embryos',n,'embryos-tracked'],['Transferred',c(TRANSFERRED),'transferred'],['Implantation +',c(IMPLANTED),'implantation-successful'],['Clinical pregnancy',c(CLINICAL),'clinical-pregnancy'],['Live birth',c(['Live birth']),'live-birth'],['Not recorded',n-rec,'outcome-unknown']].map(([l,v,i])=>`<div class="fu-sc"><img class="fu-sc-ico" src="/static/icons/outcomes__${i}.png" alt=""><strong>${v}</strong><small>${l}</small></div>`).join('')};
+ return [['Embryos',n,'embryos-tracked'],['Transferred',c(TRANSFERRED),'transferred'],['Implantation +',c(IMPLANTED),'implantation-successful'],['Clinical pregnancy',c(CLINICAL),'clinical-pregnancy'],['Live birth',c(['Live birth']),'live-birth'],['Not recorded',n-rec,'outcome-unknown']].map(([l,v,i])=>`<div class="fu-sc"><img class="fu-sc-ico" src="/static/assets/icons/outcomes__${i}.png" alt=""><strong>${v}</strong><small>${l}</small></div>`).join('')};
 
 // ---------------- Patient outcome dialog (opened from the task queue and from the patient page) ----------------
 function dlgEl(){let d=document.getElementById('fuDialog');if(!d){d=document.createElement('dialog');d.id='fuDialog';d.className='vu-dialog vu-dialog-wide fu-dialog';document.body.append(d);d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-close]'))d.close()})}return d}
@@ -133,7 +133,7 @@ async function postSave(body){
  const i=FU.items.findIndex(x=>x.caseKey===j.caseKey),hidden=!(j.embryos&&j.embryos.length);if(hidden){if(i>=0)FU.items.splice(i,1)}else if(i>=0)FU.items[i]=j;else FU.items.unshift(j);return j}
 
 // ---------------- Shared bits for the redesigned pages ----------------
-const IC=n=>`<img class="ico" src="/static/icons/${n}.png" alt="">`;
+const IC=n=>`<img class="ico" src="/static/assets/icons/${n}.png" alt="">`;
 const SVG={heart:'<svg viewBox="0 0 24 24" width="30" height="30" fill="#e0457b"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.7 5 6 5c2 0 3.4 1 4 2.2h4C14.600 6 16 5 18 5c3.300 0 5.100 3.400 3.600 6.800C19.500 16.400 12 21 12 21z"/></svg>'};
 const relDue=(due)=>{if(!due)return'';const d=Math.round((new Date(due+'T00:00:00')-new Date(today()+'T00:00:00'))/864e5);return d<0?`Overdue by ${-d} day${d===-1?'':'s'}`:d===0?'Due today':d===1?'Due tomorrow':`Due in ${d} days`};
 const TILES=[

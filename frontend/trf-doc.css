@@ -96,9 +96,9 @@ label.td-check{cursor:pointer}
 .td-value{text-align:left}
 
 /* Header / footer artwork lifted from the paper template (transparent PNGs) */
-.td-curve-top{height:14.7mm;background:url(trf-top.png) no-repeat 0 0/100% 100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.td-curve-top{height:14.7mm;background:url(assets/trf/trf-top.png) no-repeat 0 0/100% 100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .td-curve-top::after{display:none}
-.td-curve-bottom{width:50mm;height:30.5mm;right:0;bottom:19mm;background:url(trf-arch.png) no-repeat 100% 100%/100% 100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.td-curve-bottom{width:50mm;height:30.5mm;right:0;bottom:19mm;background:url(assets/trf/trf-arch.png) no-repeat 100% 100%/100% 100%;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .td-curve-bottom::before{display:none}
 .td-footer{position:absolute;left:13mm;right:13mm;bottom:8mm;display:block;margin:0;padding:0;border-top:0}
 .td-services{margin:0;font-size:10.5px;font-weight:700;color:#f57d23;line-height:1.55}

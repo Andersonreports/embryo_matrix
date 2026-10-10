@@ -312,8 +312,8 @@ def _followup_page_html(d: dict) -> str:
     consent = str(d.get("followupConsent") or "")
     box = lambda v, label: f'<span class="fp-opt"><span class="fp-box">{"&#10003;" if consent == v else ""}</span>{label}</span>'
     blank = lambda v, w: f'<span class="fp-blank" style="min-width:{w}pt">{esc(v)}</span>'
-    return (f'<div class="fp"><img class="fp-top" src="trf-top.png">'
-            f'<img class="fp-foot" src="trf-footer-3.png"><span class="fp-pg">Pg.4</span><div class="fp-body">'
+    return (f'<div class="fp"><img class="fp-top" src="assets/trf/trf-top.png">'
+            f'<img class="fp-foot" src="assets/trf/trf-footer-3.png"><span class="fp-pg">Pg.4</span><div class="fp-body">'
             '<h2>OUTCOME FOLLOW-UP CONSENT</h2>'
             f'<p class="fp-first">I, {blank(d.get("patientName"), 150)}, hereby give my consent to Anderson Diagnostics &amp; Labs to obtain '
             'information on the embryo transfer and the pregnancy outcome following this Preimplantation Genetic Testing from my treating clinic.</p>'

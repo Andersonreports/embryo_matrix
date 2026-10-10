@@ -16,7 +16,7 @@ from pathlib import Path
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
 CSS_PATH = FRONTEND_DIR / "trf-doc.css"
-LOGO_PATH = FRONTEND_DIR / "anderson-logo.png"
+LOGO_PATH = FRONTEND_DIR / "assets" / "logos" / "anderson-logo.png"
 
 TRF_TEST_LABELS = {
     "PGT-A": "Preimplantation Genetic Testing - Aneuploidies (PGT-A)",
@@ -92,12 +92,12 @@ def _footer(n: int, is_m: bool = False) -> str:
     # Bottom of the page exactly as on the paper template (arch, services strip, page number, and
     # on page 1 the storage / confidentiality notes; on page 2 the contact line).
     name = {1: "1m" if is_m else "1a", 2: "2m" if is_m else "2a"}.get(n, "3")
-    return f'<img class="td-footer-img" src="file://{FRONTEND_DIR}/trf-footer-{name}.png" alt="">'
+    return f'<img class="td-footer-img" src="file://{FRONTEND_DIR}/assets/trf/trf-footer-{name}.png" alt="">'
 
 
 def _logo_row(is_m: bool = False) -> str:
     # The template's own header artwork (curve + logo + heading), cropped from the paper form.
-    return f'<img class="td-header-img" src="file://{FRONTEND_DIR}/trf-header-{"m" if is_m else "a"}.png" alt="Anderson Diagnostics &amp; Labs">'
+    return f'<img class="td-header-img" src="file://{FRONTEND_DIR}/assets/trf/trf-header-{"m" if is_m else "a"}.png" alt="Anderson Diagnostics &amp; Labs">'
 
 
 def _title_row(title: str, note_html: str, box_html: str) -> str:

@@ -45,8 +45,8 @@ function trfPagesHtml(d,meta={},opts={}){
  // Groups sections into one continuous outlined panel, like the paper form's single bordered column.
  const panel=(...sections)=>`<div class="td-panel">${sections.join('')}</div>`;
  const curves=`<div class="td-curve-top"></div><div class="td-curve-bottom"></div>`,curveBottom='<div class="td-curve-bottom"></div>';
- const footer=n=>`<img class="td-footer-img" src="/static/trf-footer-${n===1?(isM?'1m':'1a'):n===2?(isM?'2m':'2a'):'3'}.png" alt="">`;
- const logoRow=`<img class="td-header-img" src="/static/trf-header-${isM?'m':'a'}.png" alt="Anderson Diagnostics &amp; Labs - Preimplantation Genetic Testing">`;
+ const footer=n=>`<img class="td-footer-img" src="/static/assets/trf/trf-footer-${n===1?(isM?'1m':'1a'):n===2?(isM?'2m':'2a'):'3'}.png" alt="">`;
+ const logoRow=`<img class="td-header-img" src="/static/assets/trf/trf-header-${isM?'m':'a'}.png" alt="Anderson Diagnostics &amp; Labs - Preimplantation Genetic Testing">`;
  const titleRow=(title,noteHtml,boxHtml)=>`<div class="td-titlerow"><div><h2 class="td-title">${title}</h2>${noteHtml||''}</div><div class="td-titlebox">${boxHtml||''}</div></div>`;
  const refInfo=meta.ref?`TRF ref: <b>${esc(meta.ref)}</b>`:(edit?'<i>Reference number is given on submit</i>':'');
  const refBox=`<div class="td-refbox"><div>${line('Date of Biopsy:','biopsyDate','date')}</div>${(refInfo||meta.submittedAt)?`<div class="td-ref">${refInfo}${meta.submittedAt?`<span>Submitted ${esc(new Date(meta.submittedAt).toLocaleString())}</span>`:''}</div>`:''}</div>`;
