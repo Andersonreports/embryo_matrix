@@ -1608,7 +1608,11 @@ async function handleResultAttach(files,opts={}){
  const parsed=[];
  const trackerRows=allRows.filter(r=>!r._stale);
  for(const f of files){try{parsed.push(await parseResultFile(f,trackerTags,trackerRows))}catch(e){toast(`${f.name} could not be read`)}}
- if(!parsed.some(p=>p.byKey.size||p.byName.size)){status.textContent='No result rows with a Sample Name and QC/Result value were found.';return}
+ if(!parsed.some(p=>p.byKey.size||p.byName.size)){
+  // Rows were read but none could be tied to a tracker row: say why for each one instead of a generic message.
+  const held=parsed.flatMap(p=>(p.review||[]).map(x=>({file:p.file.name,kind:'review',sample:x.raw,reason:x.reason,closest:x.candidate||''})));
+  if(held.length){renderUploadReport(status,`${parsed.reduce((n,p)=>n+p.count,0)} result row(s) were read, but none matched a sample in the tracker.`,held);return}
+  status.textContent='No result rows with a Sample Name and QC/Result value were found.';return}
  // Rows without an Anderson ID: take the tracker embryo whose patient name matches (loosely,
  // as the file often shortens it) and whose tag is the same. If that fits more than one
  // tracker sample (e.g. a re-biopsy with the same tag), the row is skipped rather than guessed.
