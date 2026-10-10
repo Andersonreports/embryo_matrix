@@ -408,6 +408,34 @@ window.renderFollowupView=async function(g,view){
   if(tab==='monitor')wireMonitor(card,draw);else if(tab==='tasks')wireTasks(card,draw);else wireDash(card,draw)};
  draw()};
 
+// ---------------- Embryo tracker (client login): where each embryo is until its report is sent ----------------
+const TRK_STAGES=[[0,'Awaiting sample','Not received yet'],[1,'Sample received','WGA is next'],[2,'WGA done','Sequencing is next'],[3,'Report being prepared','Sequencing is done'],[4,'Report sent','Outcome can be recorded']];
+const TRK_NOW={0:'Awaiting sample',1:'Sample received',2:'WGA done',3:'Sequenced \u00b7 report being prepared',4:'Report sent'};
+const TRK_COLS=[['Patient',i=>`<strong>${esc(i.patient)}</strong>`],['Embryo',i=>`<b>${esc(i.embryo)}</b>`],['Status',i=>`<span class="trk-pill s${i.stage}">${esc(TRK_NOW[i.stage])}</span>`],
+ ['Sample ID',i=>i.sampleId],['Test',i=>i.test],['Sequencer',i=>i.sequencer],['Date of biopsy',i=>i.biopsy],['Sample received',i=>i.received],['TRF received',i=>i.trfReceived],
+ ['WGA done',i=>i.wga],['Sequencing',i=>i.sequenced],['Report released',i=>i.reported],['Kit',i=>i.kit],['Stored in',i=>i.box||i.sampleBox],['Stored on',i=>i.stored],['Transferred on',i=>i.transferredOn],['Transferred to',i=>i.transferredTo]];
+window.renderEmbryoTracker=async function(g){
+ const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent='Embryo tracker';
+ const mh=document.getElementById('mainHeader');if(mh)mh.classList.add('hidden');
+ g.innerHTML='<div class="generic-card wide-card fu-view trk"><div class="chart-empty">Loading your embryos\u2026</div></div>';
+ const card=g.querySelector('.trk');let items=[],stage='',q='';
+ try{const r=await fetch('/api/my-embryos');if(!r.ok)throw 0;items=(await r.json()).items||[]}catch(e){card.innerHTML='<div class="chart-empty">Could not load your embryos. Please try again.</div>';return}
+ const open=items.filter(i=>i.stage<4).length;
+ const draw=()=>{
+  const cnt=k=>items.filter(i=>i.stage===k).length,needle=q.trim().toLowerCase();
+  // with no stage chosen the list shows the embryos still waiting for their report
+  const list=items.filter(i=>(stage===''?i.stage<4:i.stage===+stage)&&(!needle||`${i.patient} ${i.embryo} ${i.sampleId} ${i.test}`.toLowerCase().includes(needle)));
+  const cards=TRK_STAGES.map(([k,l,sub])=>`<button type="button" class="trk-card${String(stage)===String(k)?' on':''}" data-st="${k}"><b>${cnt(k)}</b><span>${esc(l)}</span><small>${esc(sub)}</small></button>`).join('');
+  const head=TRK_COLS.map(([h])=>`<th>${h}</th>`).join(''),rows=list.map(i=>`<tr>${TRK_COLS.map(([,f],k)=>{const v=f(i);return `<td>${k<3?v:(esc(v)||'\u2014')}</td>`}).join('')}</tr>`).join('');
+  card.innerHTML=`<div class="fu-hero"><div><h2>${open?`${open} embryo${open===1?'':'s'} waiting for a report`:'No embryos waiting for a report'}</h2><p>Where each of your embryos is right now, with its dates, test, sequencer, kit and storage. Once the report is sent, record the outcome in Follow-up tasks.</p></div></div>
+  <div class="trk-cards">${cards}</div>
+  <div class="trk-tools"><div class="search-wrap"><span>\u2315</span><input id="trkQ" type="search" placeholder="Search patient, embryo or sample ID\u2026" value="${esc(q)}" autocomplete="off"></div>${stage!==''?'<button type="button" class="text-button" id="trkClear">Show waiting for report</button>':''}</div>
+  ${list.length?`<div class="fu-table-wrap trk-wrap"><table class="fu-table trk-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="tk-empty"><h3>${items.length?'Nothing here':'No embryos yet'}</h3><p>${items.length?'Try another search or stage.':'Embryos appear here once your samples are in our sheet.'}</p></div>`}`;
+  card.querySelectorAll('.trk-card').forEach(b=>b.onclick=()=>{stage=String(stage)===b.dataset.st?'':b.dataset.st;draw()});
+  const c=card.querySelector('#trkClear');if(c)c.onclick=()=>{stage='';draw()};
+  const inp=card.querySelector('#trkQ');if(inp){inp.oninput=()=>{q=inp.value;const pos=inp.selectionStart;draw();const n=card.querySelector('#trkQ');n.focus();n.setSelectionRange(pos,pos)}}};
+ draw()};
+
 // ---------------- Patient page section ----------------
 window.renderPatientFollowup=async function(c,resolvedAll){
  if(typeof isStaff==='function'&&!isStaff())return;

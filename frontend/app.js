@@ -962,7 +962,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show'
 const isStaff=()=>!currentUser.signedIn||['admin','senior_executive','team_lead'].includes(currentUser.role);
 const canEditResults=()=>!currentUser.signedIn||['admin','senior_executive'].includes(currentUser.role);
 const canManageUsers=()=>currentUser.signedIn&&['admin','senior_executive'].includes(currentUser.role);
-const ROLE_VIEWS={member:['samples','pgtm','cases','images'],embryologist:['fuTasks','fuDash','trfs'],coordinator:['coord']};
+const ROLE_VIEWS={member:['samples','pgtm','cases','images'],embryologist:['fuTasks','fuTrack','fuDash','trfs'],coordinator:['coord']};
 const viewAllowed=v=>{const r=currentUser.role;if(v==='users')return !currentUser.signedIn||canManageUsers();return !currentUser.signedIn||!ROLE_VIEWS[r]&&isStaff()||!!ROLE_VIEWS[r]&&ROLE_VIEWS[r].includes(v)};
 const roleHomeView=()=>(ROLE_VIEWS[currentUser.role]||[])[0]||'home';
 function applyRoleAccess(){
@@ -1001,6 +1001,7 @@ function showView(view){if(!viewAllowed(view))view=roleHomeView();
  if(view==='overview'){ $('#overviewView').classList.remove('hidden');$('#samplesView').classList.add('hidden');$('#genericView').classList.add('hidden');requestAnimationFrame(()=>{if(typeof renderAnalytics==='function')renderAnalytics()});return }
  if(view==='cases'||view==='samples'){ $('#overviewView').classList.add('hidden');$('#genericView').classList.add('hidden');$('#samplesView').classList.remove('hidden');fitTableHeight($('#caseTable .embryo-columns-table'));return }
  if(view==='coord'){ $('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');const g=$('#genericView');g.classList.remove('hidden');renderCoordView(g);return }
+ if(view==='fuTrack'){$('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');const g=$('#genericView');g.classList.remove('hidden');renderEmbryoTracker(g);return}
  if(view==='followup'||view==='fuTasks'||view==='fuDash'||view==='dashboard'){ $('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');const g=$('#genericView');g.classList.remove('hidden');renderFollowupView(g,view);return }
  if(view==='run'){ $('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');const g=$('#genericView');g.classList.remove('hidden');renderRunView(g);return }
  $('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');const g=$('#genericView');g.classList.remove('hidden');
@@ -1956,7 +1957,7 @@ function setupRunReportsView(){const sel=$('#rrMonth'),body=$('#rrBody');if(!sel
   if(!backing&&cur&&cur!==view){if(stack[stack.length-1]!==cur)stack.push(cur);if(stack.length>30)stack.shift()}
   cur=view;orig(view);
   const t=document.getElementById('topBack');if(t)t.classList.toggle('hidden',!stack.length);
-  const o=document.getElementById('backBtn');if(o)o.classList.toggle('hidden',!stack.length||['dashboard','home','pgtm','runreports','followup','trfs','fuTasks','fuDash'].includes(view)||(!isStaff()&&['samples','cases','images'].includes(view))||view==='run')};
+  const o=document.getElementById('backBtn');if(o)o.classList.toggle('hidden',!stack.length||['dashboard','home','pgtm','runreports','followup','trfs','fuTasks','fuDash','fuTrack'].includes(view)||(!isStaff()&&['samples','cases','images'].includes(view))||view==='run')};
  const go=()=>{const prev=stack.pop();if(prev)window.showView(prev,true)};
  const t=document.getElementById('topBack');if(t)t.onclick=go;
  const o=document.getElementById('backBtn');if(o)o.onclick=go;

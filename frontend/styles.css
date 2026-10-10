@@ -2344,3 +2344,16 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .embryo-table .embryo-headrow th{background:#f4f8f7}
 .embryo-table .embryo-headrow th,.embryo-table .embryo-row td,.embryo-kv th,.embryo-kv td{text-align:center!important}
 .embryo-table .embryo-row td .result-pill{margin-inline:auto}
+
+/* Embryo tracker (client login) */
+.trk-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:4px 0 16px}
+.trk-card{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:14px 16px;border:1px solid #d9e6e3;border-radius:14px;background:#fff;cursor:pointer;font-family:inherit}
+.trk-card b{font:700 30px/1.1 "Inter",sans-serif;color:#0a7180}.trk-card span{font-weight:700;font-size:13.5px;color:#17302f}.trk-card small{font-size:12px;color:#76868a}
+.trk-card:hover,.trk-card.on{border-color:#0a7180;box-shadow:0 6px 16px -10px rgba(10,113,128,.6)}.trk-card.on{background:#eef7f6}
+.trk-tools{display:flex;align-items:center;gap:12px;margin:0 0 12px}.trk-tools .search-wrap{flex:0 1 360px}
+.trk-bar{display:flex;gap:4px;max-width:320px}.trk-bar i{flex:1;height:8px;border-radius:999px;background:#e3ebea;position:relative}.trk-bar i.done{background:#1f8a52}.trk-bar i.now{background:#e8a948}
+.trk-bar em{position:absolute;top:12px;left:0;font:normal 10.5px "Inter",sans-serif;color:#76868a;white-space:nowrap}.trk-now{display:block;margin-top:18px;font-size:12.5px;color:#4d6361}
+@media(max-width:900px){.trk-cards{grid-template-columns:1fr 1fr}}
+.trk-wrap{overflow-x:auto}.trk-table{min-width:1500px}.trk-table th,.trk-table td{white-space:nowrap;text-align:left}
+.trk-pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;background:#eef2f2;color:#4d6361}.trk-pill.s1{background:#e1ecf7;color:#2f6b98}.trk-pill.s2{background:#fbeed8;color:#a76a12}.trk-pill.s3{background:#ece6fb;color:#6b4fc4}.trk-pill.s4{background:#dff3e7;color:#1f8a52}
+.trk-cards{grid-template-columns:repeat(5,minmax(0,1fr))}@media(max-width:1100px){.trk-cards{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:700px){.trk-cards{grid-template-columns:1fr 1fr}}

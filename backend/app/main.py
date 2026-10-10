@@ -109,7 +109,7 @@ _ROLE_RULES = {
     ],
     "embryologist": [
         ("POST", r"/api/(trf|trf-image|trf/preview-pdf)"), ("GET", r"/api/trf-image/[^/]+"),
-        ("GET", r"/api/followups"), ("POST", r"/api/followups/save"),
+        ("GET", r"/api/followups"), ("POST", r"/api/followups/save"), ("GET", r"/api/my-embryos"),
         ("GET", r"/api/my-trfs"), ("POST", r"/api/trf/\d+/signed"), ("GET", r"/api/trf/\d+/signed"),
     ],
 }
@@ -1354,6 +1354,72 @@ def list_followups(request: Request, db: Session = Depends(get_db)):
     rows = [f for f in db.query(Followup).order_by(Followup.updated_at.desc()).all() if _embryologist_sees(db, user, f)]
     items = [_fu_view(user, f, outs.get(f.case_key, []), hist.get(f.case_key)) for f in rows]
     return {"statuses": list(OUTCOME_STATUSES), "items": [i for i in items if i]}
+
+# --- Embryo tracker: where each of a client's embryos is, until its report is sent ---
+_STAGE_TEXT = {0: "Awaiting sample", 1: "Sample received", 2: "WGA done", 3: "Sequencing done - report being prepared", 4: "Report sent"}
+_SEQ_ONLY_TESTS = re.compile(r"A\+M|PGTM|HLA")
+_WGA_ONLY_TESTS = re.compile(r"EMBRYOSURE|VALIDATION")
+
+def _embryo_stage(r: dict) -> int:
+    """0 not received, 1 received, 2 WGA done, 3 sequenced, 4 report sent. Same rules as the stepper on the lab side."""
+    has = lambda *n: bool(_field(r, *n))
+    tests = re.sub(r"[^A-Z+]", "", str(_field(r, "test name", "test")).upper())
+    src = str(r.get("_importSource") or "")
+    done_on_seq = has("seq date") and (bool(_SEQ_ONLY_TESTS.search(tests)) or bool(re.search(r"mare?cs|not\s*reporting", src, re.I)))
+    done_on_wga = has("wga done on") and bool(_WGA_ONLY_TESTS.search(tests))
+    if has("date sample received") and has("wga done on") and ((has("seq date") and has("attune upload") and has("ngs report")) or done_on_seq or done_on_wga):
+        return 4
+    if has("date sample received") and has("wga done on") and (has("seq date") or done_on_seq or done_on_wga):
+        return 3
+    if has("date sample received") and has("wga done on"):
+        return 2
+    return 1 if has("date sample received") else 0
+
+@app.get("/api/my-embryos")
+def my_embryos(request: Request, db: Session = Depends(get_db)):
+    """The signed-in client's embryos with where each one is (received, WGA, sequencing, report) and its dates, test,
+    sequencer, kit and storage. No result, QC or outcome data is returned here."""
+    user = request.state.user or {}
+    if user.get("role") != "embryologist":
+        raise HTTPException(403, "Only a client login has an embryo list")
+    u = db.query(User).filter(User.username == (user.get("username") or "").lower()).first()
+    if u and (u.embryologist_name or u.client_name):
+        want, want_client, loose = _norm_name(u.embryologist_name or ""), _norm_name(u.client_name or ""), False
+    else:
+        want = want_client = _norm_name(user.get("username") or ""); loose = True
+    if not want and not want_client:
+        return {"items": []}
+    items = []
+    for r in _sheet_rows(db):
+        canon = _canon_embryologist(_field(r, "embryologist name", "embryologist"))
+        by_name = bool(want) and (canon == want or (loose and want in canon))
+        by_client = bool(want_client) and want_client in _norm_name(_field(r, "center name", "hospital clinic name", "client"))
+        if not (by_name or by_client):
+            continue
+        if re.search(r"not\s*reporting", str(r.get("_importSource") or ""), re.I):
+            continue
+        patient = _field(r, "patient name", "patient")
+        labels = _embryo_labels(_field(r, "embryo name", "embryo id", "embryo"))
+        if not patient or not labels:
+            continue
+        stage = _embryo_stage(r)
+        # "BOX-17 30-09-2026": the WGA storage box and the day it was stored
+        sb = _field(r, "wga storage box")
+        sm = re.search(r"\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}", sb)
+        # internal transfer to another department, only when the sheet marks it transferred
+        tr_on, tr_dept = "", ""
+        if str(r.get("transferred") or "").strip().upper() == "YES" or _field(r, "transferred on"):
+            tr_on, tr_dept = _field(r, "transferred on"), _field(r, "transferred department")
+        for lab in labels:
+            items.append({"patient": patient, "embryo": lab, "sampleId": _field(r, "sample id", "sample no"), "test": _field(r, "test name", "test"),
+                          "clinic": _field(r, "center name", "hospital clinic name", "client"), "sequencer": _field(r, "seq platform") if stage >= 3 else "",
+                          "stage": stage, "status": _STAGE_TEXT[stage], "biopsy": _field(r, "date of biopsy"), "received": _field(r, "date sample received"),
+                          "trfReceived": _field(r, "date trf received"), "wga": _field(r, "wga done on") if stage >= 2 else "",
+                          "sequenced": _field(r, "seq date") if stage >= 3 else "", "reported": _field(r, "ngs report") if stage >= 4 else "",
+                          "kit": _field(r, "kit detail"), "box": (sb[:sm.start()] if sm else sb).strip(" -"), "stored": sm.group(0) if sm else "",
+                          "sampleBox": _field(r, "box number"), "transferredOn": tr_on, "transferredTo": tr_dept})
+    items.sort(key=lambda i: (i["stage"] >= 4, i["stage"], i["patient"].upper(), i["embryo"]))
+    return {"items": items}
 
 # --- User management (admin / senior executive) ---
 
