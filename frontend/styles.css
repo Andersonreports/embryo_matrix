@@ -2332,3 +2332,7 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .db-card .fu-table tr:first-child th,.db-card .fu-table thead tr th{border-top:0}
 .db-card .fu-table tr>*:first-child{border-left:0}.db-card .fu-table tr>*:last-child{border-right:0}
 .db-card .fu-table tbody tr:last-child td{border-bottom:0}
+
+/* Outcome summary cards: larger icons, number and label at the bottom */
+.fu-sc{min-height:124px;padding-right:14px!important;display:flex;flex-direction:column;justify-content:flex-end}
+.fu-sc-ico{width:68px!important;height:68px!important;top:10px;right:10px}
