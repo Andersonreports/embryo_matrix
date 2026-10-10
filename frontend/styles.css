@@ -2319,3 +2319,16 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 
 /* Overdue patients card: larger alarm icon */
 #homeView #homeStats article.overdue-card .stat-icon{width:68px!important;height:68px!important;font-size:52px!important;line-height:1}
+
+/* Monitoring tiles: larger status icons */
+.mon-tiles{grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.mt{min-height:130px;display:flex;flex-direction:column;justify-content:flex-end}.mt .si{width:56px!important;height:56px!important;top:12px;right:10px}
+
+/* Outcomes By clinic / By month tables: visible cell dividers */
+.db-card .fu-table-wrap{border:1px solid #cfdbd9;border-radius:12px}
+.db-card .fu-table{border-collapse:collapse}
+.db-card .fu-table th,.db-card .fu-table td{border:1px solid #d3dedc}
+.db-card .fu-table th{background:#e3eeec}
+.db-card .fu-table tr:first-child th,.db-card .fu-table thead tr th{border-top:0}
+.db-card .fu-table tr>*:first-child{border-left:0}.db-card .fu-table tr>*:last-child{border-right:0}
+.db-card .fu-table tbody tr:last-child td{border-bottom:0}
