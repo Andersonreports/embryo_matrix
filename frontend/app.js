@@ -1397,6 +1397,14 @@ function matchTrackerRow(det,tix,fileDate){const tags=expandEmbryoTags(field(det
 function fileDateOf(name){const m=[...String(name||'').matchAll(/(\d{2})[-_.]?(\d{2})[-_.]?(20\d{2})/g)].pop();if(!m)return null;const d=new Date(+m[3],+m[2]-1,+m[1]);return isNaN(d)?null:d}
 // The sheet may type a leading initial the sample name lacks ("V INDUMATHY" in the sheet, "INDUMATHY-IR1" in the file).
 const leadInitial=(tn,pn)=>pn.length>=6&&tn.length>pn.length&&tn.length-pn.length<=2&&tn.endsWith(pn);
+// Last resort for a result row whose patient name is typed differently in the result file and in the sheet (SANGEERHASANKAR / "SANGEETHA SANKAR",
+// BHAVIKARONAKBHANOSHALI / "Bhanushali bhavika"). It is accepted only when the embryo tag is the same, the sheet row was sequenced on this run's
+// date, the names clearly share a word, and exactly ONE sheet row fits - anything less is left for review.
+function rescueByRun(prefix,tag,tix,fileDate){const pn=normCol(prefix);if(!fileDate||pn.length<5)return null;
+ const near=(w,hay)=>{for(let i=0;i+w.length-1<=hay.length;i++)for(const L of[w.length-1,w.length,w.length+1]){if(L>0&&i+L<=hay.length&&levenshtein(w,hay.slice(i,i+L))<=1)return true}return false};
+ const c=(tix.byTag.get(tag)||[]).filter(t=>{if(!field(t,['seq date']))return false;if(![...dayKeys(field(t,['seq date']))].some(k=>Math.abs(new Date(k)-fileDate)<864e5*.9))return false;
+  const words=String(field(t,['patient name','patient'])).toUpperCase().split(/[^A-Z]+/).filter(w=>w.length>=5);return words.some(w=>near(w,pn))});
+ const rows=[...new Set(c)];return rows.length===1?rows[0]:null}
 function matchByPrefix(prefix,tag,tix,fileDate,opts){lastMatchWhy='';const pn=normCol(prefix);if(pn.length<3){lastMatchWhy='name too short to match';return null}
  const c=(tix.byTag.get(tag)||[]).filter(t=>{if(opts&&opts.testRe&&!opts.testRe.test(field(t,['test name','test'])))return false;const tn=normCol(field(t,['patient name','patient']));if(!tn)return false;
   // The sample-name prefix is the patient name with spaces removed (possibly cut short, or with the surname/initial the sheet lacks).
@@ -1560,6 +1568,7 @@ async function parseResultFile(f,trackerTags=new Map,trackerRows=[]){
     if(!firstDet)firstDet={id,match,row}
    }else{const tr=matchByPrefix(id.patient,id.embryo,tix,fileDate,r._es?{testRe:/embryo\s*sure|hla/i}:r._nips?{testRe:/nipg|nics/i,dated:true}:null);if(tr){setKey(trKey(tr,id.embryo),row,raw,'prefix',tr,null,id.patient,id.embryo);done=true;break}else if(!why)why=lastMatchWhy}
   }
+  if(!done&&!firstDet)for(const id0 of splitsOf(raw)){const tr=rescueByRun(id0.patient,id0.embryo,tix,fileDate);if(tr&&hasTag(tr,id0.embryo)){const inc=inconclusiveIndex.get(`${cleanId(id0.patient)}|${id0.embryo}`);if(setKey(trKey(tr,id0.embryo),{...r,...inc,_computedResult:computeEmbryoResult(r,!!inc)},raw,'prefix',tr,null,id0.patient,id0.embryo))done=true;break}}
   if(done)return;
   // Details row found but no safe tracker row: only an exact patient + embryo + sample-ID hit that also passes the date gate is accepted.
   if(firstDet){const k=`${firstDet.match.patientClean}|${firstDet.id.embryo}|${cleanId(firstDet.match.sampleId)}`,tr=rowByKey.get(k);
@@ -1859,7 +1868,7 @@ function rrSeqDate(e){const m=/(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/.exec(field(e
 function rrTally(){return{patients:new Set,samples:0,res:{euploid:0,aneuploid:0,mosaic:0,inconclusive:0},resN:0,qc:{pass:0,fail:0},qcN:0}}
 function rrAddResult(t,x){const c=x&&conclusionClass(x);if(!c)return;t.resN++;t.res[{Normal:'euploid',Abnormal:'aneuploid',Mosaic:'mosaic',Inconclusive:'inconclusive'}[c]]++;const q=qcVerdict(x);if(q){t.qcN++;t.qc[q==='PASS'?'pass':'fail']++}}
 // Embryos that belong to a run but have no row in its result file (sequenced, no usable data) are counted as Inconclusive and QC fail, so a run's results add up to its embryos.
-const rrFillRes=(res,resN,qc,qcN,samples)=>({res:resN?{...res,inconclusive:res.inconclusive+Math.max(0,samples-resN)}:null,qc:qcN?{...qc,fail:Math.round(qc.fail+Math.max(0,samples-qcN))}:null});
+const rrFillRes=(res,resN,qc,qcN)=>({res:resN?res:null,qc:qcN?qc:null});
 const rrFinish=t=>({patients:t.patients.size,samples:t.samples,...rrFillRes(t.res,t.resN,t.qc,t.qcN,t.samples)});
 // A run = the run number of the result file that filled in the samples ("RUN 32"); samples with no result file yet fall back to seq date + sequencer.
 function rrSheetRuns(){const groups=new Map,files=new Map((resultFilesCache||[]).map(f=>[f.id,f])),tally=(o,k)=>{if(k)o[k]=(o[k]||0)+1},top=o=>Object.entries(o).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
