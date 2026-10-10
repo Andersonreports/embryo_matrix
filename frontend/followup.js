@@ -37,7 +37,9 @@ function taskStatus(f){
  return'open'}
 const chip=s=>STATUS_LABEL[s]&&s!=='open'?`<span class="fu-chip fu-${s}">${STATUS_LABEL[s]}</span>`:'';
 const resChip=r=>r?`<span class="fu-res fu-res-${norm(r).toLowerCase()}">${esc(r)}</span>`:'<span class="fu-res fu-res-none">—</span>';
-const statusChip=s=>s?`<span class="fu-os fu-os-${norm(s).toLowerCase()}">${esc(s)}</span>`:'<span class="fu-os fu-os-none">Not recorded</span>';
+const OS_ICON={'Not transferred':'not-transferred','Transferred':'transferred','Implantation successful':'implantation-successful','Implantation unsuccessful':'implantation-unsuccessful','Clinical pregnancy':'clinical-pregnancy','Miscarriage':'miscarriage','Live birth':'live-birth','Outcome unknown':'outcome-unknown'};
+const osIcon=s=>OS_ICON[s]?`<img class="si" src="/static/icons/outcomes__${OS_ICON[s]}.png" alt="">`:'';
+const statusChip=s=>s?`<span class="fu-os fu-os-${norm(s).toLowerCase()}">${osIcon(s)}${esc(s)}</span>`:'<span class="fu-os fu-os-none">Not recorded</span>';
 const ageGroup=a=>a==null?'Unknown':a<30?'Under 30':a<=34?'30–34':a<=37?'35–37':a<=40?'38–40':'41 and over';
 const AGE_ORDER=['Under 30','30–34','35–37','38–40','41 and over','Unknown'];
 
@@ -338,7 +340,7 @@ function wireDash(root,redraw){
  root.querySelectorAll('.db-chip [data-x]').forEach(b=>b.onclick=()=>{flt[b.dataset.x]='';redraw()})}
 
 // ---------------- Read-only state blocks (admin / team lead see what the embryologist entered) ----------------
-const stepper=status=>`<div class="stp">${STATUSES.map(s=>{const on=s===status;return `<span class="stp-i${on?' on':''}"${on?` style="background:${OS_COLOR[s]};border-color:${OS_COLOR[s]}"`:''}>${esc(s)}</span>`}).join('')}${status?'':'<span class="stp-i on stp-none">Not entered yet</span>'}</div>`;
+const stepper=status=>`<div class="stp">${STATUSES.map(s=>{const on=s===status;return `<span class="stp-i${on?' on':''}"${on?` style="background:${OS_COLOR[s]};border-color:${OS_COLOR[s]}"`:''}>${osIcon(s)}${esc(s)}</span>`}).join('')}${status?'':'<span class="stp-i on stp-none">Not entered yet</span>'}</div>`;
 const WHERE_LBL={Anderson:'Done at Anderson','Other lab':'Done at other labs','Not done':'Not done'};
 const testLine=(label,t)=>{if(!t||!t.where)return`<span class="es-t"><b>${label}</b> not recorded</span>`;if(t.where==='Not done')return`<span class="es-t"><b>${label}</b> not done</span>`;
  return `<span class="es-t"><b>${label}</b> ${t.where==='Anderson'?'done at Anderson':`done at ${esc(t.lab||'other labs')}`}${t.date?' · '+fmtDate(t.date):''}${t.biopsyTime?' · biopsy '+esc(t.biopsyTime):''}${t.result?' · result: '+esc(t.result):''}${t.note?' · '+esc(t.note):''}</span>`};
@@ -364,7 +366,7 @@ function monitorHtml(){
  const q=monQ.trim().toLowerCase();
  let rows=all.filter(r=>(!monStatus||(monStatus==='__none'?!r.s:r.s===monStatus))&&(!monGroup||r.g===monGroup)&&(!monClient||r.f.clinic===monClient)&&(!monEmb||(r.f.embryologist||'')===monEmb)&&(monOnly==='all'||(monOnly==='filled'?!!r.s:!r.s))&&(!q||`${r.f.patient} ${r.f.clinic} ${r.e.label} ${r.o.by||''}`.toLowerCase().includes(q)));
  const shown=rows.slice(0,monLimit),cnt=s=>all.filter(r=>r.s===s).length;
- const tiles=STATUSES.map(s=>{const n=s==='__none'?total-filled:cnt(s),col=s==='__none'?'#dfe6e4':OS_COLOR[s];return `<button type="button" class="mt${monStatus===s?' on':''}" data-s="${esc(s)}" style="--c:${col}"><strong>${n}</strong><span>${s==='__none'?'Not entered yet':esc(s)}</span></button>`}).join('');
+ const tiles=STATUSES.map(s=>{const n=s==='__none'?total-filled:cnt(s),col=s==='__none'?'#dfe6e4':OS_COLOR[s];return `<button type="button" class="mt${monStatus===s?' on':''}" data-s="${esc(s)}" style="--c:${col}"><strong>${n}</strong><span>${s==='__none'?'Not entered yet':esc(s)}</span>${osIcon(s)}</button>`}).join('');
  const pctF=total?Math.round(filled/total*100):0;
  return ` <h3 class="db-h">Current state of the embryos</h3><div class="mon-tiles">${tiles}</div>
  <h3 class="db-h">Outcomes by clinic and by month</h3>${breakdownHtml()}
