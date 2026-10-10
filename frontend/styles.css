@@ -2281,3 +2281,6 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 #samplesView{padding-top:4px!important}
 #overviewView{padding-top:6px!important}
 #genericView:not(:has(.run-page)):not(:has(#rebiopsyTableWrap)){padding-top:6px!important}
+#homeView .home-fixed{padding:8px 24px 12px!important;margin-bottom:10px!important}
+#homeView .home-toolbar{margin:0 0 2px!important}
+#homeView .home-period{margin:0 2px 4px!important}
