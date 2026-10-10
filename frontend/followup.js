@@ -20,13 +20,15 @@ const today=()=>ymd(new Date());
 const addDays=(iso,n)=>{const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return ymd(d)};
 const fmtDate=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?`${m[3]}-${m[2]}-${m[1]}`:'—'};
 const monthLabel=k=>{const m=/^(\d{4})-(\d{2})$/.exec(k||'');return m?`${MONTHS[+m[2]-1]} ${m[1]}`:(k||'—')};
+// Follow-ups keep the clinic name as it was typed when they were saved; show the master-list client so spellings of one client count together.
+const canonClinic=n=>{try{return(typeof resolveClient==='function'&&n&&resolveClient(n,'','')?.brand)||n}catch{return n}};
 let FU={items:[],loaded:false};
 let taskFilter='all',taskQuery='',subTab='tasks';
 const flt={month:'',clinic:'',region:'',embryologist:'',test:'',age:'',result:''};
 
 async function loadFollowups(force){
  if(FU.loaded&&!force)return FU;
- try{const r=await fetch('/api/followups');if(!r.ok)throw 0;const j=await r.json();FU={items:(j.items||[]).map(f=>({...f,embryologist:typeof canonEmbryologist==='function'?canonEmbryologist(f.embryologist):f.embryologist})),loaded:true}}catch(e){toast('Could not load follow-up data')}
+ try{const r=await fetch('/api/followups');if(!r.ok)throw 0;const j=await r.json();FU={items:(j.items||[]).map(f=>({...f,embryologist:typeof canonEmbryologist==='function'?canonEmbryologist(f.embryologist):f.embryologist,clinic:canonClinic(f.clinic)})),loaded:true}}catch(e){toast('Could not load follow-up data')}
  return FU}
 const outcomeMap=f=>{const m={};(f.outcomes||[]).forEach(o=>{m[norm(o.embryo)]=o});return m};
 function taskStatus(f){
