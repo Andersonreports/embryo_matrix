@@ -2284,3 +2284,7 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 #homeView .home-fixed{padding:8px 24px 12px!important;margin-bottom:10px!important}
 #homeView .home-toolbar{margin:0 0 2px!important}
 #homeView .home-period{margin:0 2px 4px!important}
+#homeView .home-fixed{padding:8px 24px 10px!important;margin-bottom:8px!important}
+#homeView .home-toolbar{margin:0 0 8px!important}
+#homeView .home-period{position:absolute;top:8px;right:24px;margin:0!important;height:40px;align-items:center}
+@media(max-width:1100px){#homeView .home-period{position:static;height:auto;margin:0 0 6px!important}}
