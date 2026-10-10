@@ -2302,3 +2302,20 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .result-pill.unbalancedtranslocation{background:#f5e3de;color:#a04f3d}.result-pill.carrierofbalancedtranslocation{background:#e2efe5;color:#286847}
 .fu-sc{position:relative}.fu-sc-ico{position:absolute;top:10px;right:10px;width:34px;height:34px;object-fit:contain}
 .progress-step.done .progress-dot:has(img){background:#fff!important;color:var(--green)!important}
+
+/* Progress stepper: larger icons and line */
+.progress-dot{width:54px!important;height:54px!important;border-width:3px!important}
+.progress-dot img{width:40px!important;height:40px!important}
+.progress-line{height:5px!important;margin-top:25px!important}
+.progress-label{font-size:14px!important;margin-top:4px}.progress-date{font-size:11px!important}
+.progress-step.active .progress-dot{box-shadow:0 0 0 6px rgba(8,127,131,.14)!important}
+
+/* Journey cards: count on the left, icon on the right */
+.jy{display:grid;grid-template-columns:1fr auto;grid-template-areas:"n i" "l l" "e e";align-items:center;column-gap:10px;text-align:left;padding:16px 18px}
+.jy strong{grid-area:n}.jy-ic{grid-area:i;height:auto;margin:0}.jy-ic .ico{width:56px;height:56px}
+.jy span{grid-area:l;margin-top:8px}.jy em{grid-area:e}
+.jy-ic .ico{width:72px!important;height:72px!important}
+.fu-sc-ico{width:48px!important;height:48px!important}.fu-sc{padding-right:66px}
+
+/* Overdue patients card: larger alarm icon */
+#homeView #homeStats article.overdue-card .stat-icon{width:68px!important;height:68px!important;font-size:52px!important;line-height:1}
