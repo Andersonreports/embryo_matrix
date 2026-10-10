@@ -2301,3 +2301,4 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .cb-axis .cb-plot{min-height:22px;border-top:1px solid #cfdadb}.cb-axis em{position:absolute;top:4px;transform:translateX(-50%);font:normal 12px "Inter",sans-serif;color:#76868a}
 .result-pill.unbalancedtranslocation{background:#f5e3de;color:#a04f3d}.result-pill.carrierofbalancedtranslocation{background:#e2efe5;color:#286847}
 .fu-sc{position:relative}.fu-sc-ico{position:absolute;top:10px;right:10px;width:34px;height:34px;object-fit:contain}
+.progress-step.done .progress-dot:has(img){background:#fff!important;color:var(--green)!important}
