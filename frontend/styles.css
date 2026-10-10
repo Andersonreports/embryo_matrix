@@ -2336,3 +2336,9 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 /* Outcome summary cards: larger icons, number and label at the bottom */
 .fu-sc{min-height:124px;padding-right:14px!important;display:flex;flex-direction:column;justify-content:flex-end}
 .fu-sc-ico{width:68px!important;height:68px!important;top:10px;right:10px}
+/* Embryo results table: equal-width columns, values wrap inside their cell */
+.embryo-table{table-layout:fixed}
+.embryo-table th{white-space:normal!important;overflow-wrap:anywhere}
+.embryo-table td{overflow-wrap:anywhere;word-break:break-word}
+.embryo-table .embryo-headrow th,.embryo-table .embryo-row td:not([colspan]){border:1px solid var(--line)!important;padding:9px 12px!important;vertical-align:middle}
+.embryo-table .embryo-headrow th{background:#f4f8f7}
