@@ -2299,3 +2299,4 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .cb-plot{position:relative;margin-right:170px;min-height:36px}.cb-row .cb-plot{border-left:1px solid #cfdadb}.cb-plot u{position:absolute;top:0;bottom:0;width:1px;background:#e6eeed;pointer-events:none}
 .cb-bar{position:absolute;left:0;top:7px;bottom:7px;display:flex;border-radius:0 4px 4px 0;overflow:hidden}.cb-bar i{display:block;height:100%}.cb-lab{position:absolute;top:50%;transform:translateY(-50%);font-size:12.5px;color:#4d6361;white-space:nowrap}.cb-lab b{color:#17302f}
 .cb-axis .cb-plot{min-height:22px;border-top:1px solid #cfdadb}.cb-axis em{position:absolute;top:4px;transform:translateX(-50%);font:normal 12px "Inter",sans-serif;color:#76868a}
+.result-pill.unbalancedtranslocation{background:#f5e3de;color:#a04f3d}.result-pill.carrierofbalancedtranslocation{background:#e2efe5;color:#286847}
