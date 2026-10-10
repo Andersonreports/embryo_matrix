@@ -2377,3 +2377,4 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .up-miss{border:0;border-radius:999px;padding:6px 14px;background:#fde3df;color:#b3362b;font:700 13px "Inter",sans-serif;cursor:pointer}.up-miss:hover{background:#f9cfc9}
 .up-bar{height:8px;width:140px;border-radius:999px;background:#e3ebea;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:8px}.up-bar i{display:block;height:100%;background:#1f8a52}.up-table small{color:#4d6361;font-weight:600}
 .up-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:6px 0 14px}.up-head h3{margin:0;font:500 18px "Lora",serif;flex:1}.up-head .search-wrap{flex:0 1 320px}
+.rr-actions{display:flex;gap:8px;align-items:center}.rr-upcheck{color:#b3362b;border-color:#f0c9c4}.rr-upcheck.on{background:#fde3df}
