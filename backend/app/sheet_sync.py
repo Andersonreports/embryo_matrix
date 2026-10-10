@@ -211,6 +211,11 @@ _RUN_SAMPLE_COLUMNS = {"s. no.": "sno", "biopsy date": "biopsy", "received date"
                        "barcode / index": "index", "i7": "i7", "i5": "i5", "remarks": "remarks"}
 
 
+# KIT / REAGENT DETAILS table of a WGA batch block (header label, lowercased -> stored field).
+_KIT_COLUMNS = {"process": "process", "kit / reagent": "name", "manufacturer": "manufacturer", "lot no.": "lot", "lot no": "lot",
+                "expiry date": "expiry", "qty used": "qty", "prepared by": "preparedBy", "checked by": "checkedBy"}
+
+
 def _round_num(v: str) -> str:
     try:
         f = float(v)
@@ -219,7 +224,7 @@ def _round_num(v: str) -> str:
     return str(int(f)) if f.is_integer() else f"{f:.2f}".rstrip("0").rstrip(".")
 
 
-def _extract_batch_blocks(rows: list[dict], meta_labels: dict[str, str]) -> list[dict]:
+def _extract_batch_blocks(rows: list[dict], meta_labels: dict[str, str], kits: bool = False) -> list[dict]:
     """Splits a batch-record tab into its blocks. Each block opens with a BATCH
     IDENTIFICATION section (e.g. "Run ID | 106A" / "WGA Batch No | 4", then date,
     platform/instrument lines) followed by its sample table. A tab without the
@@ -231,6 +236,7 @@ def _extract_batch_blocks(rows: list[dict], meta_labels: dict[str, str]) -> list
         return []
     runs, cur, cols, last_cols = [], None, None, None
     carried, in_samples = {}, False
+    kit_cols = None
     for r in rows:
         cells = first_filled(r)
         if not cells:
@@ -247,6 +253,16 @@ def _extract_batch_blocks(rows: list[dict], meta_labels: dict[str, str]) -> list
         if cur is None:
             continue
         labels = {str(v).strip().lower(): k for k, v in r.items() if str(v).strip()}
+        # The kit used for the whole batch is typed once, in the row under this header; every embryo of the block belongs to it.
+        if kits and "kit / reagent" in labels:
+            kit_cols = {f: labels[l] for l, f in _KIT_COLUMNS.items() if l in labels}
+            continue
+        if kit_cols is not None:
+            kit = {f: str(r.get(k, "")).strip() for f, k in kit_cols.items()}
+            kit_cols = None
+            if kit.get("name") and "kit" not in cur:
+                cur["kit"] = {f: v for f, v in kit.items() if v and f != "process"}
+                continue
         if "patient name" in labels and "embryo tag" in labels:
             cols = {field: labels[lbl] for lbl, field in _RUN_SAMPLE_COLUMNS.items() if lbl in labels}
             dna = next((k for lbl, k in labels.items() if lbl.startswith("dna conc")), None)
@@ -292,7 +308,55 @@ def _extract_sequencing_runs(rows: list[dict]) -> list[dict]:
 
 
 def _extract_wga_batches(rows: list[dict]) -> list[dict]:
-    return _extract_batch_blocks(rows, _WGA_META_LABELS)
+    return _extract_batch_blocks(rows, _WGA_META_LABELS, kits=True)
+
+
+def _norm_dmy(v: str) -> str:
+    m = re.search(r"(\d{1,2})\D+(\d{1,2})\D+(\d{2,4})", str(v or ""))
+    if not m:
+        return ""
+    d, mo, y = m.groups()
+    return f"{int(d):02d}-{int(mo):02d}-{y if len(y) == 4 else '20' + y}"
+
+
+def _apply_wga_kits(by_key: dict, wga_batches: list[dict]) -> None:
+    """Puts each embryo's WGA kit (batch kit / manufacturer / lot / expiry) on its tracker row as _wgaKit {tag: kit}.
+    The kit belongs to the batch block the embryo is listed in, found by patient name + embryo tag (+ the received date
+    when that tells repeated listings apart) - never by batch number, which repeats between tabs. An embryo that cannot
+    be tied to exactly one kit gets none."""
+    by_name: dict[str, list[tuple[dict, dict]]] = {}
+    for b in wga_batches:
+        if not b.get("kit"):
+            continue
+        for smp in b.get("samples", []):
+            nk = _name_key(smp.get("patient", ""))
+            if nk and smp.get("embryo"):
+                by_name.setdefault(nk, []).append((b, smp))
+    if not by_name:
+        return
+    for row in by_key.values():
+        pname = _name_key(_field(row, ["patient name", "patient"]))
+        tags = _expand_embryo_tags(_field(row, ["embryo name", "embryo id"]))
+        if not pname or not tags:
+            continue
+        recv, wga_on = _norm_dmy(_field(row, ["date sample received"])), _norm_dmy(_field(row, ["wga done on"]))
+        out = {}
+        for tag in tags:
+            cands = [(b, smp) for b, smp in by_name.get(pname, []) if _clean_id(smp["embryo"]) == _clean_id(tag)]
+            if recv and len(cands) > 1:
+                same = [c for c in cands if _norm_dmy(c[1].get("received")) == recv]
+                cands = same or cands
+            if wga_on and len(cands) > 1:
+                same = [c for c in cands if _norm_dmy(c[0].get("runDate")) == wga_on]
+                cands = same or cands
+            kits = {(c[0]["kit"].get("name"), c[0]["kit"].get("lot")): c[0] for c in cands}
+            if len(kits) == 1:
+                b = next(iter(kits.values()))
+                out[_clean_id(tag)] = {**b["kit"], "batch": b.get("runId", ""), "processed": b.get("runDate", "")}
+        if out:
+            row["_wgaKit"] = out
+        else:
+            row.pop("_wgaKit", None)
 
 
 def _apply_dna_conc(by_key: dict, dna_records: list[dict]) -> None:
@@ -394,6 +458,7 @@ def sync_sources(db: Session, sheet_ids: list[str]) -> dict:
                 fresh_rows[key] = merged
 
     _apply_dna_conc(fresh_rows, dna_records)
+    _apply_wga_kits(fresh_rows, wga_batches)
     if errors:
         # At least one workbook failed to fetch this round (the Apps Script
         # endpoint is occasionally flaky - timeouts, transient 404s). Treating

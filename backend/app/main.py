@@ -1375,6 +1375,13 @@ def _embryo_stage(r: dict) -> int:
         return 2
     return 1 if has("date sample received") else 0
 
+def _wga_kit_text(r: dict, label: str) -> str:
+    """The kit of this embryo's WGA batch (kit, manufacturer, lot, expiry), else the sheet row's own kit column."""
+    k = ((r.get("_wgaKit") or {}).get("".join(ch for ch in label.upper() if ch.isalnum())) or {})
+    if k.get("name"):
+        return " · ".join(x for x in (k["name"], k.get("manufacturer"), f"Lot {k['lot']}" if k.get("lot") else "", f"Exp {k['expiry']}" if k.get("expiry") else "") if x)
+    return _field(r, "kit detail")
+
 @app.get("/api/my-embryos")
 def my_embryos(request: Request, db: Session = Depends(get_db)):
     """The signed-in client's embryos with where each one is (received, WGA, sequencing, report) and its dates, test,
@@ -1416,7 +1423,7 @@ def my_embryos(request: Request, db: Session = Depends(get_db)):
                           "stage": stage, "status": _STAGE_TEXT[stage], "biopsy": _field(r, "date of biopsy"), "received": _field(r, "date sample received"),
                           "trfReceived": _field(r, "date trf received"), "wga": _field(r, "wga done on") if stage >= 2 else "",
                           "sequenced": _field(r, "seq date") if stage >= 3 else "", "reported": _field(r, "ngs report") if stage >= 4 else "",
-                          "kit": _field(r, "kit detail"), "box": (sb[:sm.start()] if sm else sb).strip(" -"), "stored": sm.group(0) if sm else "",
+                          "kit": _wga_kit_text(r, lab), "box": (sb[:sm.start()] if sm else sb).strip(" -"), "stored": sm.group(0) if sm else "",
                           "sampleBox": _field(r, "box number"), "transferredOn": tr_on, "transferredTo": tr_dept})
     items.sort(key=lambda i: (i["stage"] >= 4, i["stage"], i["patient"].upper(), i["embryo"]))
     return {"items": items}
