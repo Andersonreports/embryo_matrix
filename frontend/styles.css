@@ -2369,3 +2369,11 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 #homeView #homeStats #overdueCard .stat-icon{margin:-7px 0 -7px!important}
 /* Overdue card: the percentage sits beside the label */
 #homeView #homeStats #overdueCard small .ov-pct{display:inline!important;margin-left:6px;font-size:inherit!important;font-weight:800;color:#c0392b!important;letter-spacing:0}
+
+/* Run reports > Upload check */
+.up-note{margin:6px 0 14px;padding:12px 16px;border-radius:12px;background:#fff6e5;border:1px solid #f1dcae;color:#6b4a0d;font-size:14px}.up-note span{display:block;margin-top:4px;font-size:12.5px;color:#8a6a2b}
+.up-wrap{overflow-x:auto;border:1px solid var(--line,#e3e9e8);border-radius:12px;background:#fff}.up-table{width:100%;border-collapse:collapse}.up-table th{text-align:left;font:700 11.5px "Inter",sans-serif;letter-spacing:.4px;text-transform:uppercase;color:#6b7a73;padding:12px 14px;background:#f4f8f7;border-bottom:1px solid var(--line,#e3e9e8)}
+.up-table td{padding:12px 14px;border-top:1px solid #edf1f0;font-size:14px}.up-ok{color:#1f8a52;font-weight:700}.up-done{color:#1f8a52;font-weight:700}
+.up-miss{border:0;border-radius:999px;padding:6px 14px;background:#fde3df;color:#b3362b;font:700 13px "Inter",sans-serif;cursor:pointer}.up-miss:hover{background:#f9cfc9}
+.up-bar{height:8px;width:140px;border-radius:999px;background:#e3ebea;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:8px}.up-bar i{display:block;height:100%;background:#1f8a52}.up-table small{color:#4d6361;font-weight:600}
+.up-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:6px 0 14px}.up-head h3{margin:0;font:500 18px "Lora",serif;flex:1}.up-head .search-wrap{flex:0 1 320px}
