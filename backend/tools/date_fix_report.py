@@ -5,10 +5,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import openpyxl
 from openpyxl.styles import Font, PatternFill
+from app.config import settings
 from app.date_fix import DATE_FIELDS, normalize_row
 
-out = sys.argv[1] if len(sys.argv) > 1 else "date_fix_report.xlsx"
-db = sqlite3.connect(Path(__file__).resolve().parent.parent / "embryomatrix.db")
+out = sys.argv[1] if len(sys.argv) > 1 else str(Path(__file__).resolve().parent.parent.parent / "others" / "reports" / "date_fix_report.xlsx")
+db = sqlite3.connect(Path(settings.database_url.split("sqlite:///", 1)[1]))
 rows = [r for r in json.loads(db.execute("select value from kv_store where key='embryomatrix-imported-cases'").fetchone()[0]) if not r.get("_stale")]
 changed, unclear = [], []
 per_field = collections.defaultdict(collections.Counter)

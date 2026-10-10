@@ -20,6 +20,10 @@ prototype-v15/
 # Patient result files (not for the repo)
 Pgs Results/
 backend/embryomatrix.db.bak-*
+databases/
+others/result-files/
+others/logs/
+*.log
 Embryosure (2)/
 NIPGS Results/
 backend/.session_secret

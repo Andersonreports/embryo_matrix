@@ -3,8 +3,11 @@
 This is a clean source-code starter package for IT handover and deployment planning.
 
 ## Architecture
-- `backend/` — FastAPI + SQLAlchemy app (`backend/app/`), `requirements.txt`, `.env`, and the local SQLite database
 - `frontend/` — the HTML/JS/CSS app, served as static files by the backend (no separate build step or server)
+- `backend/` — FastAPI + SQLAlchemy app (`backend/app/`), `requirements.txt`, `.env`, `tools/` (maintenance scripts)
+- `databases/` — what the server writes at run time: `embryomatrix.db`, its backups, and `uploads/` (result files, images, TRFs). Never committed
+- `others/` — result files and Excel sheets (`result-files/`), reports (`reports/`), consent forms and SOPs (`documents/`), images, logs and the icon library
+- `apps_script/`, `image_sync/`, `tools/` — Google Sheets script, lab-PC image sync, and the client-directory builder
 - Database: PostgreSQL in production (SQLite works for local demo)
 - Authentication: none of its own — this app is designed to run as a module
   behind another gated application. That parent app authenticates the user

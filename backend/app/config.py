@@ -5,10 +5,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # backend/ — anchor the DB and .env here so they resolve the same whatever
 # directory the server is launched from.
 BACKEND_DIR = Path(__file__).resolve().parent.parent
+# databases/ at the project root holds everything the server writes at run time: the SQLite database, its backups and the uploaded
+# files. A server that still has them in the old place (backend/) keeps using that until they are moved.
+DB_DIR = BACKEND_DIR.parent / "databases"
+_pick = lambda new, old: new if new.exists() or not old.exists() else old
 
 class Settings(BaseSettings):
     app_name: str = "Embryo Matrix"
-    database_url: str = f"sqlite:///{(BACKEND_DIR / 'embryomatrix.db').as_posix()}"
+    database_url: str = f"sqlite:///{_pick(DB_DIR / 'embryomatrix.db', BACKEND_DIR / 'embryomatrix.db').as_posix()}"
+    uploads_dir: Path = _pick(DB_DIR / "uploads", BACKEND_DIR / "app" / "uploads")
     # Pipe-separated Google Sheet IDs. Each must be shared as "Anyone with the
     # link – Viewer" so the export endpoint is readable without auth. Every tab
     # in the spreadsheet is fetched automatically, so new tabs (e.g. next

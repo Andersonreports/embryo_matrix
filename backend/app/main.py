@@ -50,8 +50,8 @@ app = FastAPI(title=settings.app_name)
 # The case store is ~11 MB of JSON; compressing it cuts page-load time sharply over the tunnel.
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 STATIC = Path(__file__).parent.parent.parent / "frontend"
-UPLOADS = Path(__file__).parent / "uploads"
-UPLOADS.mkdir(exist_ok=True)
+UPLOADS = settings.uploads_dir
+UPLOADS.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 @app.get("/uploads/{path:path}")

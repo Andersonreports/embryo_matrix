@@ -4,9 +4,10 @@ Usage: .venv/bin/python tools/date_fix_apply.py"""
 import json, sqlite3, sys, time
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from app.config import settings
 from app.date_fix import apply_to_row
 
-path = Path(__file__).resolve().parent.parent / "embryomatrix.db"
+path = Path(settings.database_url.split("sqlite:///", 1)[1])
 bak = path.with_name(f"embryomatrix.db.bak-before-datefix-{time.strftime('%Y%m%d-%H%M%S')}")
 src = sqlite3.connect(path); dst = sqlite3.connect(bak); src.backup(dst); dst.close()
 print("backup:", bak.name)
