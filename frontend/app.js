@@ -1390,16 +1390,18 @@ function matchTrackerRow(det,tix,fileDate){const tags=expandEmbryoTags(field(det
 // No Details row to lean on (older files): resolve "<name prefix>-<tag>" straight against the tracker. A name that fits several
 // rows (re-biopsy, same tag) is settled by the received date closest before the run date taken from the file name.
 function fileDateOf(name){const m=[...String(name||'').matchAll(/(\d{2})[-_.]?(\d{2})[-_.]?(20\d{2})/g)].pop();if(!m)return null;const d=new Date(+m[3],+m[2]-1,+m[1]);return isNaN(d)?null:d}
+// The sheet may type a leading initial the sample name lacks ("V INDUMATHY" in the sheet, "INDUMATHY-IR1" in the file).
+const leadInitial=(tn,pn)=>pn.length>=6&&tn.length>pn.length&&tn.length-pn.length<=2&&tn.endsWith(pn);
 function matchByPrefix(prefix,tag,tix,fileDate,opts){lastMatchWhy='';const pn=normCol(prefix);if(pn.length<3){lastMatchWhy='name too short to match';return null}
  const c=(tix.byTag.get(tag)||[]).filter(t=>{if(opts&&opts.testRe&&!opts.testRe.test(field(t,['test name','test'])))return false;const tn=normCol(field(t,['patient name','patient']));if(!tn)return false;
   // The sample-name prefix is the patient name with spaces removed (possibly cut short, or with the surname/initial the sheet lacks).
   // Accept it only when the two differ by a trailing initial at most, or the prefix is most of the name - never a middle-of-name hit.
-  return tn===pn||(tn.startsWith(pn)&&(pn.length>=14||pn.length>=tn.length*.75))||(pn.startsWith(tn)&&tn.length>=4&&pn.length-tn.length<=3)});
+  return tn===pn||(tn.startsWith(pn)&&(pn.length>=14||pn.length>=tn.length*.75))||(pn.startsWith(tn)&&tn.length>=4&&pn.length-tn.length<=3)||leadInitial(tn,pn)});
  if(!c.length){lastMatchWhy='no PGS-NGS row has this patient + embryo';return null}
  // Embryo Sure files (one per patient, no run date in the name): the test must be Embryo Sure / HLA, the name has to match in full and
  // only ONE such PGS-NGS row may exist for that name + embryo tag. The file's last-saved time (when known) only rules out samples that
  // arrived after it - it is not used to pick between rows.
- if(opts&&opts.testRe&&!opts.dated){const k=c.filter(t=>(normCol(field(t,['patient name','patient']))===pn||pn.length>=10)&&!receivedAfterRun(t,fileDate));
+ if(opts&&opts.testRe&&!opts.dated){const k=c.filter(t=>{const tn=normCol(field(t,['patient name','patient']));return(tn===pn||pn.length>=10||leadInitial(tn,pn))&&!receivedAfterRun(t,fileDate)});
   if(k.length===1)return k[0];lastMatchWhy=k.length?'more than one Embryo Sure row has this name + embryo':'no Embryo Sure row has this patient + embryo (or it was received after this file was saved)';return null}
  // With no Details tab to confirm the row, the run date in the file name must back it up: the sample was received shortly before the run.
  if(!fileDate){lastMatchWhy='no run date in the file name to confirm the match';return null}
