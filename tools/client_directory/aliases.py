@@ -84,12 +84,12 @@ ALIASES = [
     ['Motherhood Hospital', ['#34 MOTHERHOOD HOSPITAL', '34 MOTHERHOOD HOSPITAL']],
     ['Pozitiv Fertility Centre', ['POZITIV', 'POZITIV FERTILITY CENTRE']],
     ['Ovum Fertility Hospital', ['OVUM FERTILITY', 'OVUM FERTILITY HOSPITAL']],
-    ['Ascas Fertility', ['ASCAS FERTILITY', "ASCAS FERTILITY & WOMEN'S CENTRE"]],
+    ["Ascas Fertility & Women's Centre", ['ASCAS FERTILITY', "ASCAS FERTILITY & WOMEN'S CENTRE"]],
     ['Fathima IVF Fertility & Womens Centre', ['FATIMA IVF FERTILITY', 'FATHIMA IVF FERTILITY & WOMENS CENTRE']],
     ["Pearl Women's Hospital & IVF", ["PEARL WOMEN'S HOSPITAL & IVF", 'PEARL WOMENS HOSPITAL & YASH IVF']],
     ["Nakshatra IVF & Women's Centre", ['NAKSHTRA CLINIC']],
-    ['Vasundhara IVF', ['VASUNDHARA IVF', 'VAUNSHDHARA FERTILITY CENTRE PVT LTD']],
-    ['Radhakrishna Multispeciality Hospital', ['RADHA KRISHNA IVF CENTRE']],
+    ['Vasundhara Fertility Centre', ['VASUNDHARA FERTILITY CENTRE', 'VASUNDHARA IVF', 'VAUNSHDHARA FERTILITY CENTRE PVT LTD']],
+    ['Radhakrishna IVF Centre', ['RADHAKRISHNA IVF CENTRE', 'RADHA KRISHNA IVF CENTRE', 'RADHAKRISHNA MULTISPECIALITY HOSPITAL']],
     ['Ferty9 Fertility Centre', ['FERTU & FERTILITY CENTRE', 'FERTU AND FERTILITY CENTER']],
 ]
 

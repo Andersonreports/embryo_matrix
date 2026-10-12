@@ -56,7 +56,7 @@ const BRANCHES=[{"code":"133811","name":"A4 FERTILITY CENTER - VELLORE","brand":
 {"code":"104254","name":"ARC INTERNATIONAL FERTILITY AND RESEARCH CENTRE PVT LTD - EGMORE","brand":"ARC Fertility","branch":"Egmore","rep":"Jose Gerald"},
 {"code":"166980","name":"YAAL FERTILITY AND WOMENS CENTRE - KILPAUK","brand":"Yaal Fertility and Womens Centre","branch":"Kilpauk","rep":"Jagan J"},
 {"code":"58380","name":"RHEA HEALTHCARE PRIVATE LIMITED - LUCKNOW (NOVA IVF)","brand":"Nova IVF Fertility","branch":"Lucknow","rep":"Naval Kishor Sharma"},
-{"code":"153080","name":"RADHAKRISHNA MULTI SPECIALITY HOSPITAL - BANGALORE DR Vidhya Bhat","brand":"Radhakrishna Multispeciality Hospital","branch":"Bangalore","rep":"Vineeth Kumar"},
+{"code":"153080","name":"RADHAKRISHNA MULTI SPECIALITY HOSPITAL - BANGALORE DR Vidhya Bhat","brand":"Radhakrishna IVF Centre","branch":"Bangalore","rep":"Vineeth Kumar"},
 {"code":"55363","name":"RHEA HEALTHCARE PRIVATE LIMITED - DEHRADUN (NOVA IVF)","brand":"Nova IVF Fertility","branch":"Dehradun","rep":"Amit"},
 {"code":"22166","name":"SHREYA IVF CENTRE PVT LTD - BHUBANESWAR","brand":"Shreya IVF Centre","branch":"Bhubaneswar","rep":"Amar Prasad Lenka"},
 {"code":"136823","name":"SREE SWAPNA FERTILITY CENTRE - KONDAPUR","brand":"Sree Swapna Fertility Centre","branch":"Kondapur","rep":"Srikanth"},
@@ -427,12 +427,12 @@ const ALIASES=[
 ["Motherhood Hospital", ["#34 MOTHERHOOD HOSPITAL", "34 MOTHERHOOD HOSPITAL"]],
 ["Pozitiv Fertility Centre", ["POZITIV", "POZITIV FERTILITY CENTRE"]],
 ["Ovum Fertility Hospital", ["OVUM FERTILITY", "OVUM FERTILITY HOSPITAL"]],
-["Ascas Fertility", ["ASCAS FERTILITY", "ASCAS FERTILITY & WOMEN'S CENTRE"]],
+["Ascas Fertility & Women's Centre", ["ASCAS FERTILITY", "ASCAS FERTILITY & WOMEN'S CENTRE"]],
 ["Fathima IVF Fertility & Womens Centre", ["FATIMA IVF FERTILITY", "FATHIMA IVF FERTILITY & WOMENS CENTRE"]],
 ["Pearl Women's Hospital & IVF", ["PEARL WOMEN'S HOSPITAL & IVF", "PEARL WOMENS HOSPITAL & YASH IVF"]],
 ["Nakshatra IVF & Women's Centre", ["NAKSHTRA CLINIC"]],
-["Vasundhara IVF", ["VASUNDHARA IVF", "VAUNSHDHARA FERTILITY CENTRE PVT LTD"]],
-["Radhakrishna Multispeciality Hospital", ["RADHA KRISHNA IVF CENTRE"]],
+["Vasundhara Fertility Centre", ["VASUNDHARA FERTILITY CENTRE", "VASUNDHARA IVF", "VAUNSHDHARA FERTILITY CENTRE PVT LTD"]],
+["Radhakrishna IVF Centre", ["RADHAKRISHNA IVF CENTRE", "RADHA KRISHNA IVF CENTRE", "RADHAKRISHNA MULTISPECIALITY HOSPITAL"]],
 ["Ferty9 Fertility Centre", ["FERTU & FERTILITY CENTRE", "FERTU AND FERTILITY CENTER"]]
 ];
 // Different clinics whose names sit one typo away from a listed client; never fuzzy-match these.

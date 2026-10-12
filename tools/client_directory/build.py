@@ -88,7 +88,7 @@ RULES = [
     (r'^SRISTI', 'Srishti Fertility'),
     (r'^JEHANGIR', 'Jehangir Hospital'),
     (r'^VARAM IVF', 'Varam IVF (MGM Healthcare)'),
-    (r'^RADHAKRISHNA', 'Radhakrishna Multispeciality Hospital'),
+    (r'^RADHAKRISHNA', 'Radhakrishna IVF Centre'),
     (r'^MAMATA', 'Mamata Fertility'),
     (r'^THE ORGIN INTERNATIONAL', 'Origin International Fertility Centre'),
     (r'^ORIGINS HOSPITAL', 'Origins Hospital'),
