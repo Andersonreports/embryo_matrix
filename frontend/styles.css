@@ -1547,7 +1547,6 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .tf-photo-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.tf-photo-btns .tf-photo-btn{padding:6px 10px}
 
 body.role-member .vault-del-btn,body.role-member .vg-actions,body.role-member .vault-heading button{display:none!important}
-body.role-embryologist #trfModeSeg{display:none}
 .nav-item[hidden],.session-menu-item[hidden]{display:none!important}
 
 .vault-upload{border:1px solid var(--line);border-radius:14px;padding:16px;margin:0 0 18px}
@@ -2383,3 +2382,4 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 /* Embryo history dialog (client login): larger type */
 .trk-hist .patient-top h2{font-size:28px}.trk-hist .detail-card{padding:20px 22px}.trk-hist .detail-card h3{font-size:20px;margin-bottom:14px}.trk-hist .sample-item{padding:13px 0;gap:16px;align-items:center}.trk-hist .sample-item strong{font-size:15px}.trk-hist .sample-item span{font-size:15px;color:#4d5852;text-align:right}.trk-hist .progress-label{font-size:14px!important}.trk-hist .progress-date{font-size:13px!important}.trk-hist .trk-pill{font-size:13px}
 .trk-hist .trk-emb{margin-top:26px;padding-top:22px;border-top:2px solid #e3e9e2}.trk-hist .trk-emb:first-of-type{margin-top:20px}.trk-hist .trk-emb-head{display:flex;align-items:center;gap:14px;margin-bottom:6px}.trk-hist .trk-emb-head h3{font:500 24px "Lora";margin:0}
+.trf-mine .trf-reason{white-space:normal;min-width:240px;max-width:420px;color:#a04f3d;font-weight:600}.trf-mine tbody tr{cursor:default}
