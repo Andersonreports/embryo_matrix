@@ -1,7 +1,7 @@
 // Coordinator home: the six status cards (embryo wise / sample wise) and the sample list below them.
 let coView='embryos',coQ='',coLimit=200,coMonth='',coFOpen=false,coMenu=false;
 // Same filters (and the same cleaned-up client / region / embryologist names) as the admin registry.
-const coF={test:'',run:'',client:'',embryologist:'',region:'',result:'',report:''},CO_FILTERS=[['test','Test','All tests'],['run','Run','All runs'],['client','Client','All clients'],['embryologist','Embryologist','All embryologists'],['region','Region','All regions'],['result','Result','All results'],['report','Report status','All report statuses']];
+const coF={test:'',run:'',client:'',region:'',result:'',report:''},CO_FILTERS=[['test','Test','All tests'],['run','Run','All runs'],['client','Client','All clients'],['region','Region','All regions'],['result','Result','All results'],['report','Report status','All report statuses']];
 let coCache={cases:null,unit:'',m:new Map()};
 function coMemo(k,fn){if(coCache.cases!==cases||coCache.unit!==homeUnit)coCache={cases,unit:homeUnit,m:new Map()};if(!coCache.m.has(k))coCache.m.set(k,fn());return coCache.m.get(k)}
 function coRows(){const out=[];
