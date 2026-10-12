@@ -2416,3 +2416,13 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .trk-mlist{display:grid;gap:12px}.trk-mcard{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:#fff;cursor:pointer}.trk-mcard:active{background:#f4f8f6}
 .trk-mtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.trk-mtop strong{font-size:17px}.trk-mtop b{font-size:16px;color:#0a7180;white-space:nowrap}
 .trk-mpills{margin:8px 0 10px;display:flex;flex-wrap:wrap;gap:6px}.trk-mgrid{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:14px}.trk-mgrid span{color:#7a857e}.trk-mgrid b{font-weight:600;text-align:right;word-break:break-word}
+/* Follow-up outcome dialog on phones: everything stays inside the dialog width */
+@media(max-width:700px){
+ dialog.fu-dialog,dialog.vu-dialog{width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;margin:auto;overflow-x:hidden}
+ .fu-dialog .vu-dhead{flex-wrap:wrap;gap:10px;padding:14px 14px 10px}.fu-dialog .vu-dbody{padding:12px 12px 16px;overflow-x:hidden}
+ .fu-dialog *{min-width:0;max-width:100%}
+ .fu-dialog .fu-grid,.fu-dialog .oe-extra,.fu-dialog .fu-sum{grid-template-columns:1fr!important}.fu-dialog .fu-sum{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .fu-dialog .es-head,.fu-dialog .oe-head,.fu-dialog .oe-top{flex-wrap:wrap;gap:8px}
+ .fu-dialog .fu-share,.fu-dialog .oe-share{flex:1 1 100%;flex-wrap:wrap;border-radius:16px}
+ .fu-dialog input,.fu-dialog select,.fu-dialog textarea{width:100%;box-sizing:border-box}
+}
