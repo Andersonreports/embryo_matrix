@@ -45,6 +45,8 @@ def _migrate_followup_owner():
             conn.execute(text("ALTER TABLE users ADD COLUMN embryologist_name VARCHAR(120)"))
         if "users" in names and "client_name" not in {c["name"] for c in insp.get_columns("users")}:
             conn.execute(text("ALTER TABLE users ADD COLUMN client_name VARCHAR(120)"))
+        if "users" in names and "client_branch" not in {c["name"] for c in insp.get_columns("users")}:
+            conn.execute(text("ALTER TABLE users ADD COLUMN client_branch VARCHAR(120)"))
 
 
 def run():

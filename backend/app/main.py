@@ -20,6 +20,7 @@ from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage,
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn
 from .sheet_sync import parse_sources, sync_sources
 from . import auth, cell_edits, edits_sheet, mailer, storage, trf_fill, trf_pdf
+from .clients import resolve_client, directory as client_directory
 from sqlalchemy import inspect, text
 import mimetypes
 
@@ -198,9 +199,19 @@ def health():
     return {"status": "ok", "application": settings.app_name}
 
 @app.get("/api/whoami")
-def whoami(request: Request):
+def whoami(request: Request, db: Session = Depends(get_db)):
     user = request.state.user or {}
-    return {"username": user.get("username") or "", "role": user.get("role") or "", "signedIn": settings.builtin_login}
+    out = {"username": user.get("username") or "", "role": user.get("role") or "", "signedIn": settings.builtin_login}
+    if user.get("role") == "embryologist":  # a client login: the TRF's hospital / centre name is filled in from this
+        u = db.query(User).filter(User.username == (user.get("username") or "").lower()).first()
+        out["clientLabel"] = _client_label(u)
+    return out
+
+def _client_label(u) -> str:
+    """The name a client login's TRFs carry: the client, plus its branch for a branch-specific login."""
+    if not u or not (u.client_name or "").strip():
+        return ""
+    return f"{u.client_name} – {u.client_branch}" if (u.client_branch or "").strip() else u.client_name
 
 def _iso_utc(dt: datetime | None) -> str | None:
     return dt.replace(tzinfo=timezone.utc).isoformat() if dt else None
@@ -800,6 +811,11 @@ async def submit_trf(request: Request, db: Session = Depends(get_db)):
     except ValueError:
         raise HTTPException(400, "Invalid form data")
     data = _clean_trf(raw if isinstance(raw, dict) else {})
+    cu = request.state.user or {}
+    if cu.get("role") == "embryologist":  # a client login can only send TRFs in its own name
+        label = _client_label(db.query(User).filter(User.username == (cu.get("username") or "").lower()).first())
+        if label:
+            data["hospital"] = label
     missing = [label for key, label in (("hospital", "Hospital / IVF centre"), ("referringDoctor", "Referring doctor"),
                ("phone", "Phone"), ("email", "Email"), ("patientName", "Patient name"), ("biopsyDate", "Date of biopsy")) if not data[key]]
     if not data["tests"]:
@@ -1211,6 +1227,24 @@ def _fu_view(user: dict, f: Followup, outs: list, hist: dict | None = None):
 def _norm_name(v: str) -> str:
     return "".join(ch for ch in str(v or "").upper() if ch.isalnum())
 
+def _client_sees(u, center: str = "", hospital: str = "", location: str = "") -> bool:
+    """A client (fertility centre) login sees only rows of its own client, and of its own branch when it has one.
+    Rows are mapped onto the master client list (app/clients.py); a client that is not in that list falls back to
+    matching its name against the centre text."""
+    brand = _norm_name(u.client_name if u else "")
+    if not brand:
+        return False
+    want_branch = _norm_name(u.client_branch)
+    res = resolve_client(center, hospital, location)
+    if res:
+        if _norm_name(res["brand"]) != brand:
+            return False
+        return not want_branch or bool(res["branch"] and _norm_name(res["branch"]["branch"]) == want_branch)
+    if brand in {_norm_name(d["brand"]) for d in client_directory()}:
+        return False  # a listed client whose name this row does not match
+    text = _norm_name(f"{center} {hospital}")
+    return brand in text and (not want_branch or want_branch in _norm_name(f"{text} {location}"))
+
 def _embryologist_sees(db: Session, user: dict, f: Followup) -> bool:
     """An embryologist login sees only the follow-ups of their own embryos: TRFs they submitted, or patients whose
     Embryologist in the sheet is the name saved on their login (falls back to the username)."""
@@ -1220,7 +1254,7 @@ def _embryologist_sees(db: Session, user: dict, f: Followup) -> bool:
     if f.owner and f.owner == uname:
         return True
     u = db.query(User).filter(User.username == uname.lower()).first()
-    if u and u.client_name and _norm_name(u.client_name) in _norm_name(f.clinic):
+    if u and u.client_name and _client_sees(u, f.clinic, "", f.region):
         return True
     mine = _canon_embryologist((u.embryologist_name if u and u.embryologist_name else uname))
     theirs = _canon_embryologist(f.embryologist)
@@ -1295,7 +1329,7 @@ def _month_of(tab: str) -> str:
     m = re.match(r"^\s*([A-Za-z]{3})[A-Za-z]*\s+(\d{4})", str(tab or ""))
     return f"{m.group(2)}-{_MONTHS[m.group(1).upper()]:02d}" if m and m.group(1).upper() in _MONTHS else ""
 
-def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = "", loose: bool = False):
+def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = "", loose: bool = False, client_user=None):
     """Make sure every patient listed under this embryologist in the sample sheet has a follow-up record."""
     want, want_client = _norm_name(emb_name), _norm_name(client_name)
     if not want and not want_client:
@@ -1304,7 +1338,8 @@ def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = "", loo
     for r in _sheet_rows(db):
         canon = _canon_embryologist(_field(r, "embryologist name", "embryologist"))
         by_name = bool(want) and (canon == want or (loose and want in canon))
-        by_client = bool(want_client) and want_client in _norm_name(_field(r, "center name", "hospital clinic name", "client"))
+        by_client = bool(want_client) and (_client_sees(client_user, _field(r, "center name", "client"), _field(r, "hospital clinic name"), _field(r, "location"))
+                                           if client_user else want_client in _norm_name(_field(r, "center name", "hospital clinic name", "client")))
         if not (by_name or by_client):
             continue
         patient = _field(r, "patient name", "patient")
@@ -1339,7 +1374,7 @@ def list_followups(request: Request, db: Session = Depends(get_db)):
         if u:
             try:
                 if u.embryologist_name or u.client_name:
-                    _sync_sheet_followups(db, u.embryologist_name or "", u.client_name or "")
+                    _sync_sheet_followups(db, u.embryologist_name or "", u.client_name or "", client_user=u)
                 else:  # no explicit link: the login name is matched against the sheet's Embryologist and centre names
                     _sync_sheet_followups(db, u.username, u.username, loose=True)
             except Exception as exc:
@@ -1400,7 +1435,7 @@ def my_embryos(request: Request, db: Session = Depends(get_db)):
     for r in _sheet_rows(db):
         canon = _canon_embryologist(_field(r, "embryologist name", "embryologist"))
         by_name = bool(want) and (canon == want or (loose and want in canon))
-        by_client = bool(want_client) and want_client in _norm_name(_field(r, "center name", "hospital clinic name", "client"))
+        by_client = bool(want_client) and u is not None and _client_sees(u, _field(r, "center name", "client"), _field(r, "hospital clinic name"), _field(r, "location"))
         if not (by_name or by_client):
             continue
         if re.search(r"not\s*reporting", str(r.get("_importSource") or ""), re.I):
@@ -1435,7 +1470,7 @@ def _require_user_admin(request: Request):
         raise HTTPException(403, "Only an admin or senior executive can manage users")
 
 def _user_row(u: User):
-    return {"username": u.username, "role": u.role, "name": u.embryologist_name or "", "client": u.client_name or ""}
+    return {"username": u.username, "role": u.role, "name": u.embryologist_name or "", "client": u.client_name or "", "branch": u.client_branch or ""}
 
 def _check_role(role: str) -> str:
     role = str(role or "").strip()
@@ -1449,7 +1484,7 @@ def _staff_count(db: Session, excluding: str = "") -> int:
 @app.get("/api/users")
 def list_users(request: Request, db: Session = Depends(get_db)):
     _require_user_admin(request)
-    return {"roles": ALL_ROLES, "users": [_user_row(u) for u in db.query(User).order_by(User.username).all()]}
+    return {"roles": ALL_ROLES, "clients": client_directory(), "users": [_user_row(u) for u in db.query(User).order_by(User.username).all()]}
 
 @app.post("/api/users")
 def create_user(payload: dict, request: Request, db: Session = Depends(get_db)):
@@ -1465,7 +1500,8 @@ def create_user(payload: dict, request: Request, db: Session = Depends(get_db)):
     role = _check_role(payload.get("role"))
     u = User(username=name, password_hash=auth.hash_password(password), role=role,
              embryologist_name=str(payload.get("name", "")).strip()[:120] or None,
-             client_name=str(payload.get("client", "")).strip()[:120] or None)
+             client_name=str(payload.get("client", "")).strip()[:120] or None,
+             client_branch=(str(payload.get("branch", "")).strip()[:120] or None) if str(payload.get("client", "")).strip() else None)
     db.add(u); db.commit()
     log_activity(db, "user_manage", f"Added user {name} as {role}", request=request)
     return _user_row(u)
@@ -1490,6 +1526,8 @@ def update_user(username: str, payload: dict, request: Request, db: Session = De
         u.embryologist_name = str(payload["name"]).strip()[:120] or None
     if "client" in payload:
         u.client_name = str(payload["client"]).strip()[:120] or None
+    if "branch" in payload or "client" in payload:
+        u.client_branch = (str(payload.get("branch", "")).strip()[:120] or None) if u.client_name else None
     db.commit()
     log_activity(db, "user_manage", f"Changed user {u.username}: " + (", ".join(notes) or "details"), request=request)
     return _user_row(u)
@@ -1521,6 +1559,7 @@ def set_embryologist_link(payload: dict, request: Request, db: Session = Depends
         raise HTTPException(404, "No such embryologist login")
     u.embryologist_name = str(payload.get("name", "")).strip()[:120] or None
     u.client_name = str(payload.get("client", "")).strip()[:120] or None
+    u.client_branch = (str(payload.get("branch", "")).strip()[:120] or None) if u.client_name else None
     db.commit()
     log_activity(db, "followup_save", f"Login {u.username} linked to embryologist '{u.embryologist_name or '—'}' / centre '{u.client_name or '—'}'", request=request)
     return {"username": u.username, "name": u.embryologist_name or "", "client": u.client_name or ""}

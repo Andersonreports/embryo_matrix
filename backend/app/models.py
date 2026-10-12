@@ -21,6 +21,8 @@ class User(Base):
     embryologist_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     # For a login that represents a fertility centre: any patient whose centre name contains this text is listed for them.
     client_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # Optional: one branch of that client (master-list branch name). Empty = every branch of the client.
+    client_branch: Mapped[str | None] = mapped_column(String(120), nullable=True)
     lab = relationship("Lab")
 
 class PatientCase(Base):
