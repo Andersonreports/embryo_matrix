@@ -13,7 +13,7 @@ function renderCoordView(g){
 function renderCoord(g){coView=homeUnit;
  const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent='Home';
  const mh=document.getElementById('mainHeader');if(mh)mh.classList.add('hidden');
- const S=coMemo('stats',()=>{const all=allEmbryos().filter(e=>!e._stale),months=reportPrepMonths(),st=stageRows(),stage=k=>st[k].reduce((s,x)=>s+(homeUnit==='samples'?1:x.n),0);return{tot:homeCount(all),seq:stage('wga'),prep:homeCount(all.filter(e=>isReportPrep(e,months))),rel:stage('released')}}),
+ const S=coMemo('stats',()=>{const all=allEmbryos().filter(e=>!e._stale),months=reportPrepMonths(),st=stageRows(),stage=k=>st[k].reduce((s,x)=>s+(homeUnit==='samples'?1:x.n),0);return{tot:homeCount(all),seq:stage('wga'),prep:reportCount(all.filter(e=>isReportPrep(e,months))),rel:reportCount(st.released)}}),
   card=(label,v,sub,img,c)=>`<div class="co-card" style="--c:${c}"><img class="ico" src="/static/assets/icons/${img}.png" alt=""><strong>${v.toLocaleString()}</strong><span class="co-card-label">${label}</span><small>${sub}</small></div>`,
   seg=(id,a,b,cur)=>`<div class="prep-segments" id="${id}" role="tablist">${[a,b].map(([k,l])=>`<button type="button" class="prep-seg${cur===k?' active':''}" data-v="${k}" role="tab" aria-selected="${cur===k}">${l}</button>`).join('')}</div>`;
  const mc=coMemo('mc',()=>{const o={};allEmbryos().forEach(e=>{if(e._stale)return;const m=recordMonth(e);if(m)o[m]=(o[m]||0)+(coView==='samples'?1:embryoRowsOf(e).length)});return o});
