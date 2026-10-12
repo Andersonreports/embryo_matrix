@@ -1440,7 +1440,9 @@ def my_embryos(request: Request, db: Session = Depends(get_db)):
     for r in _sheet_rows(db):
         canon = _canon_embryologist(_field(r, "embryologist name", "embryologist"))
         by_name = bool(want) and (canon == want or (loose and want in canon))
-        by_client = bool(want_client) and u is not None and _client_sees(u, _field(r, "center name", "client"), _field(r, "hospital clinic name"), _field(r, "location"))
+        # A login linked to a client uses the master-list match; an unlinked login keeps the old username-in-centre-name match.
+        by_client = bool(want_client) and (_client_sees(u, _field(r, "center name", "client"), _field(r, "hospital clinic name"), _field(r, "location"))
+                                           if (u and u.client_name) else want_client in _norm_name(_field(r, "center name", "hospital clinic name", "client")))
         if not (by_name or by_client):
             continue
         if re.search(r"not\s*reporting", str(r.get("_importSource") or ""), re.I):

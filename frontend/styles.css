@@ -2386,3 +2386,33 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .progress-date{font-weight:700!important;color:#44514a!important}.progress-step.pending .progress-date{color:#8b968f!important}
 .trf-sheet input.locked,.trf-doc input.locked{background:#f1f5f3;color:#3f4b45;cursor:not-allowed}.user-link select{max-width:230px}.user-link .user-note{display:block;color:#7a857e;margin-top:3px}
 .search-wrap>span:first-child{font-size:22px!important;line-height:1;display:inline-flex;align-items:center;color:#4d6a66;flex-shrink:0}
+
+/* ---- Phone layout (installed app / small screens) ---- */
+@media(max-width:700px){
+ .topbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px!important;padding:10px 14px!important}
+ .topbar .brand{flex:1 1 auto;min-width:0}.brand-logo{width:34px!important;height:34px!important}.brand-title{font-size:21px!important}.topbar .brand small{font-size:9px!important}
+ .topbar .qc-alerts,.topbar .qc-alerts+.session-info,.topbar .session-info{margin:0!important;flex:none}
+ .topbar .topnav{flex:1 1 100%;order:5;display:flex!important;flex-direction:row!important;overflow-x:auto;scrollbar-width:none;gap:2px;padding:2px 0}
+ .topbar .topnav::-webkit-scrollbar{display:none}.topnav .nav-item{flex:0 0 auto;padding:8px 11px!important;font-size:14.5px!important}
+ .menu-button{display:none!important}
+ .content{padding:14px 10px!important}.generic-card{padding:14px 12px!important}.generic-card.wide-card{padding:14px 12px!important}
+ /* Digital TRFs: the form bar stacks, the sheet is one column */
+ .trf-tabbar{position:static!important;flex-wrap:wrap!important;padding:10px!important;gap:8px!important}
+ .trf-tabbar .trf-newbar{flex:1 1 100%!important;flex-wrap:wrap;gap:8px!important}.trf-tabbar .trf-formbar-note{flex:1 1 100%!important;font-size:12.5px}
+ .trf-tabbar .trf-formbar-actions{margin-left:0!important;flex-wrap:wrap}.trf-tabbar .trf-type-pick{flex:1 1 100%;flex-wrap:wrap}.trf-tabbar .trf-type-pick select{max-width:100%;flex:1 1 200px}
+ .tf-grid,.tf-grid-2,.tf-grid-3{grid-template-columns:1fr!important}.trf-sheet,.trf-sheet *{min-width:0}.trf-sheet{max-width:100%;overflow-x:hidden}
+ .trf-submit-row{position:static!important}
+ /* Run reports: stat cards keep the icon off the number, the legend wraps to two columns */
+ .rr-stat{padding:12px 10px!important}.rr-stat-ic{position:static!important;transform:none!important;width:30px!important;height:30px!important;order:-1;margin-bottom:4px}
+ .rr-stat strong{font-size:24px!important}.rr-stat span{font-size:11px!important;letter-spacing:.3px!important}
+ .rr-legend{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px 8px!important}
+ .rr-leg span{font-size:13px!important}
+ .prep-toolbar,.rb-actions,.trk-tools{flex-wrap:wrap}
+ .fu-table-wrap,.prep-table-wrap,.users-table-wrap,.sd-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+ dialog{max-width:100vw}
+}
+@media(max-width:700px){.embryo-columns-table th,.embryo-columns-table td{padding:10px 12px!important;font-size:12.5px!important}.embryo-columns-table td.wrap-cell{min-width:120px;max-width:200px}.col-freeze-btn{width:22px;height:22px;margin-left:4px}}
+
+.trk-mlist{display:grid;gap:12px}.trk-mcard{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:#fff;cursor:pointer}.trk-mcard:active{background:#f4f8f6}
+.trk-mtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.trk-mtop strong{font-size:17px}.trk-mtop b{font-size:16px;color:#0a7180;white-space:nowrap}
+.trk-mpills{margin:8px 0 10px;display:flex;flex-wrap:wrap;gap:6px}.trk-mgrid{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:14px}.trk-mgrid span{color:#7a857e}.trk-mgrid b{font-weight:600;text-align:right;word-break:break-word}
