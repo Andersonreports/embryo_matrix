@@ -420,19 +420,14 @@ window.renderEmbryoTracker=async function(g){
  g.innerHTML='<div class="generic-card wide-card fu-view trk"><div class="chart-empty">Loading your embryos\u2026</div></div>';
  const card=g.querySelector('.trk');let items=[],stage='',q='';
  try{const r=await fetch('/api/my-embryos');if(!r.ok)throw 0;items=(await r.json()).items||[]}catch(e){card.innerHTML='<div class="chart-empty">Could not load your embryos. Please try again.</div>';return}
- const open=items.filter(i=>i.stage<4).length;
  const draw=()=>{
-  const cnt=k=>items.filter(i=>i.stage===k).length,needle=q.trim().toLowerCase();
+  const needle=q.trim().toLowerCase();
   // with no stage chosen the list shows every embryo, the ones still waiting for their report first
   const list=items.filter(i=>(stage===''||i.stage===+stage)&&(!needle||`${i.patient} ${i.embryo} ${i.sampleId} ${i.test}`.toLowerCase().includes(needle))).sort((a,b)=>(a.stage===4)-(b.stage===4));
-  const cards=TRK_STAGES.filter(([k])=>k>1).map(([k,l,sub])=>`<button type="button" class="trk-card${String(stage)===String(k)?' on':''}" data-st="${k}"><b>${cnt(k)}</b><span>${esc(l)}</span><small>${esc(sub)}</small></button>`).join('');
   const head=TRK_COLS.map(([h])=>`<th>${h}</th>`).join(''),rows=list.map(i=>`<tr>${TRK_COLS.map(([,f],k)=>{const v=f(i);return `<td>${k<3?v:(esc(v)||'\u2014')}</td>`}).join('')}</tr>`).join('');
-  card.innerHTML=`<div class="fu-hero"><div><h2>${open?`${open} embryo${open===1?'':'s'} waiting for a report`:'No embryos waiting for a report'}</h2><p>Where each of your embryos is right now, with its dates, test, sequencer, kit and storage. Once the report is sent, record the outcome in Follow-up tasks.</p></div></div>
-  <div class="trk-cards">${cards}</div>
-  <div class="trk-tools"><div class="search-wrap"><span>\u2315</span><input id="trkQ" type="search" placeholder="Search patient, embryo or sample ID\u2026" value="${esc(q)}" autocomplete="off"></div>${stage!==''?'<button type="button" class="text-button" id="trkClear">Show all embryos</button>':''}</div>
+  card.innerHTML=`<div class="trk-tools"><div class="search-wrap"><span>\u2315</span><input id="trkQ" type="search" placeholder="Search patient, embryo or sample ID\u2026" value="${esc(q)}" autocomplete="off"></div>${stage!==''?'<button type="button" class="text-button" id="trkClear">Show all embryos</button>':''}</div>
   ${list.length?`<div class="fu-table-wrap trk-wrap"><table class="fu-table trk-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="tk-empty"><h3>${items.length?'Nothing here':'No embryos yet'}</h3><p>${items.length?'Try another search or stage.':'Embryos appear here once your samples are in our sheet.'}</p></div>`}`;
-  card.querySelectorAll('.trk-card').forEach(b=>b.onclick=()=>{stage=String(stage)===b.dataset.st?'':b.dataset.st;draw()});
-  const c=card.querySelector('#trkClear');if(c)c.onclick=()=>{stage='';draw()};
+    const c=card.querySelector('#trkClear');if(c)c.onclick=()=>{stage='';draw()};
   const inp=card.querySelector('#trkQ');if(inp){inp.oninput=()=>{q=inp.value;const pos=inp.selectionStart;draw();const n=card.querySelector('#trkQ');n.focus();n.setSelectionRange(pos,pos)}}};
  draw()};
 
