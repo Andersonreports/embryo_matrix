@@ -163,6 +163,11 @@ async def identify_user(request: Request, call_next):
         response.headers["Cache-Control"] = "no-cache"
     return response
 
+@app.get("/sw.js")
+def service_worker():
+    """Served from the site root so the installed app's scope covers every page."""
+    return FileResponse(STATIC / "sw.js", media_type="application/javascript", headers={"Cache-Control": "no-cache"})
+
 @app.get("/login")
 def login_page():
     return FileResponse(STATIC / "login.html")

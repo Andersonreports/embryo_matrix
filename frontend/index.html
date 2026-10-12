@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#eef3ea" />
+  <meta name="theme-color" content="#086f78" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="EmbryoMatrix" />
   <meta name="description" content="EmbryoMatrix PGT connects embryo-level molecular testing, samples, images, and PGT results." />
   <title>EmbryoMatrix PGT — Molecular testing intelligence</title>
   <link rel="manifest" href="/static/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/static/assets/logos/og.png" />
+  <link rel="apple-touch-icon" href="/static/assets/pwa/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&family=DM+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
@@ -196,5 +197,6 @@
   <script src="/static/app.js?v=20261012f"></script>
   <script src="/static/followup.js?v=20261012d"></script>
   <script src="/static/coordinator.js?v=20261012c"></script>
+  <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))</script>
 </body>
 </html>
