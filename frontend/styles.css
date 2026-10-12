@@ -2382,3 +2382,4 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 
 /* Embryo history dialog (client login): larger type */
 .trk-hist .patient-top h2{font-size:28px}.trk-hist .detail-card{padding:20px 22px}.trk-hist .detail-card h3{font-size:20px;margin-bottom:14px}.trk-hist .sample-item{padding:13px 0;gap:16px;align-items:center}.trk-hist .sample-item strong{font-size:15px}.trk-hist .sample-item span{font-size:15px;color:#4d5852;text-align:right}.trk-hist .progress-label{font-size:14px!important}.trk-hist .progress-date{font-size:13px!important}.trk-hist .trk-pill{font-size:13px}
+.trk-hist .trk-emb{margin-top:26px;padding-top:22px;border-top:2px solid #e3e9e2}.trk-hist .trk-emb:first-of-type{margin-top:20px}.trk-hist .trk-emb-head{display:flex;align-items:center;gap:14px;margin-bottom:6px}.trk-hist .trk-emb-head h3{font:500 24px "Lora";margin:0}
