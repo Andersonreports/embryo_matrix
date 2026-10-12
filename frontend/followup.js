@@ -414,6 +414,15 @@ const TRK_NOW={0:'Awaiting sample',1:'Sample received',2:'WGA done',3:'Sequenced
 const TRK_COLS=[['Patient',i=>`<strong>${esc(i.patient)}</strong>`],['Embryo',i=>`<b>${esc(i.embryo)}</b>`],['Status',i=>`<span class="trk-pill s${i.stage}">${esc(TRK_NOW[i.stage])}</span>`],
  ['Sample ID',i=>i.sampleId],['Test',i=>i.test],['Sequencer',i=>i.sequencer],['Date of biopsy',i=>i.biopsy],['Sample received',i=>i.received],['TRF received',i=>i.trfReceived],
  ['WGA done',i=>i.wga],['Sequencing',i=>i.sequenced],['Report released',i=>i.reported],['Kit',i=>i.kit],['Stored in',i=>i.box||i.sampleBox],['Stored on',i=>i.stored],['Transferred on',i=>i.transferredOn],['Transferred to',i=>i.transferredTo]];
+const trkHistory=i=>{const d=document.getElementById('patientDialog'),box=document.getElementById('patientDetail');if(!d||!box)return;
+ const row={'date sample received':i.received,'wga done on':i.wga,'seq date':i.sequenced,'attune upload':'','ngs report':i.reported};
+ const info=[['Patient',i.patient],['Embryo',i.embryo],['Sample ID',i.sampleId],['Test',i.test],['Sequencer',i.sequencer],['Kit',i.kit],['Date of biopsy',i.biopsy],['TRF received',i.trfReceived],['Stored in',i.box||i.sampleBox],['Stored on',i.stored],['Transferred on',i.transferredOn],['Transferred to',i.transferredTo]].filter(([,v])=>v);
+ const events=[['Biopsy taken',i.biopsy],['TRF received',i.trfReceived],['Sample received',i.received],['WGA done',i.wga],['Sequencing',i.sequenced],['Report released',i.reported],['Stored',i.stored],['Transferred'+(i.transferredTo?' to '+i.transferredTo:''),i.transferredOn]].filter(([,v])=>v);
+ box.innerHTML=`<div class="patient-detail"><div class="patient-top"><div><h2>${esc(i.patient)} \u00b7 ${esc(i.embryo)}</h2><div class="patient-meta"><span class="trk-pill s${i.stage}">${esc(TRK_NOW[i.stage])}</span></div></div><button class="icon-btn" id="trkHistClose" aria-label="Close">\u00d7</button></div>
+ ${progressStepper(i.stage,row)}
+ <div class="detail-grid" style="margin-top:22px"><div class="detail-card"><h3>Embryo history</h3>${events.length?events.map(([l,v])=>`<div class="sample-item"><strong>${esc(l)}</strong><span>${esc(v)}</span></div>`).join(''):'<div class="sample-item"><span>No dates recorded yet.</span></div>'}</div>
+ <div class="detail-card"><h3>Details</h3>${info.map(([l,v])=>`<div class="sample-item"><strong>${esc(l)}</strong><span>${esc(v)}</span></div>`).join('')}</div></div></div>`;
+ box.querySelector('#trkHistClose').onclick=()=>d.close();if(!d.open)d.showModal()};
 window.renderEmbryoTracker=async function(g){
  const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent='Embryo tracking';
  const mh=document.getElementById('mainHeader');if(mh)mh.classList.add('hidden');
@@ -433,12 +442,13 @@ window.renderEmbryoTracker=async function(g){
    const rows=pats.map(g=>`<tr class="trk-prow" data-p="${esc(g[0].patient)}" title="Show this patient's embryos"><td><strong>${esc(g[0].patient)}</strong></td><td><b>${g.length}</b></td><td>${pills(g)}</td><td>${esc(uniq(g.map(i=>i.sampleId)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.test)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.sequencer)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.biopsy)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.received)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.reported)))||'\u2014'}</td></tr>`).join('');
    table=pats.length?`<div class="fu-table-wrap trk-wrap"><table class="fu-table trk-table"><thead><tr><th>Patient</th><th>Embryos</th><th>Status</th><th>Sample ID</th><th>Test</th><th>Sequencer</th><th>Date of biopsy</th><th>Sample received</th><th>Report released</th></tr></thead><tbody>${rows}</tbody></table></div>`:'';
   }else{
-   const head=TRK_COLS.map(([h])=>`<th>${h}</th>`).join(''),rows=list.map(i=>`<tr>${TRK_COLS.map(([,f],k)=>{const v=f(i);return `<td>${k<3?v:(esc(v)||'\u2014')}</td>`}).join('')}</tr>`).join('');
+   const head=TRK_COLS.map(([h])=>`<th>${h}</th>`).join(''),rows=list.map((i,n)=>`<tr class="trk-erow" data-n="${n}" title="Open this embryo's history">${TRK_COLS.map(([,f],k)=>{const v=f(i);return `<td>${k<3?v:(esc(v)||'\u2014')}</td>`}).join('')}</tr>`).join('');
    table=list.length?`<div class="fu-table-wrap trk-wrap"><table class="fu-table trk-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`:'';
   }
   card.innerHTML=`<div class="trk-tools"><div class="prep-segments"><button type="button" class="prep-seg${view==='embryo'?' active':''}" data-v="embryo">Embryo view</button><button type="button" class="prep-seg${view==='patient'?' active':''}" data-v="patient">Patient view</button></div><div class="search-wrap"><span>\u2315</span><input id="trkQ" type="search" placeholder="Search patient, embryo or sample ID\u2026" value="${esc(q)}" autocomplete="off"></div></div>
   ${table||`<div class="tk-empty"><h3>${items.length?'Nothing here':'No embryos yet'}</h3><p>${items.length?'Try another search.':'Embryos appear here once your samples are in our sheet.'}</p></div>`}`;
   card.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{view=b.dataset.v;draw()});
+  card.querySelectorAll('.trk-erow').forEach(r=>r.onclick=()=>trkHistory(list[+r.dataset.n]));
   card.querySelectorAll('.trk-prow').forEach(r=>r.onclick=()=>{q=r.dataset.p;view='embryo';draw()});
   const inp=card.querySelector('#trkQ');if(inp){inp.oninput=()=>{q=inp.value;const pos=inp.selectionStart;draw();const n=card.querySelector('#trkQ');n.focus();n.setSelectionRange(pos,pos)}}};
  draw()};
