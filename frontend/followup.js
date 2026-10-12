@@ -425,7 +425,7 @@ window.renderEmbryoTracker=async function(g){
   const cnt=k=>items.filter(i=>i.stage===k).length,needle=q.trim().toLowerCase();
   // with no stage chosen the list shows every embryo, the ones still waiting for their report first
   const list=items.filter(i=>(stage===''||i.stage===+stage)&&(!needle||`${i.patient} ${i.embryo} ${i.sampleId} ${i.test}`.toLowerCase().includes(needle))).sort((a,b)=>(a.stage===4)-(b.stage===4));
-  const cards=TRK_STAGES.map(([k,l,sub])=>`<button type="button" class="trk-card${String(stage)===String(k)?' on':''}" data-st="${k}"><b>${cnt(k)}</b><span>${esc(l)}</span><small>${esc(sub)}</small></button>`).join('');
+  const cards=TRK_STAGES.filter(([k])=>k>1).map(([k,l,sub])=>`<button type="button" class="trk-card${String(stage)===String(k)?' on':''}" data-st="${k}"><b>${cnt(k)}</b><span>${esc(l)}</span><small>${esc(sub)}</small></button>`).join('');
   const head=TRK_COLS.map(([h])=>`<th>${h}</th>`).join(''),rows=list.map(i=>`<tr>${TRK_COLS.map(([,f],k)=>{const v=f(i);return `<td>${k<3?v:(esc(v)||'\u2014')}</td>`}).join('')}</tr>`).join('');
   card.innerHTML=`<div class="fu-hero"><div><h2>${open?`${open} embryo${open===1?'':'s'} waiting for a report`:'No embryos waiting for a report'}</h2><p>Where each of your embryos is right now, with its dates, test, sequencer, kit and storage. Once the report is sent, record the outcome in Follow-up tasks.</p></div></div>
   <div class="trk-cards">${cards}</div>
