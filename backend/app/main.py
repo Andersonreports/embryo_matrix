@@ -748,8 +748,8 @@ def _clean_trf(raw: dict) -> dict:
 SIGNED_COPY_DEADLINE = timedelta(hours=24)
 
 def _signed_overdue(t: TrfSubmission) -> bool:
-    """No patient-signed copy within 24 hours of submission (rejected forms no longer need one)."""
-    return not t.signed_file_path and t.status != "Rejected" and datetime.utcnow() - t.submitted_at > SIGNED_COPY_DEADLINE
+    """The patient-signed copy is optional, so a TRF is never overdue for it."""
+    return False
 
 def _trf_summary(t: TrfSubmission) -> dict:
     d = t.data or {}
