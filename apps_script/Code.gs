@@ -453,7 +453,7 @@ function newSampleAppend_(body) {
     out[at] = p[1];
   });
   var row = headers.map(function (_, i) { return out[i] === undefined ? '' : out[i]; });
-  tab.getRange(tab.getLastRow() + 1, 1, 1, row.length).setNumberFormat('@').setValues([row]);
+  tab.getRange(tab.getLastRow() + 1, 1, 1, row.length).setNumberFormat('@').setHorizontalAlignment('left').setValues([row]);
   seen.push(body.id); props.setProperty('newSampleIds', JSON.stringify(seen.slice(-200)));
   return { ok: true };
 }
