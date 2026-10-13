@@ -41,6 +41,7 @@ class NewSampleIn(BaseModel):
     test: str
     embryos: str = ""
     embryo: str = ""
+    embryoNames: list[str] = []
     biopsyDate: str = ""
     client: str = ""
     center: str = ""

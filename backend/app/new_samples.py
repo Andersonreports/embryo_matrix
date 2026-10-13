@@ -56,11 +56,29 @@ def retry_pending() -> int:
         return len([e for e in items if not e.get("sent")])
 
 
-def add(values: dict, user: str) -> dict:
+def _key(sample_id, embryo) -> str:
+    return edits_sheet.record_key(sample_id, embryo)
+
+
+def add(values: dict, names: list, user: str) -> dict:
+    """Add one entry per embryo name (a single blank-named one when there are none). Nothing is added
+    when an embryo of this Sample ID was already added, or a name repeats in the form."""
+    names = [str(n or "").strip() for n in names] or [""]
     now = datetime.now()
-    entry = {"id": now.strftime("%Y%m%d%H%M%S%f"), "addedBy": user, "addedAt": now.strftime("%Y-%m-%d %H:%M"),
-             "values": values, "sent": False, "error": ""}
     with _lock:
-        _save(_load() + [entry])
+        items = _load()
+        have = {_key(e["values"].get("sampleId"), e["values"].get("embryo")) for e in items}
+        seen, dup = set(), []
+        for n in names:
+            k = _key(values["sampleId"], n)
+            if k in have or k in seen:
+                dup.append(n or "(no embryo name)")
+            seen.add(k)
+        if dup:
+            return {"ok": False, "duplicates": dup}
+        for i, n in enumerate(names):
+            items.append({"id": now.strftime("%Y%m%d%H%M%S%f") + str(i), "addedBy": user, "addedAt": now.strftime("%Y-%m-%d %H:%M"),
+                          "values": {**values, "embryo": n}, "sent": False, "error": ""})
+        _save(items)
     threading.Thread(target=retry_pending, daemon=True).start()
-    return {"ok": True, "id": entry["id"], "sheet": "sending" if edits_sheet.configured() else "not-configured"}
+    return {"ok": True, "added": len(names), "sheet": "sending" if edits_sheet.configured() else "not-configured"}

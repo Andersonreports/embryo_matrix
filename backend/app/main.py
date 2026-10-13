@@ -471,10 +471,14 @@ def get_edits_sheet():
 @app.post("/api/new-samples")
 def post_new_sample(payload: NewSampleIn, request: Request, db: Session = Depends(get_db)):
     user = _require_lab_user(request)
-    values = {k: str(v or "").strip()[:500] for k, v in payload.model_dump().items()}
+    names = [str(n or "").strip()[:200] for n in payload.embryoNames][:50]
+    values = {k: str(v or "").strip()[:500] for k, v in payload.model_dump(exclude={"embryoNames", "embryo"}).items()}
     if not values["sampleId"] or not values["patient"] or not values["test"]:
         raise HTTPException(400, "Sample ID, patient name and test are required")
-    out = new_samples.add(values, user.get("username") or "Unknown")
+    out = new_samples.add(values, names, user.get("username") or "Unknown")
+    if not out["ok"]:
+        d = out["duplicates"]
+        raise HTTPException(409, f"{', '.join(d)} of {values['sampleId']} {'was' if len(d) == 1 else 'were'} already added")
     log_activity(db, "new_sample", f"{values['sampleId']} · {values['patient']} · {values['test']}", request=request)
     return out
 
