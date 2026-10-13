@@ -2426,3 +2426,9 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
  .fu-dialog .fu-share,.fu-dialog .oe-share{flex:1 1 100%;flex-wrap:wrap;border-radius:16px}
  .fu-dialog input,.fu-dialog select,.fu-dialog textarea{width:100%;box-sizing:border-box}
 }
+
+.embryo-table.run-live-table{table-layout:auto}
+.embryo-table.run-live-table th{white-space:nowrap!important;overflow-wrap:normal}
+.embryo-table.run-live-table td{overflow-wrap:normal;word-break:normal}
+.embryo-table.run-live-table td:nth-child(2){overflow-wrap:break-word}
+.embryo-table.run-live-table th:nth-child(4),.embryo-table.run-live-table td:nth-child(4){width:auto}
