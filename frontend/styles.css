@@ -2454,3 +2454,4 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .fu-addsample-dlg .fu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 .fu-addsample-dlg .vu-dhead h3{font-size:26px}
 @media(max-width:900px){.fu-addsample-dlg .fu-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+.fu-addsample-dlg .as-other-opt{border-top:0;margin-top:0;margin-bottom:4px;border-bottom:1px solid #eef1ee;border-radius:9px 9px 0 0}
