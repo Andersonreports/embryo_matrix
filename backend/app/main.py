@@ -17,9 +17,9 @@ from .config import settings
 from .database import Base, engine, get_db, SessionLocal
 from .placement import Placement, safe as _safe_name
 from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment, User, Followup, EmbryoOutcome, OutcomeHistory
-from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn
+from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn, NewSampleIn
 from .sheet_sync import parse_sources, sync_sources
-from . import auth, cell_edits, edits_sheet, mailer, storage, trf_fill, trf_pdf
+from . import auth, cell_edits, edits_sheet, mailer, new_samples, storage, trf_fill, trf_pdf
 from .clients import resolve_client, directory as client_directory
 from sqlalchemy import inspect, text
 import mimetypes
@@ -467,6 +467,16 @@ def get_cell_edits(db: Session = Depends(get_db)):
 def get_edits_sheet():
     edits_sheet.fetch_edits()  # kicks off a background retry / re-read when stale
     return edits_sheet.status()
+
+@app.post("/api/new-samples")
+def post_new_sample(payload: NewSampleIn, request: Request, db: Session = Depends(get_db)):
+    user = _require_lab_user(request)
+    values = {k: str(v or "").strip()[:500] for k, v in payload.model_dump().items()}
+    if not values["sampleId"] or not values["patient"] or not values["test"]:
+        raise HTTPException(400, "Sample ID, patient name and test are required")
+    out = new_samples.add(values, user.get("username") or "Unknown")
+    log_activity(db, "new_sample", f"{values['sampleId']} · {values['patient']} · {values['test']}", request=request)
+    return out
 
 @app.post("/api/cell-edits")
 def post_cell_edit(payload: CellEditIn, request: Request, db: Session = Depends(get_db)):

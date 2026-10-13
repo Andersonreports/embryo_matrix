@@ -260,6 +260,7 @@ function doPost(e) {
   try {
     if (body.action === 'editsUpsert') return jsonOutput_(editsUpsert_(body));
     if (body.action === 'editsRevert') return jsonOutput_(editsRevert_(body));
+    if (body.action === 'newSample') return jsonOutput_(newSampleAppend_(body));
     return jsonOutput_({ error: 'Unknown action' });
   } catch (err) {
     return jsonOutput_({ error: String(err) });
@@ -422,4 +423,37 @@ function editsList_() {
     }
   }
   return { edits: edits, url: ss.getUrl() };
+}
+
+// ---- New samples: the app's "Add sample" form appends one row to the "New Samples" tab of the
+// PGS & NIPGS updates sheet. Columns are matched by header name (case-insensitive); a header the
+// tab doesn't have yet is added at the end. Re-sending the same id never adds a second row.
+var NEW_SAMPLES_SHEET_ID_SETTING = 'PASTE_THE_PGS_NIPGS_UPDATES_SHEET_ID_HERE';
+var NEW_SAMPLES_TAB = 'New Samples';
+
+function newSampleAppend_(body) {
+  if (!NEW_SAMPLES_SHEET_ID_SETTING || NEW_SAMPLES_SHEET_ID_SETTING.indexOf('PASTE_') === 0) {
+    throw new Error('Set NEW_SAMPLES_SHEET_ID_SETTING in the script to the PGS & NIPGS updates sheet ID first');
+  }
+  var ss = SpreadsheetApp.openById(NEW_SAMPLES_SHEET_ID_SETTING);
+  var tab = ss.getSheetByName(NEW_SAMPLES_TAB) || ss.insertSheet(NEW_SAMPLES_TAB);
+  var props = PropertiesService.getScriptProperties(), seen = JSON.parse(props.getProperty('newSampleIds') || '[]');
+  if (seen.indexOf(body.id) >= 0) return { ok: true, duplicate: true };
+  var lastCol = Math.max(tab.getLastColumn(), 1);
+  var headers = tab.getLastRow() === 0 ? [] : tab.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h).trim(); });
+  var lower = headers.map(function (h) { return h.toLowerCase(); });
+  var out = {};
+  (body.row || []).forEach(function (p) {
+    var h = String(p[0]).trim(), at = lower.indexOf(h.toLowerCase());
+    if (at < 0) {
+      if (!String(p[1] || '').trim()) return;  // don't add a column just for an empty value
+      headers.push(h); lower.push(h.toLowerCase()); at = headers.length - 1;
+      tab.getRange(1, headers.length).setValue(h).setFontWeight('bold');
+    }
+    out[at] = p[1];
+  });
+  var row = headers.map(function (_, i) { return out[i] === undefined ? '' : out[i]; });
+  tab.getRange(tab.getLastRow() + 1, 1, 1, row.length).setNumberFormat('@').setValues([row]);
+  seen.push(body.id); props.setProperty('newSampleIds', JSON.stringify(seen.slice(-200)));
+  return { ok: true };
 }

@@ -2432,3 +2432,13 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .embryo-table.run-live-table td{overflow-wrap:normal;word-break:normal}
 .embryo-table.run-live-table td:nth-child(2){overflow-wrap:break-word}
 .embryo-table.run-live-table th:nth-child(4),.embryo-table.run-live-table td:nth-child(4){width:auto}
+
+.db-addsample{border-color:#0a7180;color:#0a7180}.db-addsample .db-plus{background:none;color:#0a7180;font-size:20px;line-height:1;margin-right:-2px}
+.fu-addsample-dlg.fu-addsample-dlg{width:min(960px,calc(100vw - 40px))!important;max-width:none!important}
+.fu-addsample-dlg .vu-dhead h3{font-size:24px}
+.fu-addsample-dlg .vu-dbody{padding:26px 32px 30px}
+.fu-addsample-dlg .fu-note{font-size:15px;margin-bottom:18px}
+.fu-addsample-dlg .fu-grid{gap:22px 26px}
+.fu-addsample-dlg .fu-f{font-size:14.5px;gap:7px}
+.fu-addsample-dlg .fu-f input{height:50px;font-size:16px}
+.fu-addsample-dlg .fu-actions{margin-top:26px}.fu-addsample-dlg .fu-actions .primary{height:50px;padding:0 34px;font-size:16px}

@@ -85,6 +85,17 @@ const sumCards=(out)=>{const n=out.length,c=l=>out.filter(x=>l.includes(x.status
  return [['Embryos',n,'embryos-tracked'],['Transferred',c(TRANSFERRED),'transferred'],['Implantation +',c(IMPLANTED),'implantation-successful'],['Clinical pregnancy',c(CLINICAL),'clinical-pregnancy'],['Live birth',c(['Live birth']),'live-birth'],['Not recorded',n-rec,'outcome-unknown']].map(([l,v,i])=>`<div class="fu-sc"><img class="fu-sc-ico" src="/static/assets/icons/outcomes__${i}.png" alt=""><strong>${v}</strong><small>${l}</small></div>`).join('')};
 
 // ---------------- Patient outcome dialog (opened from the task queue and from the patient page) ----------------
+// "Add sample": a new sample that isn't in the source sheets yet; the server appends it to the New Samples tab of the PGS & NIPGS updates sheet.
+function openAddSample(){
+ const d=document.createElement('dialog');d.className='vu-dialog fu-dialog fu-addsample-dlg';document.body.append(d);d.addEventListener('close',()=>d.remove());
+ const F=[['sampleId','Sample ID',1],['patient','Patient name',1],['test','Test name',1],['embryos','Number of embryos'],['embryo','Embryo name'],['biopsyDate','Date of biopsy','date'],['client','Client'],['center','Center name'],['embryologist','Embryologist name'],['remarks','Remarks']];
+ d.innerHTML=`<div class="vu-dhead"><h3>Add sample</h3><button type="button" class="secondary compact" data-close>Close</button></div><div class="vu-dbody"><p class="fu-note" style="margin-top:0">Adds a new sample to the <b>New Samples</b> sheet. Fields marked * are required.</p><div class="fu-grid">${F.map(([k,l,t])=>`<label class="fu-f"><span>${l}${t===1?' *':''}</span><input name="${k}" type="${t==='date'?'date':'text'}" autocomplete="off"${t===1?' required':''}></label>`).join('')}</div><div class="fu-actions"><button type="button" class="primary" id="asGo">Add sample</button></div></div>`;
+ d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-close]'))d.close()});
+ d.querySelector('#asGo').onclick=async ev=>{const b=ev.currentTarget,body={};F.forEach(([k])=>{body[k]=d.querySelector(`[name="${k}"]`).value.trim()});
+  if(!body.sampleId||!body.patient||!body.test){toast('Sample ID, patient name and test name are required');return}
+  b.disabled=true;
+  try{const r=await fetch('/api/new-samples',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||'Could not add');toast(j.sheet==='not-configured'?'Saved here - the Google Sheet connection is not set up yet':'Sample added - sending to the New Samples sheet');d.close()}catch(err){toast(err.message||'Could not add');b.disabled=false}};
+ d.showModal()}
 function dlgEl(){let d=document.getElementById('fuDialog');if(!d){d=document.createElement('dialog');d.id='fuDialog';d.className='vu-dialog vu-dialog-wide fu-dialog';document.body.append(d);d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-close]'))d.close()})}return d}
 function openRecordDialog(f,after,focusLabel){
  const d=dlgEl(),om=outcomeMap(f),isNew=!!f._new,emb=f.embryos||[];
@@ -303,7 +314,7 @@ function dashHtml(){
  const clientTable=`<div class="fu-table-wrap"><table class="fu-table cl"><thead><tr><th>Client</th><th>Embryos</th><th>Outcomes recorded</th><th>Transferred</th><th>Implantation</th><th>Live birth</th></tr></thead><tbody>${shownC.map(x=>`<tr data-clinic="${esc(x.k)}"><td class="strong">${esc(x.k)}</td><td>${x.n}</td><td><div class="cl-bar"><i style="width:${x.n?x.rec/x.n*100:0}%"></i></div><small>${x.rec} of ${x.n}</small></td><td>${x.tr}</td><td>${x.tr?P(x.im,x.tr)+'%':'—'}</td><td>${x.tr?P(x.lb,x.tr)+'%':'—'}</td></tr>`).join('')||'<tr><td colspan="6" class="chart-empty">No client matches.</td></tr>'}</tbody></table></div>${!cq&&cl.length>10?`<div style="text-align:center;margin-top:10px"><button type="button" class="secondary compact" id="clAllBtn">${clAll?'Show top 10':`Show all ${cl.length} clients`}</button></div>`:''}<p class="fu-note" style="margin:8px 0 0">Click a client to filter the whole dashboard to it.</p>`;
  const ftChip=(k,label)=>{const an=rows.filter(r=>r.tests?.[k]?.where==='Anderson').length,ot=rows.filter(r=>r.tests?.[k]?.where==='Other lab').length;return `<button type="button" class="ft" data-ft="${k}" title="Click to list the embryos"><b>${label}</b><span><strong>${an+ot}</strong> done</span><small>${an} at Anderson · ${ot} at other labs</small><i class="ft-go">View list ›</i></button>`};
  window._ftRows=rows;
- return `<div class="db-h-row"><h3 class="db-h">The journey of the embryos</h3><div class="db-h-tools">${chips}${nOn?'<button type="button" class="db-fclear" id="fuClear">Clear all</button>':''}<button type="button" class="db-ftoggle${filtersOpen?' on':''}" id="fuFToggle" aria-expanded="${filtersOpen}">${IC('navigation__filter')}<span>Filters</span>${nOn?`<b>${nOn}</b>`:''}<i>${filtersOpen?'▴':'▾'}</i></button></div>
+ return `<div class="db-h-row"><h3 class="db-h">The journey of the embryos</h3><div class="db-h-tools">${chips}${nOn?'<button type="button" class="db-fclear" id="fuClear">Clear all</button>':''}<button type="button" class="db-ftoggle db-addsample" id="fuAddSample"><b class="db-plus">+</b><span>Add sample</span></button><button type="button" class="db-ftoggle${filtersOpen?' on':''}" id="fuFToggle" aria-expanded="${filtersOpen}">${IC('navigation__filter')}<span>Filters</span>${nOn?`<b>${nOn}</b>`:''}<i>${filtersOpen?'▴':'▾'}</i></button></div>
  <div class="db-pop"${filtersOpen?'':' hidden'}><div class="db-pop-head"><b>Filter the dashboard</b><button type="button" class="secondary compact" id="fuFClose">Done</button></div><div class="db-pop-grid">${sel('month','Month',monthLabel)}${sel('clinic','Clinic')}${sel('region','Region')}${sel('embryologist','Embryologist')}${sel('test','Test')}${sel('age','Age group')}${sel('result','Embryo result')}</div>${nOn?'<button type="button" class="db-fclear" id="fuClear2">Clear all filters</button>':''}</div>
 </div>
  <div class="journey">${journey}</div>
@@ -335,6 +346,7 @@ function wireDash(root,redraw){
  root.querySelectorAll('[data-clinic]').forEach(el=>el.onclick=()=>{flt.clinic=el.dataset.clinic;redraw()});
  const gr=root.querySelector('#goRunStatus');if(gr)gr.onclick=()=>showView('home');
  root.querySelectorAll('[data-flt]').forEach(s=>s.onchange=()=>{flt[s.dataset.flt]=s.value;redraw()});
+ const as=root.querySelector('#fuAddSample');if(as)as.onclick=e=>{e.stopPropagation();openAddSample()};
  const tg=root.querySelector('#fuFToggle');if(tg)tg.onclick=e=>{e.stopPropagation();filtersOpen=!filtersOpen;redraw()};
  const fc=root.querySelector('#fuFClose');if(fc)fc.onclick=()=>{filtersOpen=false;redraw()};
  const c2=root.querySelector('#fuClear2');if(c2)c2.onclick=()=>{Object.keys(flt).forEach(k=>flt[k]='');redraw()};

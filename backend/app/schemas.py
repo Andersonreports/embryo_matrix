@@ -33,3 +33,16 @@ class CellEditIn(BaseModel):
     value: str = ""
     # The embryo's whole Samples > Embryo view row ([header, value] pairs), for the edits sheet.
     row: list[list[str]] = []
+
+
+class NewSampleIn(BaseModel):
+    sampleId: str
+    patient: str
+    test: str
+    embryos: str = ""
+    embryo: str = ""
+    biopsyDate: str = ""
+    client: str = ""
+    center: str = ""
+    embryologist: str = ""
+    remarks: str = ""
