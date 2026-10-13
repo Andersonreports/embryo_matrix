@@ -2445,3 +2445,12 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .fu-addsample-dlg .fu-f select{width:100%;height:50px;font-size:16px;padding:0 14px}
 .fu-addsample-dlg .as-embs{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 26px}.fu-addsample-dlg .as-hint{grid-column:1/-1;font-size:14px;color:#8a9a97}
 @media(max-width:720px){.fu-addsample-dlg .as-embs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.fu-addsample-dlg .fu-f select.hidden,.fu-addsample-dlg .as-other.hidden,.fu-addsample-dlg .as-back.hidden{display:none}.fu-addsample-dlg .fu-f:has(.as-back){position:relative}.fu-addsample-dlg .as-back{position:absolute;right:12px;bottom:11px;width:28px;height:28px;border:0;border-radius:50%;background:#eef3f2;color:#35504d;font-size:18px;line-height:1;cursor:pointer}.fu-addsample-dlg .as-back:hover{background:#dce8e6}.fu-addsample-dlg .as-other{padding-right:44px!important}
+.fu-addsample-dlg .as-combo{position:relative}.fu-addsample-dlg .as-combo input{padding-right:38px!important}.fu-addsample-dlg .as-caret{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-style:normal;color:#5b706d;pointer-events:none}
+.fu-addsample-dlg .as-list{position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);max-height:240px;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 28px rgba(15,40,35,.16);padding:6px}.fu-addsample-dlg .as-list.hidden{display:none}
+.fu-addsample-dlg .as-opt{padding:10px 12px;border-radius:9px;font-size:15px;cursor:pointer}.fu-addsample-dlg .as-opt:hover{background:#eaf4f3}.fu-addsample-dlg .as-other-opt{color:#0a7180;font-weight:600;border-top:1px solid #eef1ee;margin-top:4px}
+.fu-addsample-dlg.fu-addsample-dlg{width:min(1240px,calc(100vw - 32px))!important;max-height:94vh!important}
+.fu-addsample-dlg .vu-dbody{max-height:calc(94vh - 70px)!important;overflow:auto!important;padding:30px 40px 34px}
+.fu-addsample-dlg .fu-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.fu-addsample-dlg .vu-dhead h3{font-size:26px}
+@media(max-width:900px){.fu-addsample-dlg .fu-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
