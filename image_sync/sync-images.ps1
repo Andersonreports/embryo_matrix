@@ -111,7 +111,6 @@ function Invoke-PlacedSyncPass {
     foreach ($src in @(
         @{ prefix = 'img'; path = '/api/images';       label = 'image';       name = { param($x) $x.filename } },
         @{ prefix = 'trf'; path = '/api/trf-files';    label = 'TRF PDF';     name = { param($x) $x.ref } },
-        @{ prefix = 'strf'; path = '/api/sample-trf-files'; label = 'sample TRF'; name = { param($x) $x.ref } },
         @{ prefix = 'rf';  path = '/api/result-files'; label = 'result file'; name = { param($x) $x.fileName } })) {
         try {
             $resp = Invoke-RestMethod -Uri ($server + $src.path) -Headers $headers -TimeoutSec 120
