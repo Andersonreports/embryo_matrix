@@ -112,6 +112,7 @@ _ROLE_RULES = {
         ("POST", r"/api/(trf|trf-image|trf/preview-pdf)"), ("GET", r"/api/trf-image/[^/]+"),
         ("GET", r"/api/followups"), ("POST", r"/api/followups/save"), ("GET", r"/api/my-embryos"),
         ("GET", r"/api/my-trfs"), ("POST", r"/api/trf/\d+/signed"), ("GET", r"/api/trf/\d+/signed"),
+        ("POST", r"/api/new-samples"),
     ],
 }
 _ALWAYS_OK = {("GET", "/api/whoami"), ("POST", "/api/logout")}
