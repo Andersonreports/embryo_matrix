@@ -16,7 +16,7 @@ from sqlalchemy import func
 from .config import settings
 from .database import Base, engine, get_db, SessionLocal
 from .placement import Placement, safe as _safe_name
-from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, CaseRunAssignment, User, Followup, EmbryoOutcome, OutcomeHistory
+from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, SampleTrf, CaseRunAssignment, User, Followup, EmbryoOutcome, OutcomeHistory
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn, NewSampleIn
 from .sheet_sync import parse_sources, sync_sources
 from . import auth, cell_edits, edits_sheet, mailer, new_samples, storage, trf_fill, trf_pdf
@@ -112,7 +112,7 @@ _ROLE_RULES = {
         ("POST", r"/api/(trf|trf-image|trf/preview-pdf)"), ("GET", r"/api/trf-image/[^/]+"),
         ("GET", r"/api/followups"), ("POST", r"/api/followups/save"), ("GET", r"/api/my-embryos"),
         ("GET", r"/api/my-trfs"), ("POST", r"/api/trf/\d+/signed"), ("GET", r"/api/trf/\d+/signed"),
-        ("POST", r"/api/new-samples"),
+        ("POST", r"/api/new-samples(/trf)?"),
     ],
 }
 _ALWAYS_OK = {("GET", "/api/whoami"), ("POST", "/api/logout")}
@@ -130,7 +130,7 @@ async def identify_user(request: Request, call_next):
     sync_key = request.headers.get("x-image-sync-key", "")
     # Same key covers every "pull files down to the lab PC" endpoint, not just images —
     # it only ever grants read/list access, never write, so widening its scope is safe.
-    SYNC_PATHS = {"/api/images", "/api/protocols", "/api/result-files", "/api/trf-files", "/api/case-runs"}
+    SYNC_PATHS = {"/api/images", "/api/protocols", "/api/result-files", "/api/trf-files", "/api/sample-trf-files", "/api/case-runs"}
     if sync_key and path in SYNC_PATHS and request.method == "GET":
         if settings.image_sync_token and secrets.compare_digest(sync_key.encode(), settings.image_sync_token.encode()):
             request.state.user = {"username": "File sync", "role": "sync"}
@@ -482,6 +482,36 @@ def post_new_sample(payload: NewSampleIn, request: Request, db: Session = Depend
         raise HTTPException(409, f"{', '.join(d)} of {values['sampleId']} {'was' if len(d) == 1 else 'were'} already added")
     log_activity(db, "new_sample", f"{values['sampleId']} · {values['patient']} · {values['test']}", request=request)
     return out
+
+@app.post("/api/new-samples/trf")
+async def upload_sample_trf(request: Request, sampleId: str = Form(...), patient: str = Form(""),
+                            file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """The paper TRF for a sample added through Add sample - a PDF, or a photo / scan of it. It is kept with
+    the other TRFs and pulled to the storage PC as TRFS/<sample id>_<patient>.<ext>."""
+    user = _require_lab_user(request)
+    sid, pat = sampleId.strip()[:200], patient.strip()[:255]
+    if not sid:
+        raise HTTPException(400, "Sample ID is required")
+    data = await file.read(15 * 1024 * 1024 + 1)
+    if len(data) > 15 * 1024 * 1024:
+        raise HTTPException(413, "File is too large (max 15 MB)")
+    if data[:5] == b"%PDF-":
+        ext = "pdf"
+    elif data[:3] == b"\xff\xd8\xff":
+        ext = "jpg"
+    elif data[:8] == b"\x89PNG\r\n\x1a\n":
+        ext = "png"
+    elif data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        ext = "webp"
+    else:
+        raise HTTPException(415, "Please choose a PDF, JPG or PNG file")
+    stored = storage.write_compressed_bytes(UPLOADS, f"sampletrf-{uuid.uuid4().hex}.{ext}", data)
+    n = db.query(SampleTrf).filter(SampleTrf.sample_id == sid).count()
+    row = SampleTrf(sample_id=sid, patient_name=pat, file_path=stored, uploaded_by=user.get("username") or "",
+                    filename=f"{sid}{'' if n == 0 else f'_{n + 1}'}.{ext}")
+    db.add(row); db.commit()
+    log_activity(db, "sample_trf", f"{sid} · {pat} · TRF uploaded", request=request)
+    return {"ok": True, "id": row.id}
 
 @app.post("/api/cell-edits")
 def post_cell_edit(payload: CellEditIn, request: Request, db: Session = Depends(get_db)):
@@ -1726,6 +1756,17 @@ def list_trf_files_for_sync(since_id: int = 0, db: Session = Depends(get_db)):
         "runId": run_by_case.get(r.case_code) if r.case_code else None,
         "url": f"/uploads/{r.pdf_file_path}", "relPath": trf_path(r),
     } for r in rows]
+
+@app.get("/api/sample-trf-files")
+def list_sample_trf_files_for_sync(db: Session = Depends(get_db)):
+    """For the lab-PC sync script: TRFs attached in Add sample, filed with the other TRFs under the sample ID and patient name."""
+    out, seen = [], {}
+    for r in db.query(SampleTrf).order_by(SampleTrf.id).all():
+        seen[r.sample_id] = n = seen.get(r.sample_id, 0) + 1  # a second file for the same sample gets _2, _3...
+        base = _safe_name(f"{r.sample_id}_{r.patient_name}")
+        out.append({"id": r.id, "ref": r.sample_id, "patient": r.patient_name, "url": f"/uploads/{r.file_path}",
+                    "relPath": f"TRFS/{base}{'' if n == 1 else f'_{n}'}.{r.filename.rsplit('.', 1)[-1]}"})
+    return out
 
 # --- Live Google Sheets sync: pulls case/sample rows into the same store the UI reads ---
 

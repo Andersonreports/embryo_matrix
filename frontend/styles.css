@@ -2455,3 +2455,8 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .fu-addsample-dlg .vu-dhead h3{font-size:26px}
 @media(max-width:900px){.fu-addsample-dlg .fu-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 .fu-addsample-dlg .as-other-opt{border-top:0;margin-top:0;margin-bottom:4px;border-bottom:1px solid #eef1ee;border-radius:9px 9px 0 0}
+
+.fu-addsample-dlg .as-trf{margin-top:22px;display:flex;flex-direction:column;gap:8px;font-size:14.5px;font-weight:600}
+.fu-addsample-dlg .as-trf-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fu-addsample-dlg .as-trf-row .as-hint{font-weight:400}
+.fu-addsample-dlg .as-trf-prev{max-width:220px;max-height:160px;border:1px solid var(--line);border-radius:10px;object-fit:contain}

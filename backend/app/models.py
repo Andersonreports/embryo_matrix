@@ -128,6 +128,17 @@ class TrfSubmission(Base):
     signed_by: Mapped[str] = mapped_column(String(120), default="")
     signed_reminder_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # when the 24-hour reminder email went out
 
+class SampleTrf(Base):
+    """A TRF (PDF or photo) attached to a sample when it was added from the Add sample dialog."""
+    __tablename__ = "sample_trfs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    sample_id: Mapped[str] = mapped_column(String(200), index=True)
+    patient_name: Mapped[str] = mapped_column(String(255), default="")
+    filename: Mapped[str] = mapped_column(String(255), default="")
+    file_path: Mapped[str] = mapped_column(String(500))
+    uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    uploaded_by: Mapped[str] = mapped_column(String(120), default="")
+
 class ActivityLog(Base):
     """Who did what, when. Written server-side from the login token."""
     __tablename__ = "activity_log"
