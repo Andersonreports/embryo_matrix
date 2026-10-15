@@ -1,0 +1,44 @@
+/* NGS Calculators — all rules scoped under .ngscalc so they can't collide with
+   EmbryoMatrix's own .card / .note / button / table styles. Palette ported from
+   the GenomeMatrix source. */
+.ngscalc{--ct:#008a8e;--cink:#173e48;--cmuted:#71868b;--cline:#dce8e7;color:var(--cink)}
+.ngscalc-head{margin:0 0 20px}
+.ngscalc-eyebrow{font-size:10px;font-weight:700;letter-spacing:1.8px;color:var(--ct);margin:0 0 7px}
+.ngscalc-head h1{font:500 30px "Lora",serif;letter-spacing:-.4px;margin:0 0 6px;color:var(--cink)}
+.ngscalc-sub{margin:0;color:var(--cmuted);font-size:13px}
+.ngscalc .card{background:#fff;border:1px solid var(--cline);border-radius:13px;padding:22px}
+.ngscalc h2{font-size:18px;margin:0 0 8px;color:var(--cink);display:flex;align-items:center;gap:4px}
+.ngscalc h3{font-size:14px;margin:0 0 6px;color:var(--cink)}
+.ngscalc .note{padding:13px 16px;border-radius:9px;background:#eaf5f3;color:#426971;font-size:12px;margin:16px 0;line-height:1.6}
+.ngscalc .fields{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin:20px 0}
+.ngscalc .actions{display:flex;gap:8px;flex-wrap:wrap}
+.ngscalc .tablewrap{overflow:auto;background:#fff;border:1px solid var(--cline);border-radius:12px}
+.ngscalc .empty{text-align:center;padding:45px;color:var(--cmuted)}
+.ngscalc label{font-size:12px;display:block;color:var(--cink)}
+.ngscalc label input,.ngscalc label select{display:block;width:100%;margin-top:6px}
+.ngscalc input,.ngscalc select{padding:10px 12px;border:1px solid #cadbd8;border-radius:8px;background:#fff;color:var(--cink);max-width:100%;font:inherit}
+.ngscalc input:focus,.ngscalc select:focus{outline:none;border-color:var(--ct);box-shadow:0 0 0 3px rgba(0,138,142,.12)}
+.ngscalc button{cursor:pointer;border:1px solid var(--cline);background:#fff;color:var(--cink);padding:10px 15px;border-radius:9px;font:inherit}
+.ngscalc button:hover{border-color:#b7d3d0}
+.ngscalc button.primary{background:var(--ct);color:#fff;border-color:var(--ct)}
+.ngscalc button.primary:hover{background:#00767a}
+.ngscalc button:focus-visible{outline:3px solid #75cacc;outline-offset:3px}
+.ngscalc table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap}
+.ngscalc th{font-size:10px;letter-spacing:.8px;text-transform:uppercase;background:#f8fbfa;color:var(--cmuted);padding:14px 17px}
+.ngscalc td{padding:15px 17px;border-top:1px solid #eaf0ef;font-size:12px;color:var(--cink)}
+.ngscalc td button{padding:5px 10px;font-size:12px}
+.ngscalc a{color:var(--ct)}
+.calc-headicon{width:26px;height:26px;vertical-align:middle}
+.ngscalc .calc-layout{display:grid;grid-template-columns:285px minmax(0,1fr);gap:22px}
+.ngscalc .calc-menu{align-self:start}
+.ngscalc .calc-menu button{display:block;text-align:left;width:100%;margin:7px 0;font-size:13px}
+.ngscalc .calc-formula{padding:14px;background:#eef7f5;border-radius:9px;color:#075964;font:14px Consolas,"DM Mono",monospace;line-height:1.7;margin:16px 0}
+.ngscalc .calc-error{color:#a9293e;font-weight:600;margin:16px 0}
+.ngscalc .calc-values{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin:18px 0}
+.ngscalc .calc-values div{background:#edf7f4;padding:17px;border:1px solid #c9e6df;border-radius:12px}
+.ngscalc .calc-values small{display:block;color:#526e76}
+.ngscalc .calc-values strong{display:block;font-size:25px;color:#007982;margin-top:9px;overflow-wrap:anywhere}
+.ngscalc .calc-output{margin-top:23px}
+.ngscalc #pool-input-rows input{width:145px}
+@media(max-width:850px){.ngscalc .calc-layout{grid-template-columns:1fr}.ngscalc .calc-menu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.ngscalc .calc-menu h2{grid-column:1/-1}.ngscalc .calc-menu button{margin:0}.ngscalc .fields{grid-template-columns:1fr}}
+@media(max-width:520px){.ngscalc .calc-values{grid-template-columns:1fr}.ngscalc .calc-menu{grid-template-columns:1fr}}

@@ -18,6 +18,7 @@
   <link rel="icon" type="image/svg+xml" href="/static/assets/logos/logo.svg" />
   <link rel="stylesheet" href="/static/styles.css?v=20261014a" />
   <link rel="stylesheet" href="/static/trf-doc.css?v=20261010s" />
+  <link rel="stylesheet" href="/static/calculators.css?v=20261015a" />
 </head>
 <body>
   <div class="app-shell">
@@ -30,6 +31,7 @@
           <button class="nav-item nav-color-blue" data-view="samples" id="samplesNav"><span><img class="ico" src="/static/assets/icons/navigation__samples.png" alt=""></span> Samples <b id="caseCount">0</b></button>
           <button class="nav-item nav-color-violet" data-view="pgtm"><span><img class="ico" src="/static/assets/icons/navigation__addon-tests.svg" alt=""></span> Add-on tests <b id="pgtmCount">0</b></button>
           <button class="nav-item nav-color-amber" data-view="runreports"><span><img class="ico" src="/static/assets/icons/navigation__run-reports.png" alt=""></span> Run reports</button>
+          <button class="nav-item nav-color-teal" data-view="calc"><span><img class="ico" src="/static/assets/icons/navigation__ngs-calculators.svg" alt=""></span> NGS Calculators</button>
           <button class="nav-item nav-color-teal" data-view="coord" id="coordNav" hidden><span><img class="ico" src="/static/assets/icons/navigation__home.png" alt=""></span> Home</button>
           <button class="nav-item nav-color-blue" data-view="trfs"><span><img class="ico" src="/static/assets/icons/navigation__digital-trfs.png" alt=""></span> TRFs <b id="trfNavCount">0</b></button>
           <button class="nav-item nav-color-green" data-view="followup" id="fuNav" hidden><span><img class="ico" src="/static/assets/icons/navigation__embryo-results.png" alt=""></span> Clinical follow-up</button>
@@ -197,6 +199,7 @@
   <script src="/static/app.js?v=20261012f"></script>
   <script src="/static/followup.js?v=20261014b"></script>
   <script src="/static/coordinator.js?v=20261012c"></script>
+  <script src="/static/calculators.js?v=20261015a"></script>
   <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))</script>
 </body>
 </html>
