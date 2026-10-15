@@ -2465,9 +2465,6 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .pipeline{display:flex;flex-direction:column;gap:16px}
 .pipeline-bar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 16px;box-shadow:var(--shadow)}
 .pipeline-month select{height:34px;border:1px solid var(--line);border-radius:9px;background:#f8faf9;font:600 12.5px "Inter";padding:0 30px 0 12px;color:var(--ink)}
-.pipeline-title{display:flex;flex-direction:column;gap:1px;padding-left:4px;border-left:1px solid var(--line);padding-left:14px}
-.pipeline-title strong{font:600 14px "Inter";color:var(--ink)}
-.pipeline-title span{font-size:11px;color:var(--muted)}
 .pipeline-tests{display:flex;gap:4px;margin-left:auto;background:#f1f5f3;border-radius:999px;padding:3px}
 .pipeline-tests .ptest{border:0;background:transparent;border-radius:999px;padding:6px 14px;font:600 12px "Inter";color:#5c6a63;cursor:pointer;white-space:nowrap}
 .pipeline-tests .ptest:hover{color:var(--ink)}
