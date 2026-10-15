@@ -2460,3 +2460,76 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .fu-addsample-dlg .as-trf-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .fu-addsample-dlg .as-trf-row .as-hint{font-weight:400}
 .fu-addsample-dlg .as-trf-prev{max-width:220px;max-height:160px;border:1px solid var(--line);border-radius:10px;object-fit:contain}
+
+/* ===== Run status · Stage Pipeline Artery (trial design) ===================== */
+.pipeline{display:flex;flex-direction:column;gap:16px}
+.pipeline-bar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 16px;box-shadow:var(--shadow)}
+.pipeline-month select{height:34px;border:1px solid var(--line);border-radius:9px;background:#f8faf9;font:600 12.5px "Inter";padding:0 30px 0 12px;color:var(--ink)}
+.pipeline-title{display:flex;flex-direction:column;gap:1px;padding-left:4px;border-left:1px solid var(--line);padding-left:14px}
+.pipeline-title strong{font:600 14px "Inter";color:var(--ink)}
+.pipeline-title span{font-size:11px;color:var(--muted)}
+.pipeline-tests{display:flex;gap:4px;margin-left:auto;background:#f1f5f3;border-radius:999px;padding:3px}
+.pipeline-tests .ptest{border:0;background:transparent;border-radius:999px;padding:6px 14px;font:600 12px "Inter";color:#5c6a63;cursor:pointer;white-space:nowrap}
+.pipeline-tests .ptest:hover{color:var(--ink)}
+.pipeline-tests .ptest.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(16,36,50,.12)}
+.pipeline-mode{display:flex;gap:4px}
+.pipeline-mode .pmode{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:7px 12px;font:600 11.5px "Inter";color:#5c6a63;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.pipeline-mode .pmode:hover{border-color:#bcd0c9}
+.pipeline-mode .pmode.on{background:#0d3b4e;border-color:#0d3b4e;color:#fff}
+
+.pipeline-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.pstage{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px 16px 14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden}
+.pstage::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--pc)}
+.pstage-top{display:flex;align-items:center;gap:9px}
+.pstage-no{display:grid;place-items:center;width:26px;height:26px;border-radius:999px;background:var(--ps);color:var(--pc);font:700 11px "DM Mono";flex-shrink:0}
+.pstage-name{font:600 13.5px "Inter";color:var(--ink);line-height:1.15}
+.pstage-batches{margin-left:auto;background:var(--ps);color:var(--pc);border-radius:999px;padding:3px 9px;font:700 11px "Inter";white-space:nowrap}
+.pstage-body{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.pstage-emb{display:flex;align-items:baseline;gap:6px}
+.pstage-emb strong{font:500 26px "Lora";color:var(--ink);line-height:1}
+.pstage-emb small{font-size:11px;color:var(--muted)}
+.pstage-metric{font:600 11.5px "DM Mono";color:var(--pc);white-space:nowrap}
+.pstage-bar{height:5px;border-radius:999px;background:#eef2f0;overflow:hidden}
+.pstage-bar>span{display:block;height:100%;border-radius:999px;background:var(--pc)}
+
+.pipeline-rows{display:flex;flex-direction:column;gap:12px}
+.ptrack-group{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.ptrack-group-head{display:flex;align-items:center;gap:9px;font:600 13px "Inter";color:var(--pc);padding:2px 2px 0}
+.ptrack-group-head .ptrack-group-n{margin-left:auto;background:var(--ps);color:var(--pc);border-radius:999px;padding:2px 9px;font:700 11px "Inter"}
+
+.prow{display:grid;grid-template-columns:minmax(230px,1.1fr) minmax(0,2fr) auto;align-items:center;gap:22px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.prow[role="button"]:hover{border-color:#bcd0c9;box-shadow:0 2px 6px rgba(16,36,50,.08),0 14px 30px rgba(16,36,50,.07)}
+.prow-static{cursor:default}
+.prow-head{min-width:0;display:flex;flex-direction:column;gap:6px}
+.prow-tags{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.prow-chip{background:#132b38;color:#fff;border-radius:7px;padding:3px 9px;font:700 11px "DM Mono";letter-spacing:.3px}
+.prow-plat{background:#eaf1ee;color:#4a6b5f;border-radius:7px;padding:3px 9px;font:600 11px "Inter"}
+.prow-title{margin:0;font:500 16px "Lora";color:var(--ink);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.prow-meta .prow-sep{color:#c3cdc8}
+.prow-meta .prow-qf{color:#c0392b;font-weight:700}
+.prow-tests{display:flex;gap:6px;flex-wrap:wrap;margin-left:2px}
+.prow-test{background:#f1f5f3;color:#3f5a6b;border-radius:6px;padding:2px 7px;font:600 10.5px "Inter"}
+
+.ptrack{min-width:0;display:flex;flex-direction:column;gap:8px}
+.ptrack-labels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ptrack-labels span{font:600 11.5px "Inter";line-height:1.15;color:#aab4ae}
+.ptrack-labels .pl-on{color:#1f8a52}
+.ptrack-labels .pl-cur{color:#c07a1d}
+.ptrack-labels .pl-off{color:#aab4ae}
+.ptrack-bar{height:6px;border-radius:999px;background:#eceeed;overflow:hidden}
+.ptrack-bar>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#17876f,#1f8a52)}
+.ptrack-pending .ptrack-bar>span{background:#9fb0b8}
+.ptrack-wga .ptrack-bar>span{background:linear-gradient(90deg,#2f6b98,#17876f)}
+.ptrack-seq .ptrack-bar>span{background:linear-gradient(90deg,#17876f 60%,#c07a1d)}
+
+.prow-act{display:flex;justify-content:flex-end}
+.prow-btn{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:9px 16px;font:600 12.5px "Inter";color:#2a5e44;cursor:pointer;white-space:nowrap}
+.prow-btn:hover:not(:disabled){border-color:#9fc3b2;background:#f3f9f6}
+.prow-btn:disabled{color:#9aa4a0;cursor:default;background:#f7f9f8}
+.prow-seq .prow-btn{color:#9b6c37;border-color:#ecd9b8}
+.prow-seq .prow-btn:hover:not(:disabled){background:#fdf6ea;border-color:#dcbd86}
+.prow-released .prow-btn{color:#2f6e4e}
+
+@media(max-width:1100px){.pipeline-stages{grid-template-columns:repeat(2,1fr)}.prow{grid-template-columns:1fr;gap:14px}.prow-act{justify-content:flex-start}}
+@media(max-width:700px){.pipeline-stages{grid-template-columns:1fr}.pipeline-tests{margin-left:0;width:100%;overflow-x:auto}.ptrack-labels span{font-size:10.5px}}
