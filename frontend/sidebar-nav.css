@@ -1,0 +1,33 @@
+/* Sidebar navigation (trial). Everything is gated on body.sidebar-nav, so with the
+   class absent the original top bar is untouched. Set NAV_LAYOUT='topbar' in
+   sidebar-nav.js to restore. Desktop only; narrow screens keep the top bar. */
+@media(min-width:901px){
+ body.sidebar-nav main{padding-left:254px}
+ body.sidebar-nav .topbar{display:flex!important;grid-template-areas:none!important;grid-template-columns:none!important;position:fixed;left:0;top:0;bottom:0;width:254px;height:100vh;flex-direction:column;align-items:stretch;gap:2px;padding:16px 12px 14px;overflow-y:auto;border-right:1px solid #d8ded5;border-bottom:none;z-index:40;flex-wrap:nowrap}
+ body.sidebar-nav .brand{padding:4px 8px 14px;margin-bottom:8px;border-bottom:1px solid #e3e8df;font-size:21px;gap:9px}
+ body.sidebar-nav .brand-logo{width:34px;height:34px}
+ body.sidebar-nav .topnav{flex-direction:column;align-items:stretch;gap:2px;width:100%}
+ body.sidebar-nav .nav-item{width:100%;justify-content:flex-start;border-radius:10px;padding:10px 14px;font-size:15px;white-space:nowrap}
+ body.sidebar-nav .nav-item b{margin-left:auto}
+ /* Nested children under Run status */
+ body.sidebar-nav .nav-sub{display:flex;flex-direction:column;gap:1px;margin:1px 0 5px}
+ body.sidebar-nav .nav-subitem{width:100%;justify-content:flex-start;gap:9px;padding:8px 14px 8px 42px;font-size:13.5px;font-weight:600;color:#6a746d;position:relative;border-radius:9px}
+ body.sidebar-nav .nav-subitem .ico{width:15px;height:15px}
+ body.sidebar-nav .nav-subitem::before{content:"";position:absolute;left:26px;top:0;bottom:0;width:1.5px;background:#dde4dd}
+ body.sidebar-nav .nav-subitem:hover{background:#e7efe6;color:#1f513c}
+ body.sidebar-nav .nav-subitem.active{background:#dceee2!important;color:#1b6b47!important;box-shadow:none}
+ body.sidebar-nav .nav-subitem.active span{color:#1b6b47}
+ body.sidebar-nav .nav-subitem b{margin-left:auto}
+ /* Explicit order so the bell + account block sit at the very bottom of the rail */
+ body.sidebar-nav .topbar{justify-content:flex-start}
+ body.sidebar-nav .brand{order:1}
+ body.sidebar-nav .topnav{order:2}
+ body.sidebar-nav .qc-alerts{order:3;position:static;margin-top:auto;align-self:flex-start;padding-left:6px}
+ body.sidebar-nav .session-info{order:4;margin:8px 0 0;border-top:1px solid #e3e8df;padding-top:10px}
+ body.sidebar-nav #sessionUsername{width:100%;text-align:left;justify-content:flex-start}
+ body.sidebar-nav .session-menu{position:static;box-shadow:none;border:0;padding:4px 0 0}
+ /* The Run-status page already lists these as a hierarchy in the rail now */
+ body.sidebar-nav .home-toolbar .home-overview-btn,
+ body.sidebar-nav .home-toolbar #samplesGo,
+ body.sidebar-nav .home-toolbar .import-data-btn{display:none}
+}

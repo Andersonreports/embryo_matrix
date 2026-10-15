@@ -32,6 +32,8 @@
 .ngscalc .calc-layout{display:grid;grid-template-columns:285px minmax(0,1fr);gap:22px}
 .ngscalc .calc-menu{align-self:start}
 .ngscalc .calc-menu button{display:block;text-align:left;width:100%;margin:7px 0;font-size:13px}
+.ngscalc .calc-search{width:100%;margin:10px 0 6px;padding:9px 12px;font-size:13px}
+.ngscalc .calc-menu-empty{color:var(--cmuted);font-size:12px;padding:8px 2px;margin:0}
 .ngscalc .calc-formula{padding:14px;background:#eef7f5;border-radius:9px;color:#075964;font:14px Consolas,"DM Mono",monospace;line-height:1.7;margin:16px 0}
 .ngscalc .calc-error{color:#a9293e;font-weight:600;margin:16px 0}
 .ngscalc .calc-values{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:12px;margin:18px 0}
