@@ -2532,8 +2532,10 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 @media(max-width:700px){.pipeline-stages{grid-template-columns:1fr}.pipeline-tests{margin-left:0;width:100%;overflow-x:auto}.ptrack-step{width:72px}.ptrack-steplabel{font-size:10px}.ptrack-dot{width:40px;height:40px}.ptrack-dot img{width:23px;height:23px}}
 
 /* ===== Overdue · TAT performance chart =============================== */
-.od-chart-btn{background:#e3efe6!important;border-color:#bcd9c7!important;color:#1f7a4d!important;font-weight:700}
-.od-chart-btn:hover{background:#d6e9dc!important;border-color:#9fc9ae!important}
+/* The one filled action in a row of outline buttons, so it is found at a glance */
+.od-chart-btn{background:linear-gradient(135deg,#075e69,#0dab9e)!important;border-color:transparent!important;color:#fff!important;font-weight:700;font-size:13px;padding:10px 18px!important;box-shadow:0 4px 12px rgba(10,113,128,.32)}
+.od-chart-btn:hover{background:linear-gradient(135deg,#065661,#0bbfae)!important;box-shadow:0 6px 16px rgba(10,113,128,.4)}
+.od-chart-btn:focus-visible{outline:2px solid #0a7180;outline-offset:2px}
 .tatx-body{padding:8px 2px 2px}
 .tatx-verdict{display:flex;align-items:center;gap:34px;flex-wrap:wrap;margin-bottom:4px}
 .tatx-big{display:flex;align-items:center;gap:11px}
