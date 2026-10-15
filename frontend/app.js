@@ -1855,7 +1855,7 @@ function tatMetTrend(months,overallPct){
  const pts=tatPoints(months);
  const w=Math.max(520,pts.length*78+70),h=280,padL=46,padR=24,padT=28,padB=60,innerH=h-padT-padB,innerW=w-padL-padR;
  const n=pts.length,stepX=n>1?innerW/(n-1):0,X=i=>n>1?padL+stepX*i:padL+innerW/2,Y=p=>padT+innerH-(p/100)*innerH,base=padT+innerH;
- const GREEN='#0a7180',halo='paint-order="stroke" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"';
+ const LINE='#07606b',RING='#0a7180',halo='paint-order="stroke" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"';
  const grid=[0,25,50,75,100].map(t=>{const gy=Y(t);return `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${w-padR}" y2="${gy.toFixed(1)}" stroke="#edf1ee" stroke-width="1"/><text x="${padL-8}" y="${(gy+3.5).toFixed(1)}" font-size="9" fill="#9aa6a0" text-anchor="end">${t}%</text>`}).join('');
  const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p.pct).toFixed(1)}`).join(' ');
  const area=n>1?`<path d="${line} L${X(n-1).toFixed(1)} ${base.toFixed(1)} L${X(0).toFixed(1)} ${base.toFixed(1)} Z" fill="url(#tatFade)"/>`:'';
@@ -1865,19 +1865,19 @@ function tatMetTrend(months,overallPct){
  const solid=pts.filter(p=>!p.thin),pool=solid.length>1?solid:pts;
  const marked=new Set([pts.indexOf(pool[0]),pts.indexOf(pool[pool.length-1]),pts.indexOf(pool.reduce((a,b)=>b.pct>a.pct?b:a)),pts.indexOf(pool.reduce((a,b)=>b.pct<a.pct?b:a))]);
  const dots=pts.map((p,i)=>{const cx=X(i),cy=Y(p.pct),last=i===n-1;
-  return p.thin?`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4" fill="#fff" stroke="${GREEN}" stroke-width="2" stroke-dasharray="2.2 2"/>`
-   :`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${last?5.5:4.2}" fill="${GREEN}" stroke="#fff" stroke-width="2"/>`}).join('');
+  return p.thin?`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" fill="#fff" stroke="${RING}" stroke-width="2.2" stroke-dasharray="2.2 2"/>`
+   :`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${last?6:5}" fill="#fff" stroke="${RING}" stroke-width="${last?3:2.4}"/>`}).join('');
  const vals=pts.map((p,i)=>{if(!marked.has(i))return'';const cx=X(i),cy=Y(p.pct),ty=p.pct<=86?cy-13:cy+19,anchor=i===0?'start':i===n-1?'end':'middle',dx=i===0?-5:i===n-1?5:0;
   return `<text x="${(cx+dx).toFixed(1)}" y="${ty.toFixed(1)}" font-size="11" font-weight="700" fill="#102432" text-anchor="${anchor}" ${halo}>${Math.round(p.pct)}%</text>`}).join('');
  const xlab=pts.map((p,i)=>{const cx=X(i);return `<text x="${cx.toFixed(1)}" y="${(h-32).toFixed(1)}" font-size="10" font-weight="600" fill="${p.thin?'#9aa6a0':'#5c6a63'}" text-anchor="middle">${escapeHtml(p.label)}</text><text x="${cx.toFixed(1)}" y="${(h-19).toFixed(1)}" font-size="8.5" fill="#9aa6a0" text-anchor="middle">${p.total} report${p.total===1?'':'s'}</text>`}).join('');
  const hits=pts.map((p,i)=>{const cx=X(i),hw=n>1?stepX:innerW;return `<rect x="${(cx-hw/2).toFixed(1)}" y="${padT}" width="${hw.toFixed(1)}" height="${innerH.toFixed(1)}" fill="transparent"><title>${escapeHtml(monthLabel(p.key))} · ${Math.round(p.pct)}% met TAT (${p.met} of ${p.total} reports) · ${p.after} late${p.thin?' · too few reports to read a rate from':''}</title></rect>`}).join('');
  return `<svg viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet" class="tat-line-svg">
-  <defs><linearGradient id="tatFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${GREEN}" stop-opacity=".2"/><stop offset="1" stop-color="${GREEN}" stop-opacity=".02"/></linearGradient></defs>
+  <defs><linearGradient id="tatFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a7180" stop-opacity=".92"/><stop offset=".4" stop-color="#23a79c" stop-opacity=".58"/><stop offset="1" stop-color="#9ddcd4" stop-opacity=".07"/></linearGradient></defs>
   ${grid}
   <text x="${padL-8}" y="14" font-size="9.5" fill="#8a9a97" text-anchor="start">% of reports that met TAT</text>
-  <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${w-padR}" y2="${avgY.toFixed(1)}" stroke="#8c9a92" stroke-width="1" stroke-dasharray="5 4"/>
-  ${area}<path d="${line}" fill="none" stroke="${GREEN}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-  <text x="${w-padR}" y="${(avgY-7).toFixed(1)}" font-size="9" fill="#5c6a63" text-anchor="end" ${halo}>lab average ${Math.round(overallPct)}%</text>
+  <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${w-padR}" y2="${avgY.toFixed(1)}" stroke="#4f7b80" stroke-width="1.2" stroke-dasharray="5 4"/>
+  ${area}<path d="${line}" fill="none" stroke="${LINE}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <text x="${w-padR-2}" y="${(avgY+13).toFixed(1)}" font-size="9.5" fill="#2f5a5f" text-anchor="end" ${halo}>lab average ${Math.round(overallPct)}%</text>
   ${dots}${vals}
   <line x1="${padL}" y1="${base.toFixed(1)}" x2="${w-padR}" y2="${base.toFixed(1)}" stroke="#c9d3ce" stroke-width="1"/>
   ${xlab}${hits}</svg>`;
