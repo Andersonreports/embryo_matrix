@@ -720,7 +720,9 @@ header .registry-header-actions{margin-left:10px}
 @media(max-width:700px){.rb-actions{margin-left:0;width:100%}.rb-actions .search-wrap{flex:1 1 100%;max-width:none}}
 
 /* Overview: count charts by samples or embryos */
-.overview-unit-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin:-14px 0 10px}
+/* No negative top margin: it pulled the toggle up under the sticky header, where the
+   cards scrolling beneath it showed through. */
+.overview-unit-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin:2px 0 12px}
 
 
 /* Patient view: per-embryo QC metrics as a two-row table (names over values) */
