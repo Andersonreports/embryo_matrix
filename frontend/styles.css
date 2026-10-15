@@ -2472,11 +2472,6 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .pipeline-tests .ptest{border:0;background:transparent;border-radius:999px;padding:6px 14px;font:600 12px "Inter";color:#5c6a63;cursor:pointer;white-space:nowrap}
 .pipeline-tests .ptest:hover{color:var(--ink)}
 .pipeline-tests .ptest.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(16,36,50,.12)}
-.pipeline-mode{display:flex;gap:4px}
-.pipeline-mode .pmode{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:7px 12px;font:600 11.5px "Inter";color:#5c6a63;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
-.pipeline-mode .pmode:hover{border-color:#bcd0c9}
-.pipeline-mode .pmode.on{background:#0d3b4e;border-color:#0d3b4e;color:#fff}
-
 .pipeline-stages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 .pstage{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px 16px 14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;position:relative;overflow:hidden}
 .pstage::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--pc)}
@@ -2493,9 +2488,6 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .pstage-bar>span{display:block;height:100%;border-radius:999px;background:var(--pc)}
 
 .pipeline-rows{display:flex;flex-direction:column;gap:12px}
-.ptrack-group{display:flex;flex-direction:column;gap:10px;margin-top:6px}
-.ptrack-group-head{display:flex;align-items:center;gap:9px;font:600 13px "Inter";color:var(--pc);padding:2px 2px 0}
-.ptrack-group-head .ptrack-group-n{margin-left:auto;background:var(--ps);color:var(--pc);border-radius:999px;padding:2px 9px;font:700 11px "Inter"}
 
 .prow{display:grid;grid-template-columns:minmax(230px,1.1fr) minmax(0,2fr) auto;align-items:center;gap:22px;background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow);cursor:pointer;transition:border-color .15s,box-shadow .15s}
 .prow[role="button"]:hover{border-color:#bcd0c9;box-shadow:0 2px 6px rgba(16,36,50,.08),0 14px 30px rgba(16,36,50,.07)}
