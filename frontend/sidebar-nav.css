@@ -1,36 +1,58 @@
 /* Sidebar navigation (trial). Everything is gated on body.sidebar-nav, so with the
    class absent the original top bar is untouched. Set NAV_LAYOUT='topbar' in
    sidebar-nav.js to restore. Desktop only; narrow screens keep the top bar. */
+.sb-collapse,.sb-open{display:none}
 @media(min-width:901px){
  body.sidebar-nav main{padding-left:254px}
- /* The top bar is now a full-height rail, so --topbar-h (its measured height) is
-    ~100vh; pin the sticky page header back to the top instead of that offset. */
- body.sidebar-nav #mainHeader{top:0!important}
+ /* The top bar is now a full-height rail, so its measured height (--topbar-h) is
+    ~100vh. Zero it for the rail subtree so every "top:var(--topbar-h)" sticky
+    element — the page header AND the Run-status stats block (.home-fixed) — pins
+    to the top, not the bottom. (Both then show together.) */
+ body.sidebar-nav{--topbar-h:0px}
+ body.sidebar-nav #mainHeader,body.sidebar-nav .home-fixed{top:0!important}
  body.sidebar-nav .topbar{display:flex!important;grid-template-areas:none!important;grid-template-columns:none!important;position:fixed;left:0;top:0;bottom:0;width:254px;height:100vh;flex-direction:column;align-items:stretch;gap:2px;padding:16px 12px 14px;overflow-y:auto;border-right:1px solid #d8ded5;border-bottom:none;z-index:40;flex-wrap:nowrap}
  body.sidebar-nav .brand{padding:4px 8px 14px;margin-bottom:8px;border-bottom:1px solid #e3e8df;font-size:21px;gap:9px}
  body.sidebar-nav .brand-logo{width:34px;height:34px}
  body.sidebar-nav .topnav{flex-direction:column;align-items:stretch;gap:2px;width:100%}
  body.sidebar-nav .nav-item{width:100%;justify-content:flex-start;border-radius:10px;padding:10px 14px;font-size:15px;white-space:nowrap}
  body.sidebar-nav .nav-item b{margin-left:auto}
+ /* One uniform teal label colour for every item; the active item keeps its white-on-pill look */
+ body.sidebar-nav .nav-item:not(.active),
+ body.sidebar-nav .nav-item:not(.active) span{color:#087f83}
  /* Nested children under Run status */
  body.sidebar-nav .nav-sub{display:flex;flex-direction:column;gap:2px;margin:3px 0 6px;position:relative;padding-left:28px}
  /* One continuous guide line that sits in the gutter to the LEFT of the items,
     so it never runs through the active/hover pill */
  body.sidebar-nav .nav-sub::before{content:"";position:absolute;left:20px;top:0;bottom:9px;width:1.5px;background:#d7e0d9;border-radius:2px}
- body.sidebar-nav .nav-subitem{width:100%;justify-content:flex-start;gap:9px;padding:8px 14px;font-size:13.5px;font-weight:600;color:#6a746d;border-radius:9px}
+ body.sidebar-nav .nav-subitem{width:100%;justify-content:flex-start;gap:9px;padding:8px 14px;font-size:13.5px;font-weight:600;color:#087f83;border-radius:9px}
+ body.sidebar-nav .nav-subitem:not(.active),body.sidebar-nav .nav-subitem:not(.active) span{color:#087f83}
  body.sidebar-nav .nav-subitem .ico{width:15px;height:15px}
  body.sidebar-nav .nav-subitem:hover{background:#e7efe6;color:#1f513c}
  body.sidebar-nav .nav-subitem.active{background:#dceee2!important;color:#1b6b47!important;box-shadow:none}
  body.sidebar-nav .nav-subitem.active span{color:#1b6b47}
  body.sidebar-nav .nav-subitem b{margin-left:auto}
- /* Explicit order so the bell + account block sit at the very bottom of the rail */
+ /* Notifications at the top; account block (menu above the username) at the bottom */
  body.sidebar-nav .topbar{justify-content:flex-start}
- body.sidebar-nav .brand{order:1}
- body.sidebar-nav .topnav{order:2}
- body.sidebar-nav .qc-alerts{order:3;position:static;margin-top:auto;align-self:flex-start;padding-left:6px}
- body.sidebar-nav .session-info{order:4;margin:8px 0 0;border-top:1px solid #e3e8df;padding-top:10px}
- body.sidebar-nav #sessionUsername{width:100%;text-align:left;justify-content:flex-start}
- body.sidebar-nav .session-menu{position:static;box-shadow:none;border:0;padding:4px 0 0}
+ body.sidebar-nav .sb-collapse{order:-1;display:grid;place-items:center;align-self:flex-end;width:30px;height:30px;border-radius:8px;border:1px solid #d8ded5;background:#fff;color:#4e5d56;cursor:pointer;margin:0 0 2px}
+ body.sidebar-nav .sb-collapse:hover{background:#eef3ef;color:#1f513c}
+ body.sidebar-nav .brand{order:0}
+ body.sidebar-nav .qc-alerts{order:1;position:static;align-self:flex-start;margin:2px 0 6px;padding-left:6px}
+ /* Only the nav list scrolls, so the bell (top) and account block (bottom) stay visible */
+ body.sidebar-nav .topbar{overflow:hidden}
+ body.sidebar-nav .topnav{order:2;flex:1 1 auto;min-height:0;overflow-y:auto;flex-wrap:nowrap;scrollbar-width:thin}
+ body.sidebar-nav .session-info{order:9;flex:0 0 auto;display:flex;flex-direction:column;align-items:stretch;gap:2px;margin:6px 0 0;border-top:1px solid #e3e8df;padding-top:8px}
+ body.sidebar-nav .session-menu{order:1;position:static;box-shadow:none;border:0;padding:0;background:transparent;display:flex!important;flex-direction:column;gap:1px;min-width:0}
+ body.sidebar-nav .session-menu-item{width:100%;justify-content:flex-start;border-radius:8px;padding:8px 12px;color:#087f83}
+ body.sidebar-nav .session-menu-item:hover{background:#e7efe6}
+ body.sidebar-nav #sessionUsername{order:2;width:100%;text-align:left;justify-content:flex-start;margin-top:5px}
+ /* Collapsible rail (default open) */
+ body.sidebar-nav .topbar{transition:transform .2s ease}
+ body.sidebar-nav.sidebar-collapsed .topbar{transform:translateX(-100%)}
+ body.sidebar-nav.sidebar-collapsed main{padding-left:0}
+ /* leave room for the floating menu button so it never covers the page title */
+ body.sidebar-nav.sidebar-collapsed #mainHeader{padding-left:72px}
+ body.sidebar-nav.sidebar-collapsed #homeView.content{padding-left:72px}
+ body.sidebar-nav.sidebar-collapsed .sb-open{position:fixed;top:14px;left:14px;z-index:60;display:grid;place-items:center;width:40px;height:40px;border-radius:10px;border:1px solid #d8ded5;background:#fff;color:#1f513c;cursor:pointer;box-shadow:0 2px 10px rgba(16,36,50,.14)}
  /* The Run-status page already lists these as a hierarchy in the rail now */
  body.sidebar-nav .home-toolbar .home-overview-btn,
  body.sidebar-nav .home-toolbar #samplesGo,
