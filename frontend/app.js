@@ -1837,15 +1837,58 @@ function overdueTatStats(){
  const avg=a=>a.length?Math.round(a.reduce((s,x)=>s+x,0)/a.length):0;
  return{total:released.length,before,on,after,months,avgLate:avg(released.filter(r=>r.delta>0).map(r=>r.delta)),avgEarly:avg(released.filter(r=>r.delta<0).map(r=>-r.delta)),pending:allEmbryos().filter(e=>isOverdue(e,e._case)).length};
 }
-// 100% stacked bars - each month normalised to full height so the on-time / late
-// SHARE is comparable across months regardless of how many reports went out.
-function tatStackedBars(months){
+// One line, one number per month: the share of that month's reports that met TAT.
+// (Stacked 100% bars made the reader compare three shifting segments at once; the
+// question is only ever "did it go out in time?", so plot that rate directly.)
+const TAT_THIN=20; // months with fewer reports than this are too small to read a rate from
+function tatPoints(months){const multiYear=new Set(months.map(m=>m.key.slice(0,4))).size>1;
+ return months.map(m=>{const met=m.before+m.on;return{...m,met,pct:m.total?met/m.total*100:0,thin:m.total<TAT_THIN,label:monthLabel(m.key,multiYear?{month:'short',year:'2-digit'}:{month:'short'})}})}
+function tatMetTrend(months,overallPct){
  if(!months.length)return'<div class="chart-empty">No released samples with a TAT date yet.</div>';
- const w=Math.max(520,months.length*66+60),h=262,padL=44,padR=14,padT=18,padB=54,innerH=h-padT-padB,innerW=w-padL-padR;
- const stepX=innerW/months.length,bw=Math.min(44,stepX*0.6),COL={before:'#1f8a52',on:'#2f6b98',after:'#c0392b'},L={before:'early (before TAT)',on:'on time (on TAT)',after:'late (after TAT)'};
- const grid=[0,.25,.5,.75,1].map(t=>{const gy=(padT+innerH-t*innerH).toFixed(1);return `<line x1="${padL}" y1="${gy}" x2="${w-padR}" y2="${gy}" stroke="#edf1ee" stroke-width="1"/><text x="${padL-6}" y="${(+gy+3).toFixed(1)}" font-size="9" fill="#9aa6a0" text-anchor="end">${t*100}%</text>`}).join('');
- const bars=months.map(m=>{const cx=padL+stepX*months.indexOf(m)+stepX/2,x=cx-bw/2,tot=m.total||1;let acc=0;const segs=[['before',m.before],['on',m.on],['after',m.after]].map(([k,v])=>{if(!v)return'';const frac=v/tot,hgt=frac*innerH,yy=padT+innerH-(acc+frac)*innerH;acc+=frac;return `<rect x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${bw.toFixed(1)}" height="${hgt.toFixed(1)}" fill="${COL[k]}"><title>${escapeHtml(monthLabel(m.key,{month:'short'}))} · ${L[k]}: ${v} (${Math.round(frac*100)}%)</title></rect>`}).join('');return `${segs}<text x="${cx.toFixed(1)}" y="${h-32}" font-size="10" font-weight="600" fill="#5c6a63" text-anchor="middle">${escapeHtml(monthLabel(m.key,{month:'short'}))}</text><text x="${cx.toFixed(1)}" y="${h-19}" font-size="8.5" fill="#9aa6a0" text-anchor="middle">${m.total} reports</text>`}).join('');
- return `<svg viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet" class="vbar-chart-svg">${grid}<line x1="${padL}" y1="${(padT+innerH).toFixed(1)}" x2="${w-padR}" y2="${(padT+innerH).toFixed(1)}" stroke="#c9d3ce" stroke-width="1"/>${bars}</svg>`;
+ const pts=tatPoints(months);
+ const w=Math.max(520,pts.length*78+70),h=280,padL=46,padR=24,padT=28,padB=60,innerH=h-padT-padB,innerW=w-padL-padR;
+ const n=pts.length,stepX=n>1?innerW/(n-1):0,X=i=>n>1?padL+stepX*i:padL+innerW/2,Y=p=>padT+innerH-(p/100)*innerH,base=padT+innerH;
+ const GREEN='#1f8a52',halo='paint-order="stroke" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"';
+ const grid=[0,25,50,75,100].map(t=>{const gy=Y(t);return `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${w-padR}" y2="${gy.toFixed(1)}" stroke="#edf1ee" stroke-width="1"/><text x="${padL-8}" y="${(gy+3.5).toFixed(1)}" font-size="9" fill="#9aa6a0" text-anchor="end">${t}%</text>`}).join('');
+ const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p.pct).toFixed(1)}`).join(' ');
+ const area=n>1?`<path d="${line} L${X(n-1).toFixed(1)} ${base.toFixed(1)} L${X(0).toFixed(1)} ${base.toFixed(1)} Z" fill="url(#tatFade)"/>`:'';
+ const avgY=Y(overallPct);
+ // Label only the months worth calling out - first, last, best and weakest, ignoring
+ // months too small to mean anything; the rest answer on hover.
+ const solid=pts.filter(p=>!p.thin),pool=solid.length>1?solid:pts;
+ const marked=new Set([pts.indexOf(pool[0]),pts.indexOf(pool[pool.length-1]),pts.indexOf(pool.reduce((a,b)=>b.pct>a.pct?b:a)),pts.indexOf(pool.reduce((a,b)=>b.pct<a.pct?b:a))]);
+ const dots=pts.map((p,i)=>{const cx=X(i),cy=Y(p.pct),last=i===n-1;
+  return p.thin?`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4" fill="#fff" stroke="${GREEN}" stroke-width="2" stroke-dasharray="2.2 2"/>`
+   :`<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${last?5.5:4.2}" fill="${GREEN}" stroke="#fff" stroke-width="2"/>`}).join('');
+ const vals=pts.map((p,i)=>{if(!marked.has(i))return'';const cx=X(i),cy=Y(p.pct),ty=p.pct<=86?cy-13:cy+19,anchor=i===0?'start':i===n-1?'end':'middle',dx=i===0?-5:i===n-1?5:0;
+  return `<text x="${(cx+dx).toFixed(1)}" y="${ty.toFixed(1)}" font-size="11" font-weight="700" fill="#2b4038" text-anchor="${anchor}" ${halo}>${Math.round(p.pct)}%</text>`}).join('');
+ const xlab=pts.map((p,i)=>{const cx=X(i);return `<text x="${cx.toFixed(1)}" y="${(h-32).toFixed(1)}" font-size="10" font-weight="600" fill="${p.thin?'#9aa6a0':'#5c6a63'}" text-anchor="middle">${escapeHtml(p.label)}</text><text x="${cx.toFixed(1)}" y="${(h-19).toFixed(1)}" font-size="8.5" fill="#9aa6a0" text-anchor="middle">${p.total} report${p.total===1?'':'s'}</text>`}).join('');
+ const hits=pts.map((p,i)=>{const cx=X(i),hw=n>1?stepX:innerW;return `<rect x="${(cx-hw/2).toFixed(1)}" y="${padT}" width="${hw.toFixed(1)}" height="${innerH.toFixed(1)}" fill="transparent"><title>${escapeHtml(monthLabel(p.key))} · ${Math.round(p.pct)}% met TAT (${p.met} of ${p.total} reports) · ${p.after} late${p.thin?' · too few reports to read a rate from':''}</title></rect>`}).join('');
+ return `<svg viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet" class="tat-line-svg">
+  <defs><linearGradient id="tatFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${GREEN}" stop-opacity=".2"/><stop offset="1" stop-color="${GREEN}" stop-opacity=".02"/></linearGradient></defs>
+  ${grid}
+  <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${w-padR}" y2="${avgY.toFixed(1)}" stroke="#8c9a92" stroke-width="1" stroke-dasharray="5 4"/>
+  ${area}<path d="${line}" fill="none" stroke="${GREEN}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <text x="${w-padR}" y="${(avgY-7).toFixed(1)}" font-size="9" fill="#5c6a63" text-anchor="end" ${halo}>lab average ${Math.round(overallPct)}%</text>
+  ${dots}${vals}
+  <line x1="${padL}" y1="${base.toFixed(1)}" x2="${w-padR}" y2="${base.toFixed(1)}" stroke="#c9d3ce" stroke-width="1"/>
+  ${xlab}${hits}</svg>`;
+}
+// Says out loud what the line shows: where it stands now, its best and weakest months,
+// and whether the recent quarter beats everything before it. Months with only a handful
+// of reports are left out of the superlatives - one late report would make them the worst.
+function tatTrendVerdict(months){
+ if(months.length<2)return'';
+ const pts=tatPoints(months),solid=pts.filter(p=>!p.thin),pool=solid.length>1?solid:pts;
+ const name=m=>escapeHtml(monthLabel(m.key)),r=p=>Math.round(p.pct);
+ const best=pool.reduce((a,b)=>b.pct>a.pct?b:a),worst=pool.reduce((a,b)=>b.pct<a.pct?b:a),last=pool[pool.length-1];
+ const rate=g=>{const t=g.reduce((s,m)=>s+m.total,0);return t?Math.round(g.reduce((s,m)=>s+m.met,0)/t*100):0};
+ const recent=pool.slice(-3),prior=pool.slice(0,-3);
+ let trend='';
+ if(prior.length){const a=rate(recent),b=rate(prior),d=a-b;
+  trend=` The last ${recent.length} month${recent.length===1?'':'s'} met TAT on <b>${a}%</b> of reports against <b>${b}%</b> before that — turnaround is <b>${d>=5?'improving':d<=-5?'slipping':'holding steady'}</b>.`}
+ const skipped=pts.length-pool.length;
+ return `<p class="tatx-read"><b>${name(last)}</b> is the latest full month at <b>${r(last)}%</b> met TAT. Best was <b>${name(best)}</b> (${r(best)}%), weakest <b>${name(worst)}</b> (${r(worst)}%).${trend}${skipped?` ${skipped} month${skipped===1?'':'s'} with fewer than ${TAT_THIN} reports ${skipped===1?'is':'are'} left out of these figures (hollow points).`:''}</p>`;
 }
 function openOverdueTatChart(){
  let dlg=$('#odTatDialog');
@@ -1859,10 +1902,11 @@ function openOverdueTatChart(){
     <div class="tatx-big tatx-bad"><strong>${latePct}%</strong><span>were late<small>after the due date</small></span></div>
     <p class="tatx-lead"><b>${met.toLocaleString()}</b> of ${s.total.toLocaleString()} reports met their turnaround target; <b>${s.after.toLocaleString()}</b> were late${s.after?` (on average <b>${s.avgLate}</b> day${s.avgLate===1?'':'s'} over)`:''}. <b>${s.pending.toLocaleString()}</b> samples are still overdue and not yet released.</p>
    </div>
-   <div class="tatx-prop" role="img" aria-label="Early ${pct(s.before)} percent, on time ${pct(s.on)} percent, late ${pct(s.after)} percent">${[['#1f8a52',s.before],['#2f6b98',s.on],['#c0392b',s.after]].map(([c,v])=>v?`<span style="width:${propW(v)}%;background:${c}"></span>`:'').join('')}</div>
-   <div class="tatx-proplabels"><span><i style="background:#1f8a52"></i>Early · before TAT <b>${s.before.toLocaleString()}</b> (${pct(s.before)}%)</span><span><i style="background:#2f6b98"></i>On time · on TAT <b>${s.on.toLocaleString()}</b> (${pct(s.on)}%)</span><span><i style="background:#c0392b"></i>Late · after TAT <b>${s.after.toLocaleString()}</b> (${pct(s.after)}%)</span></div>
-   <div class="tatx-chart-head"><h4>How it trends, month by month</h4><p class="tatx-help">Each bar is one month's reports split by outcome (full height = 100% of that month's reports). Less red = more went out on time.</p></div>
-   <div class="tatx-chart">${tatStackedBars(s.months)}</div>
+   <div class="tatx-prop" role="img" aria-label="Early ${pct(s.before)} percent, on time ${pct(s.on)} percent, late ${pct(s.after)} percent">${[['#1f8a52',s.before],['#2b7fd0',s.on],['#c0392b',s.after]].map(([c,v])=>v?`<span style="width:${propW(v)}%;background:${c}"></span>`:'').join('')}</div>
+   <div class="tatx-proplabels"><span><i style="background:#1f8a52"></i>Early · before TAT <b>${s.before.toLocaleString()}</b> (${pct(s.before)}%)</span><span><i style="background:#2b7fd0"></i>On time · on TAT <b>${s.on.toLocaleString()}</b> (${pct(s.on)}%)</span><span><i style="background:#c0392b"></i>Late · after TAT <b>${s.after.toLocaleString()}</b> (${pct(s.after)}%)</span></div>
+   <div class="tatx-chart-head"><h4>Met TAT, month by month</h4><p class="tatx-help">Each point is the share of that month's reports that went out on or before the due date. Higher is better; the dashed line is the ${metPct}% lab average. Hover a month for its numbers.</p></div>
+   <div class="tatx-chart">${tatMetTrend(s.months,metPct)}</div>
+   ${tatTrendVerdict(s.months)}
   </div>`;
  if(!dlg.open)dlg.showModal();
 }
