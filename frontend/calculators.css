@@ -2,9 +2,7 @@
    EmbryoMatrix's own .card / .note / button / table styles. Palette ported from
    the GenomeMatrix source. */
 .ngscalc{--ct:#008a8e;--cink:#173e48;--cmuted:#71868b;--cline:#dce8e7;color:var(--cink)}
-.ngscalc-head{margin:0 0 20px}
-.ngscalc-eyebrow{font-size:10px;font-weight:700;letter-spacing:1.8px;color:var(--ct);margin:0 0 7px}
-.ngscalc-head h1{font:500 30px "Lora",serif;letter-spacing:-.4px;margin:0 0 6px;color:var(--cink)}
+.ngscalc-head{margin:0 0 16px}
 .ngscalc-sub{margin:0;color:var(--cmuted);font-size:13px}
 .ngscalc .card{background:#fff;border:1px solid var(--cline);border-radius:13px;padding:22px}
 .ngscalc h2{font-size:18px;margin:0 0 8px;color:var(--cink);display:flex;align-items:center;gap:4px}
