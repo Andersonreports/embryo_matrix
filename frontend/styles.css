@@ -2507,18 +2507,18 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .prow-tests{display:flex;gap:6px;flex-wrap:wrap;margin-left:2px}
 .prow-test{background:#f1f5f3;color:#3f5a6b;border-radius:6px;padding:2px 7px;font:600 10.5px "Inter"}
 
-.ptrack{min-width:0;display:flex;flex-direction:column;gap:8px}
-.ptrack-labels{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-.ptrack-labels span{font:600 11.5px "Inter";line-height:1.15;color:#aab4ae}
-.ptrack-labels .pl-on{color:#1f8a52}
-.ptrack-labels .pl-cur{color:#c07a1d}
-.ptrack-labels .pl-off{color:#aab4ae}
-.ptrack-bar{height:6px;border-radius:999px;background:#eceeed;overflow:hidden}
-.ptrack-bar>span{display:block;height:100%;border-radius:999px;background:#1f8a52}
-.ptrack-pending .ptrack-bar>span{background:#2f6b98}
-.ptrack-wga .ptrack-bar>span{background:#17806d}
-.ptrack-seq .ptrack-bar>span{background:#c07a1d}
-.ptrack-released .ptrack-bar>span{background:#1f8a52}
+.ptrack{min-width:0;display:flex;align-items:flex-start;width:100%}
+.ptrack-step{display:flex;flex-direction:column;align-items:center;gap:7px;flex:0 0 auto;width:92px}
+.ptrack-dot{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:#eef2f0;border:2px solid #e3e9e2;box-sizing:border-box}
+.ptrack-dot img{width:27px;height:27px;object-fit:contain;opacity:.45;filter:grayscale(1)}
+.ptrack-steplabel{font:600 11px "Inter";color:#95a09a;text-align:center;line-height:1.2}
+.ptrack-step.done .ptrack-dot,.ptrack-step.active .ptrack-dot{background:#fff;border-color:var(--green)}
+.ptrack-step.done .ptrack-dot img,.ptrack-step.active .ptrack-dot img{opacity:1;filter:none}
+.ptrack-step.active .ptrack-dot{box-shadow:0 0 0 4px rgba(8,127,131,.14)}
+.ptrack-step.done .ptrack-steplabel,.ptrack-step.active .ptrack-steplabel{color:var(--green)}
+.ptrack-step.active .ptrack-steplabel{font-weight:700}
+.ptrack-line{flex:1 1 auto;height:3px;border-radius:999px;background:#e3e9e2;margin:22px 4px 0}
+.ptrack-line.done{background:var(--green)}
 
 .prow-act{display:flex;justify-content:flex-end}
 .prow-btn{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:9px 16px;font:600 12.5px "Inter";color:#2a5e44;cursor:pointer;white-space:nowrap}
@@ -2529,4 +2529,4 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .prow-released .prow-btn{color:#2f6e4e}
 
 @media(max-width:1100px){.pipeline-stages{grid-template-columns:repeat(2,1fr)}.prow{grid-template-columns:1fr;gap:14px}.prow-act{justify-content:flex-start}}
-@media(max-width:700px){.pipeline-stages{grid-template-columns:1fr}.pipeline-tests{margin-left:0;width:100%;overflow-x:auto}.ptrack-labels span{font-size:10.5px}}
+@media(max-width:700px){.pipeline-stages{grid-template-columns:1fr}.pipeline-tests{margin-left:0;width:100%;overflow-x:auto}.ptrack-step{width:72px}.ptrack-steplabel{font-size:10px}.ptrack-dot{width:40px;height:40px}.ptrack-dot img{width:23px;height:23px}}
