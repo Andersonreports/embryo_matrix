@@ -1211,6 +1211,10 @@ html,body{max-width:100%;overflow-x:hidden}
 .rr-step:hover:not(:disabled){background:var(--mint)}
 .rr-step:disabled{color:#c3cbc7;cursor:default}
 .rr-export{height:42px}
+/* Download Excel lives beside the view title; it rides next to Protocols on the right */
+.rr-export-header{height:40px!important;margin:0!important;box-sizing:border-box;align-self:center}
+#genericHeaderTitle:has(.rr-export-header){gap:10px}
+#genericHeaderTitle:has(.rr-export-header) #openProtocols{margin-left:auto}
 .rr-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:14px;margin:0 0 12px}
 @media(max-width:1000px){.rr-top{grid-template-columns:minmax(0,1fr)}}
 .rr-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
@@ -2537,7 +2541,7 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .od-chart-btn:hover{background:linear-gradient(135deg,#065661,#0bbfae)!important;box-shadow:0 6px 16px rgba(10,113,128,.4)}
 .od-chart-btn:focus-visible{outline:2px solid #0a7180;outline-offset:2px}
 .tatx-body{padding:8px 2px 2px}
-.tatx-verdict{display:flex;align-items:center;gap:34px;flex-wrap:wrap;margin-bottom:4px}
+.tatx-verdict{display:flex;align-items:center;justify-content:center;gap:40px;flex-wrap:wrap;margin-bottom:4px}
 .tatx-big{display:flex;align-items:center;gap:11px}
 .tatx-big strong{font:500 42px "Lora";line-height:1}
 .tatx-big>span{display:flex;flex-direction:column;font-weight:700;font-size:13.5px;color:var(--ink)}
