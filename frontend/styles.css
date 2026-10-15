@@ -2502,7 +2502,7 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .prow-static{cursor:default}
 .prow-head{min-width:0;display:flex;flex-direction:column;gap:6px}
 .prow-tags{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.prow-chip{background:#132b38;color:#fff;border-radius:7px;padding:3px 9px;font:700 11px "DM Mono";letter-spacing:.3px}
+.prow-chip{background:var(--green);color:#fff;border-radius:7px;padding:3px 9px;font:700 11px "DM Mono";letter-spacing:.3px}
 .prow-plat{background:#eaf1ee;color:#4a6b5f;border-radius:7px;padding:3px 9px;font:600 11px "Inter"}
 .prow-title{margin:0;font:500 16px "Lora";color:var(--ink);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .prow-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
