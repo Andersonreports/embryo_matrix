@@ -2507,10 +2507,11 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .ptrack-labels .pl-cur{color:#c07a1d}
 .ptrack-labels .pl-off{color:#aab4ae}
 .ptrack-bar{height:6px;border-radius:999px;background:#eceeed;overflow:hidden}
-.ptrack-bar>span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#17876f,#1f8a52)}
-.ptrack-pending .ptrack-bar>span{background:#9fb0b8}
-.ptrack-wga .ptrack-bar>span{background:linear-gradient(90deg,#2f6b98,#17876f)}
-.ptrack-seq .ptrack-bar>span{background:linear-gradient(90deg,#17876f 60%,#c07a1d)}
+.ptrack-bar>span{display:block;height:100%;border-radius:999px;background:#1f8a52}
+.ptrack-pending .ptrack-bar>span{background:#2f6b98}
+.ptrack-wga .ptrack-bar>span{background:#17806d}
+.ptrack-seq .ptrack-bar>span{background:#c07a1d}
+.ptrack-released .ptrack-bar>span{background:#1f8a52}
 
 .prow-act{display:flex;justify-content:flex-end}
 .prow-btn{border:1px solid var(--line);background:var(--paper);border-radius:9px;padding:9px 16px;font:600 12.5px "Inter";color:#2a5e44;cursor:pointer;white-space:nowrap}
