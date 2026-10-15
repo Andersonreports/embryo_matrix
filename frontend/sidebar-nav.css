@@ -11,8 +11,10 @@
  body.sidebar-nav{--topbar-h:0px}
  body.sidebar-nav #mainHeader,body.sidebar-nav .home-fixed{top:0!important}
  body.sidebar-nav .topbar{display:flex!important;grid-template-areas:none!important;grid-template-columns:none!important;position:fixed;left:0;top:0;bottom:0;width:254px;height:100vh;flex-direction:column;align-items:stretch;gap:2px;padding:16px 12px 14px;overflow-y:auto;border-right:1px solid #d8ded5;border-bottom:none;z-index:40;flex-wrap:nowrap}
- body.sidebar-nav .brand{padding:4px 8px 14px;margin-bottom:8px;border-bottom:1px solid #e3e8df;font-size:21px;gap:9px}
- body.sidebar-nav .brand-logo{width:34px;height:34px}
+ /* Brand row: wordmark left, collapse button pinned to its right - one row, not two */
+ body.sidebar-nav .brand{padding:2px 42px 13px 8px;margin:0 0 6px;border-bottom:1px solid #e3e8df;font-size:19px;gap:9px}
+ body.sidebar-nav .brand-logo{width:32px;height:32px}
+ body.sidebar-nav .brand small{font-size:7.5px;letter-spacing:1.5px}
  body.sidebar-nav .topnav{flex-direction:column;align-items:stretch;gap:2px;width:100%}
  body.sidebar-nav .nav-item{width:100%;justify-content:flex-start;border-radius:10px;padding:10px 14px;font-size:15px;white-space:nowrap}
  body.sidebar-nav .nav-item b{margin-left:auto}
@@ -33,10 +35,17 @@
  body.sidebar-nav .nav-subitem b{margin-left:auto}
  /* Notifications at the top; account block (menu above the username) at the bottom */
  body.sidebar-nav .topbar{justify-content:flex-start}
- body.sidebar-nav .sb-collapse{order:-1;display:grid;place-items:center;align-self:flex-end;width:30px;height:30px;border-radius:8px;border:1px solid #d8ded5;background:#fff;color:#4e5d56;cursor:pointer;margin:0 0 2px}
- body.sidebar-nav .sb-collapse:hover{background:#eef3ef;color:#1f513c}
+ body.sidebar-nav .sb-collapse{position:absolute;top:20px;right:12px;display:grid;place-items:center;width:28px;height:28px;border-radius:8px;border:0;background:transparent;color:#8a9a97;cursor:pointer;padding:0}
+ body.sidebar-nav .sb-collapse:hover{background:#e7efe6;color:#1f513c}
  body.sidebar-nav .brand{order:0}
- body.sidebar-nav .qc-alerts{order:1;position:static;align-self:flex-start;margin:2px 0 6px;padding-left:6px}
+ /* Alerts reads as a rail row like the rest of the nav, not a stray circle */
+ body.sidebar-nav .qc-alerts{order:1;position:static;width:100%;margin:0 0 4px;padding:0}
+ body.sidebar-nav .qc-bell{width:100%;height:auto;border:0;border-radius:10px;background:transparent;display:flex;align-items:center;justify-content:flex-start;gap:11px;padding:10px 14px;font:700 15px "Inter";color:#087f83}
+ body.sidebar-nav .qc-bell:hover,body.sidebar-nav .qc-bell[aria-expanded="true"]{background:#e7efe6;color:#1f513c;border:0}
+ body.sidebar-nav .qc-bell .bell-ico{width:19px;height:19px;flex-shrink:0}
+ body.sidebar-nav .qc-badge{position:static;margin-left:auto;box-shadow:none;background:#a04f3d}
+ /* The panel hangs beside the rail; anchored to the bell it would land off-screen */
+ body.sidebar-nav .qc-panel{position:fixed;left:262px;top:16px;right:auto}
  /* Only the nav list scrolls, so the bell (top) and account block (bottom) stay visible */
  body.sidebar-nav .topbar{overflow:hidden}
  body.sidebar-nav .topnav{order:2;flex:1 1 auto;min-height:0;overflow-y:auto;flex-wrap:nowrap;scrollbar-width:thin}

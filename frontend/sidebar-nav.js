@@ -35,6 +35,10 @@
  // Collapse / reopen the rail (default open, remembered per browser).
  const KEY='em-sidebar-collapsed',setCollapsed=v=>{document.body.classList.toggle('sidebar-collapsed',v);try{localStorage.setItem(KEY,v?'1':'0')}catch{}};
  try{if(localStorage.getItem(KEY)==='1')document.body.classList.add('sidebar-collapsed')}catch{}
+ // In the rail the bell sits in a full-width row, so it needs a visible label.
+ const bellIco=document.querySelector('#qcBell .bell-ico');
+ if(bellIco&&!document.querySelector('.sb-bell-label'))bellIco.insertAdjacentHTML('afterend','<span class="sb-bell-label">Alerts</span>');
+
  const cbtn=document.createElement('button');cbtn.type='button';cbtn.className='sb-collapse';cbtn.title='Hide sidebar';cbtn.setAttribute('aria-label','Hide sidebar');
  cbtn.innerHTML='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>';
  topbar.insertBefore(cbtn,topbar.firstChild);
