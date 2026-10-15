@@ -1773,7 +1773,7 @@ document.addEventListener('click',closeQcPanel);
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeQcPanel()});
 // Home's Overdue card opens its own page listing every overdue sample.
 {const card=$('#overdueCard'),open=()=>showView('overdue');card?.addEventListener('click',open);card?.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}})}
-function overdueMarkup(){return `<div class="od-summary" id="overdueSummary"></div><div class="prep-toolbar"><div class="prep-search"><input id="overdueSearch" type="search" placeholder="Search patient, sample ID, client, embryologist…" aria-label="Search overdue samples"></div><button type="button" class="secondary compact" id="overdueFilterToggle" aria-expanded="true" aria-controls="overdueFilters">⚲ Filters <b class="filters-badge" id="overdueFilterBadge">0</b></button><button type="button" class="secondary compact" id="overdueExport" title="Download the list as shown (all filters applied) as an Excel file">↓ Export to Excel</button></div><div class="od-filters" id="overdueFilters"></div><div class="prep-table-wrap od-wrap" id="overdueTableWrap"><div class="chart-empty">Loading…</div></div>`}
+function overdueMarkup(){return `<div class="od-summary" id="overdueSummary"></div><div class="prep-toolbar"><div class="prep-search"><input id="overdueSearch" type="search" placeholder="Search patient, sample ID, client, embryologist…" aria-label="Search overdue samples"></div><button type="button" class="secondary compact" id="overdueFilterToggle" aria-expanded="true" aria-controls="overdueFilters">⚲ Filters <b class="filters-badge" id="overdueFilterBadge">0</b></button><button type="button" class="secondary compact" id="overdueChart" title="TAT trend chart: how many samples were released before, on, or after their TAT"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7"/><rect x="12" y="6" width="3" height="11"/><rect x="17" y="13" width="3" height="4"/></svg> Chart</button><button type="button" class="secondary compact" id="overdueExport" title="Download the list as shown (all filters applied) as an Excel file">↓ Export to Excel</button></div><div class="od-filters" id="overdueFilters"></div><div class="prep-table-wrap od-wrap" id="overdueTableWrap"><div class="chart-empty">Loading…</div></div>`}
 // Lateness bands for the summary cards and the "Late by" pill.
 const OD_BANDS=[['all','All overdue',()=>true,''],['pga','PGT-A overdue',r=>r.bucket==='PGT A','od-crit'],['pgm','PGT-M overdue',r=>r.bucket==='PGT A+M','od-high'],['hla','HLA overdue',r=>/hla/i.test(r.test||''),'od-mid']];
 const odBandClass=d=>d>14?'od-crit':d>7?'od-high':'od-mid';
@@ -1817,12 +1817,48 @@ function setupOverdueView(){
   const applied=[['Card',OD_BANDS.find(b=>b[0]===band)[1]],['Test group',seg==='long'?'Embryo Sure / HLA':seg==='short'?'Other tests':'All tests'],...FLT.map(([k,l])=>[l,flt[k]?(k==='month'?monthName(flt[k]):flt[k]):'All']),['Search',q.trim()||'—'],['Rows exported',list.length],['Exported on',new Date().toLocaleString()]],stamp=new Date().toISOString().slice(0,10);
   try{await loadXlsxLib();const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([headers,...body]);ws['!cols']=[5,13,28,16,18,26,18,28,22,16,18,12,13,13].map(w=>({wch:w}));XLSX.utils.book_append_sheet(wb,ws,'Overdue samples');const fs=XLSX.utils.aoa_to_sheet([['Filter','Value'],...applied]);fs['!cols']=[{wch:16},{wch:34}];XLSX.utils.book_append_sheet(wb,fs,'Filters applied');XLSX.writeFile(wb,`overdue-samples-${stamp}.xlsx`);toast(`Exported ${list.length} sample${list.length===1?'':'s'}`)}
   catch(err){downloadRegistry('excel',{headers,rows:body},`overdue-samples-${stamp}`)}};
+ $('#overdueChart').onclick=()=>openOverdueTatChart();
  sum.onclick=e=>{const b=e.target.closest('.od-card');if(!b)return;band=b.dataset.band;redraw()};
  search.oninput=()=>{q=search.value;draw()};
  const open=tr=>{const r=rows[+tr.dataset.i];if(r)openPatient(r.e._case)};
  wrap.onclick=e=>{const tr=e.target.closest('tbody tr');if(tr)open(tr)};
  wrap.onkeydown=e=>{if(e.key==='Enter'){const tr=e.target.closest('tbody tr');if(tr)open(tr)}};
  redraw();
+}
+// --- Overdue TAT trend chart -------------------------------------------------
+// TAT performance is measured on RELEASED samples (those with an NGS report date):
+// how many went out before their TAT date, exactly on it, or after it. The overdue
+// list itself holds only unreleased samples, so the trend is computed lab-wide here.
+function overdueTatStats(){
+ const released=[];let before=0,on=0,after=0;
+ allEmbryos().forEach(e=>{if(isNotReporting(e))return;const tatStr=tatDate(e,e._case);if(!tatStr)return;const tat=parseSheetDate(tatStr);if(!tat)return;const rep=parseSheetDate(field(e,['ngs report']));if(!rep)return;const delta=Math.round((rep-tat)/864e5),mk=`${rep.getFullYear()}-${String(rep.getMonth()+1).padStart(2,'0')}`;released.push({delta,mk});if(delta<0)before++;else if(delta===0)on++;else after++});
+ const byMonth=new Map();released.forEach(r=>{const m=byMonth.get(r.mk)||{key:r.mk,before:0,on:0,after:0,total:0};if(r.delta<0)m.before++;else if(r.delta===0)m.on++;else m.after++;m.total++;byMonth.set(r.mk,m)});
+ let months=[...byMonth.values()].sort((a,b)=>a.key.localeCompare(b.key));if(months.length>12)months=months.slice(-12);
+ const avg=a=>a.length?Math.round(a.reduce((s,x)=>s+x,0)/a.length):0;
+ return{total:released.length,before,on,after,months,avgLate:avg(released.filter(r=>r.delta>0).map(r=>r.delta)),avgEarly:avg(released.filter(r=>r.delta<0).map(r=>-r.delta)),pending:allEmbryos().filter(e=>isOverdue(e,e._case)).length};
+}
+function tatStackedBars(months){
+ if(!months.length)return'<div class="chart-empty">No released samples with a TAT date yet.</div>';
+ const w=Math.max(520,months.length*64+56),h=250,padL=38,padR=14,padT=16,padB=46,innerH=h-padT-padB,innerW=w-padL-padR;
+ const max=Math.max(1,...months.map(m=>m.total)),niceMax=niceMaxOf(max),stepX=innerW/months.length,bw=Math.min(40,stepX*0.58),COL={before:'#1f8a52',on:'#2f6b98',after:'#c0392b'},y=v=>padT+innerH-(v/niceMax)*innerH;
+ const grid=[0,.25,.5,.75,1].map(t=>{const gy=(padT+innerH-t*innerH).toFixed(1);return `<line x1="${padL}" y1="${gy}" x2="${w-padR}" y2="${gy}" stroke="#edf1ee" stroke-width="1"/><text x="${padL-6}" y="${(+gy+3).toFixed(1)}" font-size="9" fill="#9aa6a0" text-anchor="end">${Math.round(niceMax*t)}</text>`}).join('');
+ const bars=months.map((m,i)=>{const cx=padL+stepX*i+stepX/2,x=cx-bw/2;let acc=0;const segs=[['before',m.before],['on',m.on],['after',m.after]].map(([k,v])=>{if(!v)return'';const hgt=(v/niceMax)*innerH,yy=y(acc+v);acc+=v;return `<rect x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${bw.toFixed(1)}" height="${hgt.toFixed(1)}" fill="${COL[k]}"><title>${escapeHtml(monthLabel(m.key,{month:'short'}))} · ${k==='before'?'before TAT':k==='on'?'on TAT':'after TAT'}: ${v}</title></rect>`}).join('');return `${segs}<text x="${cx.toFixed(1)}" y="${(y(m.total)-5).toFixed(1)}" font-size="9" font-weight="700" fill="#44514a" text-anchor="middle">${m.total}</text><text x="${cx.toFixed(1)}" y="${h-26}" font-size="9" fill="#7b8c93" text-anchor="middle">${escapeHtml(monthLabel(m.key,{month:'short'}))}</text>`}).join('');
+ return `<svg viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet" class="vbar-chart-svg">${grid}<line x1="${padL}" y1="${(padT+innerH).toFixed(1)}" x2="${w-padR}" y2="${(padT+innerH).toFixed(1)}" stroke="#c9d3ce" stroke-width="1"/>${bars}</svg>`;
+}
+function openOverdueTatChart(){
+ let dlg=$('#odTatDialog');
+ if(!dlg){dlg=document.createElement('dialog');dlg.id='odTatDialog';dlg.className='vu-dialog vu-dialog-wide';document.body.append(dlg);dlg.addEventListener('click',e=>{if(e.target===dlg||e.target.closest('[data-close]'))dlg.close()})}
+ const s=overdueTatStats(),pct=v=>s.total?Math.round(v/s.total*100):0,propW=v=>s.total?(v/s.total*100).toFixed(1):0;
+ const tiles=[['Before TAT',s.before,'#1f8a52','Released ahead of the TAT date'],['On TAT',s.on,'#2f6b98','Released exactly on the TAT date'],['After TAT',s.after,'#c0392b','Released past the TAT date']];
+ dlg.innerHTML=`<div class="vu-dhead"><div><h3>TAT performance</h3><p class="tatx-sub">Released samples, lab-wide · NGS report date vs TAT date (received + 10 days; 21 for Embryo Sure / HLA)</p></div><button class="secondary compact" data-close>Close</button></div>
+  <div class="tatx-body">
+   <div class="tatx-tiles">${tiles.map(([l,v,c,d])=>`<div class="tatx-tile" style="--tc:${c}"><div class="tatx-tilerow"><strong>${v.toLocaleString()}</strong><span class="tatx-pct">${pct(v)}%</span></div><small>${l}</small><em>${d}</em></div>`).join('')}</div>
+   <div class="tatx-prop" role="img" aria-label="Before TAT ${pct(s.before)}%, on TAT ${pct(s.on)}%, after TAT ${pct(s.after)}%">${[['#1f8a52',s.before],['#2f6b98',s.on],['#c0392b',s.after]].map(([c,v])=>v?`<span style="width:${propW(v)}%;background:${c}"></span>`:'').join('')}</div>
+   <div class="tatx-meta">${s.total.toLocaleString()} released samples${s.after?` · when late, avg <b>${s.avgLate}</b> day${s.avgLate===1?'':'s'} over`:''}${s.before?` · when early, avg <b>${s.avgEarly}</b> day${s.avgEarly===1?'':'s'} ahead`:''} · <b>${s.pending.toLocaleString()}</b> still overdue &amp; unreleased</div>
+   <div class="tatx-chart-head"><h4>By report month</h4><div class="tatx-legend"><span><i style="background:#1f8a52"></i>Before TAT</span><span><i style="background:#2f6b98"></i>On TAT</span><span><i style="background:#c0392b"></i>After TAT</span></div></div>
+   <div class="tatx-chart">${tatStackedBars(s.months)}</div>
+  </div>`;
+ if(!dlg.open)dlg.showModal();
 }
 
 // Saves a Run reports table as a formatted .xlsx laid out like the lab's report sheets: bold
