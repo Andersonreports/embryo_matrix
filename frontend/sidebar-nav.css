@@ -16,21 +16,21 @@
  body.sidebar-nav .brand-logo{width:32px;height:32px}
  body.sidebar-nav .brand small{font-size:7.5px;letter-spacing:1.5px}
  body.sidebar-nav .topnav{flex-direction:column;align-items:stretch;gap:1px;width:100%}
- body.sidebar-nav .nav-item{width:100%;justify-content:flex-start;border-radius:10px;padding:8px 13px;font-size:14px;gap:9px;white-space:nowrap}
- body.sidebar-nav .nav-item .ico{width:24px;height:24px}
+ body.sidebar-nav .nav-item{width:100%;justify-content:flex-start;border-radius:10px;padding:6px 12px;font-size:13px;gap:8px;white-space:nowrap}
+ body.sidebar-nav .nav-item .ico{width:21px;height:21px}
  body.sidebar-nav .nav-item b{margin-left:auto}
  /* Labels are slate ink, not teal: the rail, the pills and the page are all teal
     already, so teal is kept for the active item and for hover. */
  body.sidebar-nav .nav-item:not(.active),
  body.sidebar-nav .nav-item:not(.active) span{color:#33484e}
  /* Nested children under Run status */
- body.sidebar-nav .nav-sub{display:flex;flex-direction:column;gap:1px;margin:2px 0 4px;position:relative;padding-left:26px}
+ body.sidebar-nav .nav-sub{display:flex;flex-direction:column;gap:0;margin:1px 0 3px;position:relative;padding-left:26px}
  /* One continuous guide line that sits in the gutter to the LEFT of the items,
     so it never runs through the active/hover pill */
  body.sidebar-nav .nav-sub::before{content:"";position:absolute;left:19px;top:0;bottom:7px;width:1.5px;background:#d7e0d9;border-radius:2px}
- body.sidebar-nav .nav-subitem{width:100%;justify-content:flex-start;gap:8px;padding:6px 13px;font-size:12.5px;font-weight:600;color:#4f6369;border-radius:9px}
+ body.sidebar-nav .nav-subitem{width:100%;justify-content:flex-start;gap:7px;padding:4px 12px;font-size:11.5px;font-weight:600;color:#4f6369;border-radius:9px}
  body.sidebar-nav .nav-subitem:not(.active),body.sidebar-nav .nav-subitem:not(.active) span{color:#4f6369}
- body.sidebar-nav .nav-subitem .ico{width:14px;height:14px}
+ body.sidebar-nav .nav-subitem .ico{width:13px;height:13px}
  body.sidebar-nav .nav-subitem:hover{background:#e7efe6;color:#1f513c}
  body.sidebar-nav .nav-subitem.active{background:#dceee2!important;color:#1b6b47!important;box-shadow:none}
  body.sidebar-nav .nav-subitem.active span{color:#1b6b47}
@@ -42,7 +42,7 @@
  body.sidebar-nav .brand{order:0}
  /* Alerts reads as a rail row like the rest of the nav, not a stray circle */
  body.sidebar-nav .qc-alerts{order:1;position:static;width:100%;margin:0 0 4px;padding:0}
- body.sidebar-nav .qc-bell{width:100%;height:auto;border:0;border-radius:10px;background:transparent;display:flex;align-items:center;justify-content:flex-start;gap:9px;padding:8px 13px;font:700 14px "Inter";color:#33484e}
+ body.sidebar-nav .qc-bell{width:100%;height:auto;border:0;border-radius:10px;background:transparent;display:flex;align-items:center;justify-content:flex-start;gap:8px;padding:6px 12px;font:700 13px "Inter";color:#33484e}
  body.sidebar-nav .qc-bell:hover,body.sidebar-nav .qc-bell[aria-expanded="true"]{background:#e7efe6;color:#1f513c;border:0}
  body.sidebar-nav .qc-bell .bell-ico{width:18px;height:18px;flex-shrink:0}
  body.sidebar-nav .qc-badge{position:static;margin-left:auto;box-shadow:none;background:#a04f3d}
