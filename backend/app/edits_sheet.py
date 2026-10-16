@@ -72,7 +72,7 @@ def _post(body: dict) -> dict:
         raise RuntimeError(f"Apps Script error: {out['error']}")
     # Only the edits-capable script answers {"ok": true}; an older deployment replies with
     # something else and writes nothing, so that must not count as sent.
-    if body.get("action") in ("editsUpsert", "editsRevert", "newSample") and out.get("ok") is not True:
+    if body.get("action") in ("editsUpsert", "editsRevert", "newSample", "batchSave", "batchDelete") and out.get("ok") is not True:
         raise RuntimeError(OLD_DEPLOYMENT)
     if out.get("url"):
         _write_json(STATE_PATH, {"url": out["url"], "sheetId": out.get("sheetId", "")})

@@ -261,6 +261,8 @@ function doPost(e) {
     if (body.action === 'editsUpsert') return jsonOutput_(editsUpsert_(body));
     if (body.action === 'editsRevert') return jsonOutput_(editsRevert_(body));
     if (body.action === 'newSample') return jsonOutput_(newSampleAppend_(body));
+    if (body.action === 'batchSave') return jsonOutput_(batchSave_(body));
+    if (body.action === 'batchDelete') return jsonOutput_(batchDelete_(body));
     return jsonOutput_({ error: 'Unknown action' });
   } catch (err) {
     return jsonOutput_({ error: String(err) });
@@ -456,4 +458,60 @@ function newSampleAppend_(body) {
   tab.getRange(tab.getLastRow() + 1, 1, 1, row.length).setNumberFormat('@').setHorizontalAlignment('left').setValues([row]);
   seen.push(body.id); props.setProperty('newSampleIds', JSON.stringify(seen.slice(-200)));
   return { ok: true };
+}
+
+// ---- Batches: the app's "Batch creation" page writes each WGA batch / sequencing run to the "WGA Batches" /
+// "Sequencing Batches" tab of the same PGS & NIPGS updates sheet, one row per sample. Columns are matched by
+// header name like New Samples; the rows of one batch carry its "Batch ID", so re-sending never doubles them
+// and a batch deleted in the app is removed here too.
+var BATCH_TABS = ['WGA Batches', 'Sequencing Batches'];
+
+function batchTab_(name) {
+  if (BATCH_TABS.indexOf(name) < 0) throw new Error('Unknown batch tab ' + name);
+  if (!NEW_SAMPLES_SHEET_ID_SETTING || NEW_SAMPLES_SHEET_ID_SETTING.indexOf('PASTE_') === 0) {
+    throw new Error('Set NEW_SAMPLES_SHEET_ID_SETTING in the script to the PGS & NIPGS updates sheet ID first');
+  }
+  var ss = SpreadsheetApp.openById(NEW_SAMPLES_SHEET_ID_SETTING);
+  return ss.getSheetByName(name) || ss.insertSheet(name);
+}
+
+function batchIdRows_(tab, id) {
+  if (tab.getLastRow() < 2) return [];
+  var head = tab.getRange(1, 1, 1, tab.getLastColumn()).getValues()[0].map(function (h) { return String(h).trim().toLowerCase(); });
+  var col = head.indexOf('batch id');
+  if (col < 0) return [];
+  var ids = tab.getRange(2, col + 1, tab.getLastRow() - 1, 1).getValues(), out = [];
+  for (var i = 0; i < ids.length; i++) if (String(ids[i][0]) === String(id)) out.push(i + 2);
+  return out;
+}
+
+function batchSave_(body) {
+  var tab = batchTab_(body.tab);
+  if (batchIdRows_(tab, body.id).length) return { ok: true, duplicate: true };
+  var lastCol = Math.max(tab.getLastColumn(), 1);
+  var headers = tab.getLastRow() === 0 ? [] : tab.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h).trim(); });
+  var lower = headers.map(function (h) { return h.toLowerCase(); });
+  var rows = (body.rows || []).map(function (cells) {
+    var out = {};
+    cells.forEach(function (p) {
+      var h = String(p[0]).trim(), at = lower.indexOf(h.toLowerCase());
+      if (at < 0) {
+        headers.push(h); lower.push(h.toLowerCase()); at = headers.length - 1;
+        tab.getRange(1, headers.length).setValue(h).setFontWeight('bold');
+      }
+      out[at] = p[1];
+    });
+    return out;
+  }).map(function (out) { return headers.map(function (_, i) { return out[i] === undefined ? '' : out[i]; }); });
+  if (rows.length) {
+    tab.setFrozenRows(1);
+    tab.getRange(tab.getLastRow() + 1, 1, rows.length, headers.length).setNumberFormat('@').setHorizontalAlignment('left').setValues(rows);
+  }
+  return { ok: true };
+}
+
+function batchDelete_(body) {
+  var tab = batchTab_(body.tab), rows = batchIdRows_(tab, body.id);
+  for (var i = rows.length - 1; i >= 0; i--) tab.deleteRow(rows[i]);
+  return { ok: true, removed: rows.length };
 }

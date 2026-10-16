@@ -3,6 +3,7 @@ import html
 import json
 import re
 import secrets
+import threading
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -19,7 +20,7 @@ from .placement import Placement, safe as _safe_name
 from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, SampleTrf, CaseRunAssignment, User, Followup, EmbryoOutcome, OutcomeHistory
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn, NewSampleIn
 from .sheet_sync import parse_sources, sync_sources
-from . import auth, cell_edits, edits_sheet, mailer, new_samples, storage, trf_fill, trf_pdf
+from . import auth, batches, cell_edits, edits_sheet, mailer, new_samples, storage, trf_fill, trf_pdf
 from .clients import resolve_client, directory as client_directory
 from sqlalchemy import inspect, text
 import mimetypes
@@ -102,6 +103,7 @@ _ROLE_RULES = {
     "member": [
         ("GET", r"/api/(store/.+|cases|cases/[^/]+/images|images|case-runs|dashboard|cell-edits|edits-sheet|result-file-months|sync-sheet/status)"),
         ("GET", r"/uploads/.+"), ("POST", r"/api/sync-sheet"), ("POST", r"/api/cases/[^/]+/images"),
+        ("GET", r"/api/batches(/[^/]+/xlsx)?"), ("POST", r"/api/batches"), ("DELETE", r"/api/batches/[^/]+"),
     ],
     # Coordinator: read-only home page (same data the member role can read).
     "coordinator": [
@@ -482,6 +484,44 @@ def post_new_sample(payload: NewSampleIn, request: Request, db: Session = Depend
         raise HTTPException(409, f"{', '.join(d)} of {values['sampleId']} {'was' if len(d) == 1 else 'were'} already added")
     log_activity(db, "new_sample", f"{values['sampleId']} · {values['patient']} · {values['test']}", request=request)
     return out
+
+@app.get("/api/batches")
+def get_batches(request: Request):
+    _require_lab_user(request)
+    items = batches.listing()
+    if any(not b.get("sent") for b in items):  # a batch the edits sheet missed is sent again
+        threading.Thread(target=batches.retry_pending, daemon=True).start()
+    return items
+
+@app.post("/api/batches")
+def post_batch(payload: dict, request: Request, db: Session = Depends(get_db)):
+    user = _require_lab_user(request)
+    try:
+        b = batches.create(str(payload.get("kind", "")), payload.get("meta") or {}, payload.get("kit") or {},
+                           payload.get("samples") or [], user.get("username") or "Unknown")
+    except ValueError as ex:
+        raise HTTPException(400, str(ex))
+    log_activity(db, "batch_create", f"{'WGA batch' if b['kind'] == 'wga' else 'Seq run'} {b['meta']['batchNo']} · {len(b['samples'])} samples", request=request)
+    return b
+
+@app.delete("/api/batches/{batch_id}")
+def delete_batch(batch_id: str, request: Request, db: Session = Depends(get_db)):
+    _require_lab_user(request)
+    hit = next((b for b in batches.listing() if b["id"] == batch_id), None)
+    if not hit or not batches.delete(batch_id):
+        raise HTTPException(404, "Batch not found")
+    log_activity(db, "batch_delete", f"{'WGA batch' if hit['kind'] == 'wga' else 'Seq run'} {hit['meta']['batchNo']}", request=request)
+    return {"ok": True}
+
+@app.get("/api/batches/{batch_id}/xlsx")
+def batch_xlsx(batch_id: str, request: Request):
+    _require_lab_user(request)
+    hit = next((b for b in batches.listing() if b["id"] == batch_id), None)
+    if not hit:
+        raise HTTPException(404, "Batch not found")
+    data, name = batches.xlsx(hit)
+    return Response(data, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 @app.post("/api/new-samples/trf")
 async def upload_sample_trf(request: Request, sampleId: str = Form(...), patient: str = Form(""),
