@@ -2,6 +2,7 @@
 # as the edits sheet (apps_script/Code.gs, action newSample). The source sheets are never written to.
 # Every submitted sample is kept in new_samples.json; a push that fails stays marked unsent and is retried.
 import json
+import re
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -33,9 +34,19 @@ def _save(items: list) -> None:
     LOG_PATH.write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
+DATE_KEYS = {"receivedDate", "biopsyDate", "trfReceived"}
+
+
+def _cell(key: str, value) -> str:
+    """The form's date pickers send 2026-10-14; the tracker sheets write 14-10-2026."""
+    v = str(value or "")
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", v) if key in DATE_KEYS else None
+    return f"{m[3]}-{m[2]}-{m[1]}" if m else v
+
+
 def _body(entry: dict) -> dict:
     return {"action": "newSample", "id": entry["id"], "addedBy": entry["addedBy"], "addedAt": entry["addedAt"],
-            "row": [[h, str(entry["values"].get(k, ""))] for k, h in FIELDS]}
+            "row": [[h, _cell(k, entry["values"].get(k, ""))] for k, h in FIELDS]}
 
 
 def retry_pending() -> int:
