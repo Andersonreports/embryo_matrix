@@ -483,6 +483,19 @@ def post_new_sample(payload: NewSampleIn, request: Request, db: Session = Depend
     log_activity(db, "new_sample", f"{values['sampleId']} · {values['patient']} · {values['test']}", request=request)
     return out
 
+@app.get("/api/new-samples/missing-trf")
+def get_new_samples_missing_trf():
+    """Samples added in Add sample with no TRF received date, one row per sample (newest first)."""
+    by = {}
+    for e in new_samples._load():
+        v = e.get("values", {})
+        if str(v.get("trfReceived", "")).strip():
+            continue
+        g = by.setdefault(v.get("sampleId", ""), {"sampleId": v.get("sampleId", ""), "patient": v.get("patient", ""), "test": v.get("test", ""),
+                                                   "center": v.get("center", ""), "addedBy": e.get("addedBy", ""), "addedAt": e.get("addedAt", ""), "embryos": 0})
+        g["embryos"] += 1
+    return sorted(by.values(), key=lambda g: g["addedAt"], reverse=True)
+
 @app.post("/api/new-samples/trf")
 async def upload_sample_trf(request: Request, sampleId: str = Form(...), patient: str = Form(""),
                             file: UploadFile = File(...), db: Session = Depends(get_db)):

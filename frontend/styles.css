@@ -2553,3 +2553,5 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .tatx-chart{margin-top:14px;overflow-x:auto}
 .tat-line-svg{display:block;min-width:460px}
 @media(max-width:620px){.tatx-verdict{gap:18px}.tatx-big strong{font-size:34px}}
+
+.fu-f[hidden]{display:none!important}
