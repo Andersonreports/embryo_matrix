@@ -15,8 +15,9 @@ _lock = Lock()
 # (form key, sheet header) - the order of the columns the sheet gets when a header is missing
 FIELDS = [
     ("sampleId", "Sample ID"), ("patient", "Patient Name"), ("embryos", "Number of Embryos"),
-    ("embryo", "Embryo Name"), ("test", "Test Name"), ("biopsyDate", "Date of Biopsy"),
-    ("client", "Client"), ("center", "Center Name"), ("embryologist", "Embryologist Name"), ("remarks", "Remarks"),
+    ("embryo", "Embryo Name"), ("test", "Test Name"), ("receivedDate", "Date Sample Received"),
+    ("biopsyDate", "Date of Biopsy"), ("client", "Client"), ("center", "Center Name"), ("embryologist", "Embryologist Name"),
+    ("controlTag", "Control Tag"), ("emptyTubes", "Empty Tubes"), ("trfReceived", "TRF Received"), ("remarks", "Remarks"),
 ]
 
 

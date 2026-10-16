@@ -42,8 +42,12 @@ class NewSampleIn(BaseModel):
     embryos: str = ""
     embryo: str = ""
     embryoNames: list[str] = []
+    receivedDate: str = ""
     biopsyDate: str = ""
     client: str = ""
     center: str = ""
     embryologist: str = ""
+    controlTag: str = ""
+    emptyTubes: str = ""
+    trfReceived: str = ""
     remarks: str = ""
