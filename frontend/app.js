@@ -1,3 +1,6 @@
+// A signed-out tab (session expired, or opened before the server restarted) gets 401 "Sign in required" from every
+// API call and would otherwise sit there as an empty app - send it to the sign-in page instead.
+{const f=window.fetch.bind(window);let leaving=false;window.fetch=async(...a)=>{const r=await f(...a);if(r.status===401&&!leaving&&location.pathname!=='/login'){const j=await r.clone().json().catch(()=>({}));if(j.detail==='Sign in required'){leaving=true;location.href='/login'}}return r}}
 let currentUser={username:'',role:''};
 function renderSessionUser(name,role){
   const el=document.getElementById('sessionUsername');if(!el)return;

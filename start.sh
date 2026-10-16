@@ -11,5 +11,11 @@ fi
 
 PORT=8001
 echo "Starting Embryo Matrix on http://127.0.0.1:${PORT} (also reachable on your LAN IP)"
-echo "WARNING: this build has no login of its own - anyone on the LAN can open it with no password."
+LAN_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+[ -n "$LAN_IP" ] && echo "Teammates open: http://${LAN_IP}:${PORT}"
+if grep -qiE '^BUILTIN_LOGIN=(true|1|yes)' .env 2>/dev/null; then
+    echo "Sign-in is on: each person needs a user account (tools/manage_users.py)."
+else
+    echo "WARNING: sign-in is off - anyone on the LAN can open it with no password."
+fi
 ".venv/bin/python" -m uvicorn app.main:app --host 0.0.0.0 --port "${PORT}" --reload
