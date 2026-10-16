@@ -2772,3 +2772,5 @@ body::after{content:"";position:fixed;top:50%;left:50%;width:var(--wm-width);hei
 
 /* Anderson Clinical Genetics logo above the EmbryoMatrix brand - sidebar rail only (the
    classic top bar wasn't asked to change, and has no room for a second logo in one row). */
+
+.fu-f[hidden]{display:none!important}
