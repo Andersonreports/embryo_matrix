@@ -17,7 +17,7 @@ FIELDS = [
     ("sampleId", "Sample ID"), ("patient", "Patient Name"), ("embryos", "Number of Embryos"),
     ("embryo", "Embryo Name"), ("test", "Test Name"), ("receivedDate", "Date Sample Received"),
     ("biopsyDate", "Date of Biopsy"), ("client", "Client"), ("center", "Center Name"), ("embryologist", "Embryologist Name"),
-    ("controlTag", "Control Tag"), ("emptyTubes", "Empty Tubes"), ("trfReceived", "TRF Received"), ("remarks", "Remarks"),
+    ("controlTag", "Controls (WGA/Seq Controls)"), ("emptyTubes", "Empty Tubes"), ("trfReceived", "Date TRF Received"), ("remarks", "Remarks"),
 ]
 
 
