@@ -71,4 +71,8 @@
  body.sidebar-nav .home-toolbar .home-overview-btn,
  body.sidebar-nav .home-toolbar #samplesGo,
  body.sidebar-nav .home-toolbar .import-data-btn{display:none}
+ /* ...which leaves the toolbar empty, so the Period picker can't float over it -
+    it would land on the stat cards. Give it its own row above them instead. */
+ body.sidebar-nav #homeView .home-toolbar{display:none!important}
+ body.sidebar-nav #homeView .home-period{position:static;height:auto;margin:0 0 8px!important}
 }
