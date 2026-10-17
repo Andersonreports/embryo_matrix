@@ -2557,3 +2557,8 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 #overviewUnitToggle{background:#e9f1ef;border-color:#d3e3df}
 #overviewUnitToggle .prep-seg{color:#4f6369}
 #overviewUnitToggle .prep-seg.active{background:#0a7180!important;color:#fff!important;box-shadow:0 1px 3px rgba(10,113,128,.3)}
+/* Upload check, one month open: "‹ Run summary" sits on the same line as "‹ All months", the title and search */
+.rr-bar:has(#rrUpload.on):has(+ #rrBody .up-head){height:0;min-height:0;margin:0;position:relative;z-index:2}
+.rr-bar:has(#rrUpload.on):has(+ #rrBody .up-head) .rr-actions{position:absolute;right:0;top:6px;height:42px;display:flex;align-items:center}
+.rr-bar:has(#rrUpload.on) + #rrBody .up-head{padding-right:170px;flex-wrap:nowrap;min-height:42px}
+.rr-bar:has(#rrUpload.on) + #rrBody .up-head h3{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
