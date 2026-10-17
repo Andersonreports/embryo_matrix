@@ -2569,3 +2569,5 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .rr-bar:has(#rrUpload.on):has(+ #rrBody .up-note) .rr-actions{position:absolute;right:0;top:6px;height:46px;display:flex;align-items:center}
 .rr-bar:has(#rrUpload.on) + #rrBody .up-note{margin-right:170px;min-height:46px;box-sizing:border-box;padding-top:12px;padding-bottom:12px;line-height:1.5}
 .rr-bar:has(#rrUpload.on) + #rrBody .up-note span{display:inline;margin:0 0 0 8px}
+/* Upload check table: a hairline between columns */
+.up-table th+th,.up-table td+td{border-left:1px solid #edf1ef}
