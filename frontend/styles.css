@@ -2564,3 +2564,8 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .rr-bar:has(#rrUpload.on) + #rrBody .up-head h3{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* Upload check table: dates, embryo tags and run numbers never break across lines */
 .up-table th:nth-child(3),.up-table td:nth-child(3),.up-table th:nth-child(6),.up-table td:nth-child(6),.up-table th:nth-child(7),.up-table td:nth-child(7){white-space:nowrap}
+/* Upload check, all months: the note and "‹ Run summary" share one line, and the note reads as one line */
+.rr-bar:has(#rrUpload.on):has(+ #rrBody .up-note){height:0;min-height:0;margin:0;position:relative;z-index:2}
+.rr-bar:has(#rrUpload.on):has(+ #rrBody .up-note) .rr-actions{position:absolute;right:0;top:6px;height:46px;display:flex;align-items:center}
+.rr-bar:has(#rrUpload.on) + #rrBody .up-note{margin-right:170px;min-height:46px;box-sizing:border-box;display:flex;align-items:center;flex-wrap:wrap;column-gap:10px;row-gap:2px;padding-top:8px;padding-bottom:8px}
+.rr-bar:has(#rrUpload.on) + #rrBody .up-note span{display:inline;margin-top:0}
