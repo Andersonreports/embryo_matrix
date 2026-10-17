@@ -13,11 +13,13 @@ const key=(patient,tag)=>`${String(patient||'').toUpperCase().replace(/[^A-Z]/g,
 const dmy=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?`${m[3]}-${m[2]}-${m[1]}`:iso||''};
 const dmyKey=v=>{const m=/(\d{1,2})\D(\d{1,2})\D(\d{4})/.exec(v||'');return m?`${m[3]}${m[2].padStart(2,'0')}${m[1].padStart(2,'0')}`:'00000000'};
 const today=()=>new Date().toLocaleDateString('en-CA');
-let root=null,kind='wga',list=[],sheetWga=[],sheetSeq=[],picked=new Set,q='',testF='',fOpen=true,lastKey='';
-// Filters under the search bar. Received is a date range; the rest are pick-lists built from the pending rows.
-const flt={from:'',to:'',client:'',embryologist:'',receivedBy:'',kit:'',wgaBy:'',platform:'',wgaState:''};
-const FLT={wga:[['client','Client'],['embryologist','Embryologist'],['receivedBy','Received by'],['kit','Kit']],
- seq:[['client','Client'],['embryologist','Embryologist'],['kit','Kit'],['wgaBy','WGA done by'],['wgaState','WGA'],['platform','Sequencer']]};
+let root=null,kind='wga',list=[],sheetWga=[],sheetSeq=[],picked=new Set,q='',fOpen=true,lastKey='';
+// Filter strip under the search bar. Received is a preset (or a custom from/to range); the rest are pick-lists
+// built from the pending rows.
+const flt={recv:'',from:'',to:'',test:'',client:'',embryologist:'',receivedBy:'',kit:'',wgaBy:'',platform:'',wgaState:''};
+const FLT={wga:[['test','Test'],['client','Client'],['embryologist','Embryologist'],['receivedBy','Received by'],['kit','Kit']],
+ seq:[['test','Test'],['client','Client'],['embryologist','Embryologist'],['kit','Kit'],['wgaBy','WGA by'],['wgaState','WGA'],['platform','Sequencer']]};
+const RECV=[['','Any time'],['0','Today'],['3','Last 3 days'],['7','Last 7 days'],['30','Last 30 days'],['older7','Older than 7 days'],['custom','Custom range…']];
 try{fOpen=localStorage.getItem('em-bx-filters')!=='closed'}catch{}
 const isoKey=iso=>(iso||'').replace(/-/g,'');
 // Whole days since the sample was received (dd-mm-yyyy), or null when the date can't be read.
@@ -64,13 +66,13 @@ function pending(k){
 
 function render(){
  const prevScroll=$('#bxTable')?.scrollTop||0;
- const all=pending(kind),tests=[...new Set(all.map(r=>r.test).filter(Boolean))].sort(),needle=q.trim().toLowerCase();
- if(testF&&!tests.includes(testF))testF='';
+ const all=pending(kind),needle=q.trim().toLowerCase();
  const defs=FLT[kind],val=(r,k)=>k==='wgaState'?(r.wga?'Done':'Not yet'):r[k],
   optsOf=k=>k==='wgaState'?['Done','Not yet']:[...new Set(all.map(r=>r[k]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
  defs.forEach(([k])=>{if(flt[k]&&!optsOf(k).includes(flt[k]))flt[k]=''});
- const nFlt=defs.filter(([k])=>flt[k]).length+(flt.from||flt.to?1:0),fromK=isoKey(flt.from),toK=isoKey(flt.to);
- const rows=all.filter(r=>(!testF||r.test===testF)&&defs.every(([k])=>!flt[k]||val(r,k)===flt[k])&&(!fromK||dmyKey(r.received)>=fromK)&&(!toK||dmyKey(r.received)<=toK)&&(!needle||[r.patient,r.embryo,r.sampleId,r.test].join(' ').toLowerCase().includes(needle)));
+ const custom=flt.recv==='custom',fromK=custom?isoKey(flt.from):'',toK=custom?isoKey(flt.to):'',nFlt=defs.filter(([k])=>flt[k]).length+(flt.recv?1:0);
+ const recvOk=r=>{if(!flt.recv)return true;if(custom)return(!fromK||dmyKey(r.received)>=fromK)&&(!toK||dmyKey(r.received)<=toK);const w=waitDays(r.received);return w!=null&&(flt.recv==='older7'?w>7:w<=+flt.recv)};
+ const rows=all.filter(r=>recvOk(r)&&defs.every(([k])=>!flt[k]||val(r,k)===flt[k])&&(!needle||[r.patient,r.embryo,r.sampleId,r.test].join(' ').toLowerCase().includes(needle)));
  const keys=new Set(all.map(r=>r.key));picked.forEach(k=>{if(!keys.has(k))picked.delete(k)});
  const sel=all.filter(r=>picked.has(r.key)),selPatients=new Set(sel.map(r=>r.patient)).size,noWga=kind==='seq'?sel.filter(r=>!r.wga).length:0,
   selTests=Object.entries(sel.reduce((m,r)=>(m[r.test||'No test']=(m[r.test||'No test']||0)+1,m),{})).map(([t,n])=>`${t}: ${n}`).join(' · '),
@@ -79,16 +81,15 @@ function render(){
  root.innerHTML=`<div class="bx">
   <div class="bx-top"><div class="prep-segments bx-kind" role="tablist">${Object.entries(KIND).map(([k,v])=>`<button type="button" class="prep-seg${k===kind?' active':''}" data-kind="${k}" role="tab" aria-selected="${k===kind}">${v.label}</button>`).join('')}</div>
    <div class="search-wrap bx-search"><span>⌕</span><input id="bxSearch" placeholder="Search patient, embryo or sample ID…" value="${esc(q)}"></div>
-   <select id="bxTest" class="chart-filter" aria-label="Test"><option value="">All tests</option>${tests.map(t=>`<option${t===testF?' selected':''}>${esc(t)}</option>`).join('')}</select>
    <button type="button" class="secondary compact${fOpen?' active':''}" id="bxFltToggle" aria-expanded="${fOpen}">⚲ Filters <b class="filters-badge${nFlt?' has-active':''}">${nFlt}</b></button></div>
-  <div class="od-filters bx-filters${fOpen?'':' hidden'}">
-   <label class="od-filter bx-date"><span>Received from</span><input type="date" data-flt="from" value="${esc(flt.from)}"${flt.to?` max="${esc(flt.to)}"`:''}></label>
-   <label class="od-filter bx-date"><span>Received to</span><input type="date" data-flt="to" value="${esc(flt.to)}"${flt.from?` min="${esc(flt.from)}"`:''}></label>
-   ${defs.map(([k,l])=>{const o=optsOf(k);return `<label class="od-filter"><span>${l}</span><select data-flt="${k}"${o.length?'':' disabled title="Not filled in the sheet for these embryos yet"'}><option value="">${o.length?'All':'No data'}</option>${o.map(v=>`<option value="${esc(v)}"${flt[k]===v?' selected':''}>${esc(v)}</option>`).join('')}</select></label>`}).join('')}
-   ${nFlt?'<button type="button" class="od-clear" id="bxFltClear">Clear filters</button>':''}</div>
+  <div class="bx-filters${fOpen?'':' hidden'}">
+   <select class="bx-pill${flt.recv?' on':''}" data-flt="recv" aria-label="Received">${RECV.map(([v,l])=>`<option value="${v}"${flt.recv===v?' selected':''}>Received: ${l}</option>`).join('')}</select>
+   ${custom?`<span class="bx-range"><input type="date" data-flt="from" value="${esc(flt.from)}" aria-label="Received from"${flt.to?` max="${esc(flt.to)}"`:''}><span>to</span><input type="date" data-flt="to" value="${esc(flt.to)}" aria-label="Received to"${flt.from?` min="${esc(flt.from)}"`:''}></span>`:''}
+   ${defs.map(([k,l])=>{const o=optsOf(k);return `<select class="bx-pill${flt[k]?' on':''}" data-flt="${k}" aria-label="${l}"${o.length?'':' disabled title="Not filled in the sheet for these embryos yet"'}><option value="">${l}: ${o.length?'All':'No data'}</option>${o.map(v=>`<option value="${esc(v)}"${flt[k]===v?' selected':''}>${flt[k]===v?`${esc(l)}: `:''}${esc(v)}</option>`).join('')}</select>`}).join('')}
+   ${nFlt?'<button type="button" class="text-button bx-fclear" id="bxFltClear">Clear all</button>':''}</div>
   <div class="bx-bar"><div><strong>${all.length}</strong> embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${rows.length!==all.length?` · ${rows.length} shown`:''}<button type="button" class="text-button bx-made-btn" id="bxMade">${KIND[kind].plural} made here (${made})</button></div>
    <div class="bx-bar-act"><span class="bx-count" title="${esc(selTests)}">${picked.size} selected${picked.size?` <small>· ${selPatients} patient${selPatients>1?'s':''}</small>`:''}</span>${noWga?`<span class="bx-warn" title="These embryos have no WGA date yet">${noWga} without WGA</span>`:''}<button type="button" class="secondary compact" id="bxClear"${picked.size?'':' disabled'}>Clear</button><button type="button" class="primary" id="bxMake"${picked.size?'':' disabled'}>Create ${kind==='wga'?'WGA batch':'sequencing run'}</button></div></div>
-  <div class="bx-table-wrap" id="bxTable">${groups.length?`<table class="prep-table bx-table"><thead><tr><th class="bx-ck"><input type="checkbox" id="bxAll" aria-label="Select all shown"${rows.length&&rows.every(r=>picked.has(r.key))?' checked':''}></th><th>Patient</th><th>Embryo</th><th>Sample ID</th><th>Test</th><th>Client</th><th>Received</th><th>Waiting</th><th>Biopsy</th>${kind==='seq'?'<th>WGA</th>':''}</tr></thead><tbody>${groups.map(g=>{const on=g.rows.every(r=>picked.has(r.key));return g.rows.map((r,i)=>`<tr class="${picked.has(r.key)?'on':''}${i===0?' bx-first':''}" data-key="${esc(r.key)}"><td class="bx-ck"><input type="checkbox"${picked.has(r.key)?' checked':''} aria-label="Select ${esc(r.patient)} ${esc(r.embryo)}"></td>${i===0?`<td class="strong bx-pat" rowspan="${g.rows.length}"><div class="bx-pat-in"><label><input type="checkbox" class="bx-pck" data-patient="${esc(g.patient)}"${on?' checked':''}> ${esc(g.patient)}</label><small>${g.rows.length} embryo${g.rows.length>1?'s':''}</small></div></td>`:''}<td class="mono">${esc(r.embryo)}</td><td class="mono">${esc(r.sampleId||'—')}</td><td>${esc(r.test||'—')}</td><td class="bx-client" title="${esc(r.client)}">${esc(r.client||'—')}</td><td class="muted">${esc(r.received)}</td><td>${waitChip(waitDays(r.received))}</td><td class="muted">${esc(r.biopsy||'—')}</td>${kind==='seq'?`<td>${r.wga?`<span class="bx-wga ok">${esc(r.wga)}</span>`:'<span class="bx-wga">Not yet</span>'}</td>`:''}</tr>`).join('')}).join('')}</tbody></table>`:`<div class="chart-empty">No embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${needle||testF||nFlt?' match these filters':''}.</div>`}</div>
+  <div class="bx-table-wrap" id="bxTable">${groups.length?`<table class="prep-table bx-table"><thead><tr><th class="bx-ck"><input type="checkbox" id="bxAll" aria-label="Select all shown"${rows.length&&rows.every(r=>picked.has(r.key))?' checked':''}></th><th>Patient</th><th>Embryo</th><th>Sample ID</th><th>Test</th><th>Client</th><th>Received</th><th>Waiting</th><th>Biopsy</th>${kind==='seq'?'<th>WGA</th>':''}</tr></thead><tbody>${groups.map(g=>{const on=g.rows.every(r=>picked.has(r.key));return g.rows.map((r,i)=>`<tr class="${picked.has(r.key)?'on':''}${i===0?' bx-first':''}" data-key="${esc(r.key)}"><td class="bx-ck"><input type="checkbox"${picked.has(r.key)?' checked':''} aria-label="Select ${esc(r.patient)} ${esc(r.embryo)}"></td>${i===0?`<td class="strong bx-pat" rowspan="${g.rows.length}"><div class="bx-pat-in"><label><input type="checkbox" class="bx-pck" data-patient="${esc(g.patient)}"${on?' checked':''}> ${esc(g.patient)}</label><small>${g.rows.length} embryo${g.rows.length>1?'s':''}</small></div></td>`:''}<td class="mono">${esc(r.embryo)}</td><td class="mono">${esc(r.sampleId||'—')}</td><td>${esc(r.test||'—')}</td><td class="bx-client" title="${esc(r.client)}">${esc(r.client||'—')}</td><td class="muted">${esc(r.received)}</td><td>${waitChip(waitDays(r.received))}</td><td class="muted">${esc(r.biopsy||'—')}</td>${kind==='seq'?`<td>${r.wga?`<span class="bx-wga ok">${esc(r.wga)}</span>`:'<span class="bx-wga">Not yet</span>'}</td>`:''}</tr>`).join('')}).join('')}</tbody></table>`:`<div class="chart-empty">No embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${needle||nFlt?' match these filters':''}.</div>`}</div>
  </div>`;
  root._rows=rows;
  const tw=$('#bxTable');fitTableHeight(tw);if(tw)tw.scrollTop=prevScroll}
@@ -154,6 +155,6 @@ window.renderBatchCreationView=async function(container){
  root=container;root.innerHTML='<div class="chart-empty">Loading…</div>';
  if(!container._bxWired){container._bxWired=true;container.addEventListener('click',onClick);
   container.addEventListener('input',e=>{if(e.target.id==='bxSearch'){q=e.target.value;const pos=e.target.selectionStart;render();const s=$('#bxSearch');s.focus();s.setSelectionRange(pos,pos)}});
-  container.addEventListener('change',e=>{if(e.target.id==='bxTest'){testF=e.target.value;render()}else if(e.target.dataset.flt){flt[e.target.dataset.flt]=e.target.value;render()}})}
+  container.addEventListener('change',e=>{if(e.target.dataset.flt){flt[e.target.dataset.flt]=e.target.value;render()}})}
  await load();if(root===container)render()};
 })();

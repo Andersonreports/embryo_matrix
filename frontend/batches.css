@@ -27,11 +27,6 @@
 .bx-dlg .bx-sec:first-of-type{margin-top:4px}
 @media(max-width:700px){.bx-bar{flex-direction:column;align-items:stretch}.bx-bar-act{justify-content:flex-end}}
 .bx-table td,.bx-table th{padding-left:12px;padding-right:12px}
-.bx-filters{margin:-2px 0 14px}
-.bx-filters .od-filter input{font:500 13px "Inter";text-transform:none;letter-spacing:0;color:#20302a;height:36px;padding:0 10px;border:1px solid #cfdcd8;border-radius:10px;background:#fff;width:100%}
-.bx-filters .od-filter input:focus,.bx-filters .od-filter select:focus{border-color:#0a8a86;outline:none}
-.bx-filters .od-filter select:disabled{opacity:.55;cursor:not-allowed}
-.bx-filters .bx-date{min-width:140px;flex:0 1 160px}
 #bxFltToggle{display:inline-flex;align-items:center;gap:6px}
 #bxFltToggle .filters-badge{min-width:18px;padding:0 5px;border-radius:9px;background:#e3ece9;color:#59645d;font-size:11px;text-align:center}
 #bxFltToggle .filters-badge.has-active{background:#0a7180;color:#fff}
@@ -58,3 +53,16 @@
 .bx-wait.late{background:#fbe6e2;color:#a04f3d}
 /* Patient name stays in view while its embryos scroll under the sticky header */
 .bx-pat-in{position:sticky;top:52px}
+
+/* Filter strip: one row of compact pills that name themselves ("Client: All"), in a soft panel */
+.bx-top{margin-bottom:10px}
+.bx-filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 12px;margin:0 0 12px;background:#f8fbfa;border:1px solid #e1ebe8;border-radius:12px}
+.bx-filters.hidden{display:none}
+.bx-pill{height:32px;padding:0 28px 0 12px;border:1px solid #d5e2de;border-radius:999px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236b7a73' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 11px center;appearance:none;-webkit-appearance:none;font:600 12.5px "Inter";color:#3d4b45;cursor:pointer;max-width:240px;text-overflow:ellipsis}
+.bx-pill:hover{border-color:#a9c9c2}
+.bx-pill:focus{outline:none;border-color:#0a8a86;box-shadow:0 0 0 3px rgba(10,138,134,.12)}
+.bx-pill.on{background-color:#e6f3f0;border-color:#0a8a86;color:#0b5660}
+.bx-pill:disabled{opacity:.5;cursor:not-allowed}
+.bx-range{display:inline-flex;align-items:center;gap:6px;font:600 12px "Inter";color:#6b7a73}
+.bx-range input{height:32px;padding:0 10px;border:1px solid #0a8a86;border-radius:999px;background:#fff;font:500 12.5px "Inter";color:#20302a}
+.bx-fclear{margin-left:auto;font-size:12.5px;font-weight:600;color:#a04f3d}
