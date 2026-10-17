@@ -13,13 +13,16 @@ const key=(patient,tag)=>`${String(patient||'').toUpperCase().replace(/[^A-Z]/g,
 const dmy=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?`${m[3]}-${m[2]}-${m[1]}`:iso||''};
 const dmyKey=v=>{const m=/(\d{1,2})\D(\d{1,2})\D(\d{4})/.exec(v||'');return m?`${m[3]}${m[2].padStart(2,'0')}${m[1].padStart(2,'0')}`:'00000000'};
 const today=()=>new Date().toLocaleDateString('en-CA');
-let root=null,kind='wga',list=[],sheetWga=[],sheetSeq=[],picked=new Set,q='',testF='',fOpen=true;
+let root=null,kind='wga',list=[],sheetWga=[],sheetSeq=[],picked=new Set,q='',testF='',fOpen=true,lastKey='';
 // Filters under the search bar. Received is a date range; the rest are pick-lists built from the pending rows.
 const flt={from:'',to:'',client:'',embryologist:'',receivedBy:'',kit:'',wgaBy:'',platform:'',wgaState:''};
 const FLT={wga:[['client','Client'],['embryologist','Embryologist'],['receivedBy','Received by'],['kit','Kit']],
  seq:[['client','Client'],['embryologist','Embryologist'],['kit','Kit'],['wgaBy','WGA done by'],['wgaState','WGA'],['platform','Sequencer']]};
 try{fOpen=localStorage.getItem('em-bx-filters')!=='closed'}catch{}
 const isoKey=iso=>(iso||'').replace(/-/g,'');
+// Whole days since the sample was received (dd-mm-yyyy), or null when the date can't be read.
+const waitDays=v=>{const k=dmyKey(v);if(k==='00000000')return null;const d=new Date(+k.slice(0,4),+k.slice(4,6)-1,+k.slice(6,8)),t=new Date;t.setHours(0,0,0,0);return Math.round((t-d)/864e5)};
+const waitChip=n=>n==null?'<span class="muted">—</span>':`<span class="bx-wait ${n>=7?'late':n>=4?'warn':''}">${n} day${n===1?'':'s'}</span>`;
 const blankish=v=>!v||/^(not assigned|not recorded|na|n\/a|nil|—|-)$/i.test(String(v).trim())?'':String(v).trim();
 // The sheet spells the same kit or sequencer several ways (SINGLE SEQ / SINGLESEQ, GENOLABM / GenoLab-M):
 // group by letters and digits only and show the commonest spelling.
@@ -60,6 +63,7 @@ function pending(k){
  return out.sort((a,b)=>first.get(a.patient.toUpperCase()).localeCompare(first.get(b.patient.toUpperCase()))||a.patient.localeCompare(b.patient)||a.embryo.localeCompare(b.embryo,undefined,{numeric:true}))}
 
 function render(){
+ const prevScroll=$('#bxTable')?.scrollTop||0;
  const all=pending(kind),tests=[...new Set(all.map(r=>r.test).filter(Boolean))].sort(),needle=q.trim().toLowerCase();
  if(testF&&!tests.includes(testF))testF='';
  const defs=FLT[kind],val=(r,k)=>k==='wgaState'?(r.wga?'Done':'Not yet'):r[k],
@@ -68,6 +72,9 @@ function render(){
  const nFlt=defs.filter(([k])=>flt[k]).length+(flt.from||flt.to?1:0),fromK=isoKey(flt.from),toK=isoKey(flt.to);
  const rows=all.filter(r=>(!testF||r.test===testF)&&defs.every(([k])=>!flt[k]||val(r,k)===flt[k])&&(!fromK||dmyKey(r.received)>=fromK)&&(!toK||dmyKey(r.received)<=toK)&&(!needle||[r.patient,r.embryo,r.sampleId,r.test].join(' ').toLowerCase().includes(needle)));
  const keys=new Set(all.map(r=>r.key));picked.forEach(k=>{if(!keys.has(k))picked.delete(k)});
+ const sel=all.filter(r=>picked.has(r.key)),selPatients=new Set(sel.map(r=>r.patient)).size,noWga=kind==='seq'?sel.filter(r=>!r.wga).length:0,
+  selTests=Object.entries(sel.reduce((m,r)=>(m[r.test||'No test']=(m[r.test||'No test']||0)+1,m),{})).map(([t,n])=>`${t}: ${n}`).join(' · '),
+  made=list.filter(b=>b.kind===kind).length;
  const groups=[];rows.forEach(r=>{const g=groups[groups.length-1];if(g&&g.patient===r.patient)g.rows.push(r);else groups.push({patient:r.patient,rows:[r]})});
  root.innerHTML=`<div class="bx">
   <div class="bx-top"><div class="prep-segments bx-kind" role="tablist">${Object.entries(KIND).map(([k,v])=>`<button type="button" class="prep-seg${k===kind?' active':''}" data-kind="${k}" role="tab" aria-selected="${k===kind}">${v.label}</button>`).join('')}</div>
@@ -79,15 +86,27 @@ function render(){
    <label class="od-filter bx-date"><span>Received to</span><input type="date" data-flt="to" value="${esc(flt.to)}"${flt.from?` min="${esc(flt.from)}"`:''}></label>
    ${defs.map(([k,l])=>{const o=optsOf(k);return `<label class="od-filter"><span>${l}</span><select data-flt="${k}"${o.length?'':' disabled title="Not filled in the sheet for these embryos yet"'}><option value="">${o.length?'All':'No data'}</option>${o.map(v=>`<option value="${esc(v)}"${flt[k]===v?' selected':''}>${esc(v)}</option>`).join('')}</select></label>`}).join('')}
    ${nFlt?'<button type="button" class="od-clear" id="bxFltClear">Clear filters</button>':''}</div>
-  <div class="bx-bar"><div><strong>${all.length}</strong> embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${rows.length!==all.length?` · ${rows.length} shown`:''}</div>
-   <div class="bx-bar-act"><span class="bx-count">${picked.size} selected</span><button type="button" class="secondary compact" id="bxClear"${picked.size?'':' disabled'}>Clear</button><button type="button" class="primary" id="bxMake"${picked.size?'':' disabled'}>Create ${kind==='wga'?'WGA batch':'sequencing run'}</button></div></div>
-  <div class="bx-table-wrap" id="bxTable">${groups.length?`<table class="prep-table bx-table"><thead><tr><th class="bx-ck"><input type="checkbox" id="bxAll" aria-label="Select all shown"${rows.length&&rows.every(r=>picked.has(r.key))?' checked':''}></th><th>Patient</th><th>Embryo</th><th>Sample ID</th><th>Test</th><th>Received</th><th>Biopsy</th>${kind==='seq'?'<th>WGA</th>':''}</tr></thead><tbody>${groups.map(g=>{const on=g.rows.every(r=>picked.has(r.key));return g.rows.map((r,i)=>`<tr class="${picked.has(r.key)?'on':''}${i===0?' bx-first':''}" data-key="${esc(r.key)}"><td class="bx-ck"><input type="checkbox"${picked.has(r.key)?' checked':''} aria-label="Select ${esc(r.patient)} ${esc(r.embryo)}"></td>${i===0?`<td class="strong bx-pat" rowspan="${g.rows.length}"><label><input type="checkbox" class="bx-pck" data-patient="${esc(g.patient)}"${on?' checked':''}> ${esc(g.patient)}</label><small>${g.rows.length} embryo${g.rows.length>1?'s':''}</small></td>`:''}<td class="mono">${esc(r.embryo)}</td><td class="mono">${esc(r.sampleId||'—')}</td><td>${esc(r.test||'—')}</td><td class="muted">${esc(r.received)}</td><td class="muted">${esc(r.biopsy||'—')}</td>${kind==='seq'?`<td>${r.wga?`<span class="bx-wga ok">${esc(r.wga)}</span>`:'<span class="bx-wga">Not yet</span>'}</td>`:''}</tr>`).join('')}).join('')}</tbody></table>`:`<div class="chart-empty">No embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${needle||testF||nFlt?' match these filters':''}.</div>`}</div>
+  <div class="bx-bar"><div><strong>${all.length}</strong> embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${rows.length!==all.length?` · ${rows.length} shown`:''}<button type="button" class="text-button bx-made-btn" id="bxMade">${KIND[kind].plural} made here (${made})</button></div>
+   <div class="bx-bar-act"><span class="bx-count" title="${esc(selTests)}">${picked.size} selected${picked.size?` <small>· ${selPatients} patient${selPatients>1?'s':''}</small>`:''}</span>${noWga?`<span class="bx-warn" title="These embryos have no WGA date yet">${noWga} without WGA</span>`:''}<button type="button" class="secondary compact" id="bxClear"${picked.size?'':' disabled'}>Clear</button><button type="button" class="primary" id="bxMake"${picked.size?'':' disabled'}>Create ${kind==='wga'?'WGA batch':'sequencing run'}</button></div></div>
+  <div class="bx-table-wrap" id="bxTable">${groups.length?`<table class="prep-table bx-table"><thead><tr><th class="bx-ck"><input type="checkbox" id="bxAll" aria-label="Select all shown"${rows.length&&rows.every(r=>picked.has(r.key))?' checked':''}></th><th>Patient</th><th>Embryo</th><th>Sample ID</th><th>Test</th><th>Client</th><th>Received</th><th>Waiting</th><th>Biopsy</th>${kind==='seq'?'<th>WGA</th>':''}</tr></thead><tbody>${groups.map(g=>{const on=g.rows.every(r=>picked.has(r.key));return g.rows.map((r,i)=>`<tr class="${picked.has(r.key)?'on':''}${i===0?' bx-first':''}" data-key="${esc(r.key)}"><td class="bx-ck"><input type="checkbox"${picked.has(r.key)?' checked':''} aria-label="Select ${esc(r.patient)} ${esc(r.embryo)}"></td>${i===0?`<td class="strong bx-pat" rowspan="${g.rows.length}"><div class="bx-pat-in"><label><input type="checkbox" class="bx-pck" data-patient="${esc(g.patient)}"${on?' checked':''}> ${esc(g.patient)}</label><small>${g.rows.length} embryo${g.rows.length>1?'s':''}</small></div></td>`:''}<td class="mono">${esc(r.embryo)}</td><td class="mono">${esc(r.sampleId||'—')}</td><td>${esc(r.test||'—')}</td><td class="bx-client" title="${esc(r.client)}">${esc(r.client||'—')}</td><td class="muted">${esc(r.received)}</td><td>${waitChip(waitDays(r.received))}</td><td class="muted">${esc(r.biopsy||'—')}</td>${kind==='seq'?`<td>${r.wga?`<span class="bx-wga ok">${esc(r.wga)}</span>`:'<span class="bx-wga">Not yet</span>'}</td>`:''}</tr>`).join('')}).join('')}</tbody></table>`:`<div class="chart-empty">No embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${needle||testF||nFlt?' match these filters':''}.</div>`}</div>
  </div>`;
  root._rows=rows;
- fitTableHeight($('#bxTable'))}
+ const tw=$('#bxTable');fitTableHeight(tw);if(tw)tw.scrollTop=prevScroll}
 
 function nextNo(k){const nums=[...(k==='wga'?sheetWga:sheetSeq).map(b=>b.runId),...list.filter(b=>b.kind===k).map(b=>b.meta.batchNo)].map(v=>/^\d+$/.test(String(v||'').trim())?+v:0);return String(Math.max(0,...nums)+1)}
 function lastKit(){const mine=list.filter(b=>b.kind==='wga'&&b.kit?.name).pop();if(mine)return mine.kit;const s=[...sheetWga].reverse().find(b=>b.kit?.name);return s?.kit||{}}
+
+// Batches made on this page, newest first: download the Excel block again, or delete one (its embryos return to the list).
+function openMade(){
+ const K=KIND[kind],d=document.createElement('dialog');d.className='vu-dialog fu-dialog bx-dlg';document.body.append(d);d.addEventListener('close',()=>d.remove());
+ const draw=()=>{const mine=list.filter(b=>b.kind===kind).slice().reverse();
+  d.innerHTML=`<div class="vu-dhead"><h3>${K.plural} made here</h3><button type="button" class="secondary compact" data-close>Close</button></div><div class="vu-dbody"><div class="bx-made">${mine.length?mine.map(b=>`<div class="bx-card"><div><strong>${esc(K.noun)} ${esc(b.meta.batchNo)}</strong><small>${esc(b.meta.date||'')} · ${b.samples.length} sample${b.samples.length>1?'s':''} · ${esc(b.createdBy)} · ${esc(b.createdAt)}</small></div><span class="bx-sent ${b.sent?'ok':''}" title="${esc(b.error||'')}">${b.sent?'In edits sheet':'Sending to edits sheet…'}</span><a class="secondary compact" href="/api/batches/${encodeURIComponent(b.id)}/xlsx" download>Download</a><button type="button" class="text-button bx-del" data-id="${esc(b.id)}">Delete</button></div>`).join(''):`<p class="muted">None yet - pick embryos and create one.</p>`}</div></div>`};
+ draw();
+ d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-close]')){d.close();return}
+  const del=e.target.closest('.bx-del');if(!del)return;const b=list.find(x=>x.id===del.dataset.id);
+  if(b&&confirm(`Delete ${KIND[b.kind].noun} ${b.meta.batchNo}? Its embryos go back to the pending list and its rows leave the edits sheet. The live batch sheet is not touched.`))
+   fetch(`/api/batches/${encodeURIComponent(b.id)}`,{method:'DELETE'}).then(r=>{if(!r.ok)throw 0;toast('Batch deleted');return load()}).then(()=>{draw();render()}).catch(()=>toast('Could not delete'))});
+ d.showModal()}
 
 function openCreate(){
  const K=KIND[kind],sel=pending(kind).filter(r=>picked.has(r.key)),kit=lastKit(),d=document.createElement('dialog');
@@ -121,9 +140,14 @@ function onClick(e){
  if(t.id==='bxFltClear'){Object.keys(flt).forEach(k=>flt[k]='');render();return}
  if(t.id==='bxClear'){picked.clear();render();return}
  if(t.id==='bxMake'){openCreate();return}
+ if(t.id==='bxMade'){openMade();return}
  if(t.id==='bxAll'){(root._rows||[]).forEach(r=>t.checked?picked.add(r.key):picked.delete(r.key));render();return}
  if(t.classList.contains('bx-pck')){(root._rows||[]).filter(r=>r.patient===t.dataset.patient).forEach(r=>t.checked?picked.add(r.key):picked.delete(r.key));render();return}
- const tr=t.closest('tbody tr[data-key]');if(tr&&!t.closest('a,button,label')){const k=tr.dataset.key;if(t.type!=='checkbox'){picked.has(k)?picked.delete(k):picked.add(k)}else{t.checked?picked.add(k):picked.delete(k)}render()}}
+ const tr=t.closest('tbody tr[data-key]');if(tr&&!t.closest('a,button,label')){const k=tr.dataset.key,on=t.type==='checkbox'?t.checked:!picked.has(k);
+  // Shift-click selects (or clears) every shown row between the last one clicked and this one.
+  const rs=root._rows||[],i=rs.findIndex(r=>r.key===k),j=rs.findIndex(r=>r.key===lastKey);
+  (e.shiftKey&&j>=0?rs.slice(Math.min(i,j),Math.max(i,j)+1):[{key:k}]).forEach(r=>on?picked.add(r.key):picked.delete(r.key));
+  lastKey=k;render()}}
 
 window.addEventListener('resize',()=>fitTableHeight($('#bxTable')));
 window.renderBatchCreationView=async function(container){
