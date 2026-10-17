@@ -13,14 +13,13 @@ const key=(patient,tag)=>`${String(patient||'').toUpperCase().replace(/[^A-Z]/g,
 const dmy=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?`${m[3]}-${m[2]}-${m[1]}`:iso||''};
 const dmyKey=v=>{const m=/(\d{1,2})\D(\d{1,2})\D(\d{4})/.exec(v||'');return m?`${m[3]}${m[2].padStart(2,'0')}${m[1].padStart(2,'0')}`:'00000000'};
 const today=()=>new Date().toLocaleDateString('en-CA');
-let root=null,kind='wga',list=[],sheetWga=[],sheetSeq=[],picked=new Set,q='',fOpen=true,lastKey='';
+let root=null,kind='wga',list=[],sheetWga=[],sheetSeq=[],picked=new Set,q='',fOpen=false,lastKey='';
 // Filter strip under the search bar. Received is a preset (or a custom from/to range); the rest are pick-lists
 // built from the pending rows.
 const flt={recv:'',from:'',to:'',test:'',client:'',embryologist:'',receivedBy:'',kit:'',wgaBy:'',platform:'',wgaState:''};
 const FLT={wga:[['test','Test'],['client','Client'],['embryologist','Embryologist'],['receivedBy','Received by'],['kit','Kit']],
  seq:[['test','Test'],['client','Client'],['embryologist','Embryologist'],['kit','Kit'],['wgaBy','WGA by'],['wgaState','WGA'],['platform','Sequencer']]};
 const RECV=[['','Any time'],['0','Today'],['3','Last 3 days'],['7','Last 7 days'],['30','Last 30 days'],['older7','Older than 7 days'],['custom','Custom range…']];
-try{fOpen=localStorage.getItem('em-bx-filters')!=='closed'}catch{}
 const isoKey=iso=>(iso||'').replace(/-/g,'');
 // Whole days since the sample was received (dd-mm-yyyy), or null when the date can't be read.
 const waitDays=v=>{const k=dmyKey(v);if(k==='00000000')return null;const d=new Date(+k.slice(0,4),+k.slice(4,6)-1,+k.slice(6,8)),t=new Date;t.setHours(0,0,0,0);return Math.round((t-d)/864e5)};
@@ -137,7 +136,7 @@ function openCreate(){
 function onClick(e){
  const t=e.target;
  const kb=t.closest('[data-kind]');if(kb){if(kb.dataset.kind!==kind){kind=kb.dataset.kind;picked.clear();render()}return}
- if(t.closest('#bxFltToggle')){fOpen=!fOpen;try{localStorage.setItem('em-bx-filters',fOpen?'open':'closed')}catch{}render();return}
+ if(t.closest('#bxFltToggle')){fOpen=!fOpen;render();return}
  if(t.id==='bxFltClear'){Object.keys(flt).forEach(k=>flt[k]='');render();return}
  if(t.id==='bxClear'){picked.clear();render();return}
  if(t.id==='bxMake'){openCreate();return}
