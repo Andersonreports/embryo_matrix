@@ -4,6 +4,7 @@
 # Kit / reagent, QC check, Sample details) and downloaded as an .xlsx of the same block. The bench fills in the
 # results (WGA concentrations, barcodes...) and uploads that file back: apply_results() reads it, updates the
 # batch and re-writes its block. The live batch sheets are never written to.
+import base64
 import io
 import json
 from datetime import date
@@ -35,9 +36,10 @@ SAMPLE_COLS = {
     "wga": [("sno", "S. No."), ("biopsy", "Biopsy Date"), ("received", "Received Date"), ("sampleType", "Sample Type"),
             ("patient", "Patient Name"), ("embryo", "Embryo Tag"), ("index", "Barcode / Index"),
             ("dnaConc", "DNA Conc. (ng/µL)"), ("purified", "Purified WGA Conc. (ng/µL)")],
-    "seq": [("sno", "S. No."), ("biopsy", "Biopsy Date"), ("received", "Received Date"), ("sampleType", "Sample Type"),
-            ("patient", "Patient Name"), ("embryo", "Embryo Tag"), ("dnaConc", "DNA Conc. (ng/µL)"), ("volume", "Volume"),
-            ("pool", "Pool Number"), ("index", "Index ID"), ("i7", "i7"), ("i5", "i5"), ("remarks", "Remarks")],
+    # As in the live Sequencing Batch Record sheet's Sample Processing Details (run 101A)
+    "seq": [("sno", "S. No."), ("received", "Received Date"), ("patient", "Patient Name"), ("embryo", "Embryo Tag"),
+            ("dnaConc", "DNA Conc. (ng/µL)"), ("volume", "Volume"), ("pool", "pool number"), ("index", "INDEX ID"),
+            ("i7", "I7"), ("i5", "I5"), ("remarks", "Remarks")],
 }
 
 
@@ -108,7 +110,9 @@ def _post_delete(b: dict) -> None:
 
 def _body(b: dict) -> dict:
     """The batch's block for the edits sheet: the same grid, merges and styling as the .xlsx download."""
-    return {"action": "batchBlockSave", "tab": KINDS[b["kind"]], "id": b["id"], **_layout(b)}
+    lay = _layout(b)
+    return {"action": "batchBlockSave", "tab": KINDS[b["kind"]], "id": b["id"], **lay,
+            "logoB64": _logo_b64() if lay["logo"] else ""}
 
 
 def retry_pending() -> int:
@@ -134,63 +138,89 @@ def retry_pending() -> int:
 # ---- The batch block: one layout for the .xlsx download and the edits sheet ----
 _THIN = Side(style="thin", color="000000")
 _BOX = Border(left=_THIN, right=_THIN, top=_THIN, bottom=_THIN)
-_BAND = PatternFill("solid", fgColor="CFE2F3")
 _CENTER = Alignment(horizontal="center", vertical="center", wrap_text=True)
-_WIDTHS = [8, 14, 14, 20, 26, 12, 16, 16, 16, 14, 14, 12, 18]
-_NUMERIC = ("sno", "dnaConc", "purified", "volume", "pool")
+_NUMERIC = ("sno", "dnaConc", "purified", "volume", "pool", "index")
 
 
 def _num(v: str):
     return float(v) if re.fullmatch(r"\d+(\.\d+)?", v or "") else v
 
 
-def _layout(b: dict) -> dict:
-    """The block as a grid: rows of values (1-based positions below), merged ranges, section bands, bold cells,
-    centred cells and bordered ranges. Rendered by xlsx() here and by batchBlockSave_ in the Apps Script."""
-    kind, cols = b["kind"], SAMPLE_COLS[b["kind"]]
-    width = len(cols)
-    span = min(width, 8)  # the template's section bands and header block stop at column H
-    grid, merges, bands, bold, center, boxes = {}, [], [], [], [], []
+_BLUE, _PEACH = "CFE2F3", "FCE5CD"
+LOGO_PATH = Path(__file__).resolve().parents[2] / "frontend" / "assets" / "logos" / "anderson-logo.png"
+# Where each part of the block sits, per kind - the WGA record (8 columns wide) and the Sequencing Batch Record
+# (11 wide, with the logo + title rows on top). Column spans are (first, last), 1-based.
+_SPEC = {
+    "wga": {"span": 8, "title": "", "ident_band": "BATCH IDENTIFICATION", "left": (1, 2), "label": (3, 4), "value": (5, 6),
+            "right": (7, 8), "value_style": {}, "process": "WGA", "kit_at": [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8)],
+            "sample_band": "SAMPLE DETAILS", "head_bg": "", "widths": [8, 14, 14, 20, 26, 12, 16, 16, 16]},
+    "seq": {"span": 11, "title": "Sequencing Batch Record-Pre-Implantation Genetics", "ident_band": "", "left": (1, 3),
+            "label": (4, 5), "value": (6, 9), "right": (10, 11), "value_style": {"bold": True, "size": 12, "center": True},
+            "process": "SEQUENCING", "kit_at": [(1, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8), (9, 9)],
+            "sample_band": "SAMPLE PROCESSING DETAILS", "head_bg": _PEACH, "widths": [8, 20, 26, 20, 20, 20, 20, 20, 19, 17, 22]},
+}
 
-    def put(r, c, v, is_bold=False, is_center=False):
+
+def _layout(b: dict) -> dict:
+    """The block as a grid: rows of values, merged ranges, styled ranges (background / bold / size / centred),
+    bordered ranges and where the logo goes (all 1-based). Rendered by xlsx() here and by batchBlockSave_ in the
+    Apps Script, so the download and the edits sheet look the same."""
+    kind, cols = b["kind"], SAMPLE_COLS[b["kind"]]
+    sp = _SPEC[kind]
+    width, span = len(cols), _SPEC[kind]["span"]
+    grid, merges, styles, boxes = {}, [], [], []
+
+    def put(r, c, v):
         grid[(r, c)] = "" if v is None else v
-        if is_bold:
-            bold.append([r, c])
-        if is_center:
-            center.append([r, c])
+
+    def style(r1, c1, r2, c2, **kw):
+        styles.append({"r1": r1, "c1": c1, "r2": r2, "c2": c2, **kw})
 
     def band(r, text):
         merges.append([r, 1, r, span])
         put(r, 1, text)
-        bands.append(r)
+        style(r, 1, r, span, bg=_BLUE, bold=True, size=13, center=True)
         boxes.append([r, r, span])
 
-    r = 1
-    band(r, "BATCH IDENTIFICATION")
+    def cell(r, at, v, **kw):
+        c1, c2 = at
+        if c2 > c1:
+            merges.append([r, c1, r, c2])
+        put(r, c1, v)
+        if kw:
+            style(r, c1, r, c2, **kw)
+
+    r, logo = 1, None
+    if sp["title"]:
+        merges += [[1, 1, 3, 2], [1, 3, 3, span]]
+        put(1, 3, sp["title"])
+        style(1, 3, 3, span, bg=_PEACH, bold=True, size=16, center=True)
+        boxes.append([1, 3, span])
+        logo, r = [1, 1, 3, 2], 4
+    if sp["ident_band"]:
+        band(r, sp["ident_band"])
+        r += 1
     meta = META[kind]
-    top = r + 1
+    top, bottom = r, r + len(meta) - 1
     for i, (k, label) in enumerate(meta):
-        row = top + i
-        merges += [[row, 3, row, 4], [row, 5, row, 6]]
-        put(row, 3, label, is_bold=True)
-        put(row, 5, b["meta"].get(k, ""))
-    bottom = top + len(meta) - 1
-    merges += [[top, 1, bottom, 2], [top, 7, bottom, span]]
+        cell(top + i, sp["label"], label, bold=True, size=12)
+        cell(top + i, sp["value"], b["meta"].get(k, ""), **sp["value_style"])
+    merges += [[top, sp["left"][0], bottom, sp["left"][1]], [top, sp["right"][0], bottom, sp["right"][1]]]
     boxes.append([top, bottom, span])
     r = bottom + 1
-    if kind == "wga":
-        band(r, "KIT / REAGENT DETAILS")
-        for i, (k, label) in enumerate(KIT):
-            put(r + 1, i + 1, label, True, True)
-            put(r + 2, i + 1, b["kit"].get(k, "") or ("WGA" if k == "process" else ""), is_center=True)
-        boxes.append([r + 1, r + 2, span])
-        r += 3
-        band(r, "QC CHECK")
-        boxes.append([r + 1, r + 2, span])
-        r += 3
-    band(r, "SAMPLE DETAILS")
+    band(r, "KIT / REAGENT DETAILS")
+    for (k, label), at in zip(KIT, sp["kit_at"]):
+        cell(r + 1, at, label, bold=True, size=12, center=True)
+        cell(r + 2, at, (b.get("kit") or {}).get(k, "") or (sp["process"] if k == "process" else ""), center=True)
+    boxes.append([r + 1, r + 2, span])
+    r += 3
+    band(r, "QC CHECK")
+    boxes.append([r + 1, r + 2, span])
+    r += 3
+    band(r, sp["sample_band"])
     for i, (_, label) in enumerate(cols):
-        put(r + 1, i + 1, label, True, True)
+        put(r + 1, i + 1, label)
+    style(r + 1, 1, r + 1, width, bold=True, size=12, center=True, **({"bg": sp["head_bg"]} if sp["head_bg"] else {}))
     prev = None
     for n, s in enumerate(b["samples"]):
         row = r + 2 + n
@@ -200,40 +230,64 @@ def _layout(b: dict) -> dict:
             v = s.get(k, "")
             if k in ("patient", "biopsy", "received") and not first:
                 v = ""
-            put(row, i + 1, v, is_center=True)
+            put(row, i + 1, v)
     last_row = r + 1 + len(b["samples"])
+    if b["samples"]:
+        style(r + 2, 1, last_row, width, center=True)
     boxes.append([r + 1, last_row, width])
-    rows = [[grid.get((rr, cc), "") for cc in range(1, width + 1)] for rr in range(1, last_row + 1)]
-    return {"rows": rows, "merges": merges, "bands": bands, "bold": bold, "center": center, "boxes": boxes,
-            "span": span, "widths": _WIDTHS[:width]}
+    full = max(width, span)
+    rows = [[grid.get((rr, cc), "") for cc in range(1, full + 1)] for rr in range(1, last_row + 1)]
+    return {"rows": rows, "merges": merges, "styles": styles, "boxes": boxes, "widths": sp["widths"][:full],
+            "logo": logo, "sampleTop": r + 2}
+
+
+def _logo_b64() -> str:
+    try:
+        return base64.b64encode(LOGO_PATH.read_bytes()).decode("ascii")
+    except OSError:
+        return ""
 
 
 def xlsx(b: dict) -> tuple[bytes, str]:
     kind, lay = b["kind"], _layout(b)
     numeric_cols = {i + 1 for i, (k, _) in enumerate(SAMPLE_COLS[kind]) if k in _NUMERIC}
-    sample_top = len(lay["rows"]) - len(b["samples"]) + 1
     wb = Workbook()
     ws = wb.active
     ws.title = ("WGA " if kind == "wga" else "Run ") + re.sub(r"[\\/*?:\[\]]", "-", b["meta"]["batchNo"])[:25]
     for r, row in enumerate(lay["rows"], 1):
         for c, v in enumerate(row, 1):
             if v != "":
-                ws.cell(r, c, _num(v) if (r >= sample_top and c in numeric_cols) or (r < sample_top and c == 5) else v)
+                ws.cell(r, c, _num(v) if r >= lay["sampleTop"] and c in numeric_cols else v)
     for r1, c1, r2, c2 in lay["merges"]:
         ws.merge_cells(start_row=r1, start_column=c1, end_row=r2, end_column=c2)
     for r1, r2, c2 in lay["boxes"]:
         for row in ws.iter_rows(min_row=r1, max_row=r2, min_col=1, max_col=c2):
             for c in row:
                 c.border = _BOX
-    for r, c in lay["bold"]:
-        ws.cell(r, c).font = Font(bold=True, size=12)
-    for r, c in lay["center"]:
-        ws.cell(r, c).alignment = _CENTER
-    for r in lay["bands"]:
-        c = ws.cell(r, 1)
-        c.fill, c.font, c.alignment = _BAND, Font(bold=True, size=13), _CENTER
+    for st in lay["styles"]:
+        for row in ws.iter_rows(min_row=st["r1"], max_row=st["r2"], min_col=st["c1"], max_col=st["c2"]):
+            for c in row:
+                if st.get("bg"):
+                    c.fill = PatternFill("solid", fgColor=st["bg"])
+                if st.get("bold") or st.get("size"):
+                    c.font = Font(bold=bool(st.get("bold")), size=st.get("size") or 11)
+                if st.get("center"):
+                    c.alignment = _CENTER
     for i, w in enumerate(lay["widths"]):
         ws.column_dimensions[chr(ord("A") + i)].width = w
+    if lay["logo"] and LOGO_PATH.exists():
+        try:
+            from openpyxl.drawing.image import Image as XlImage
+            img = XlImage(str(LOGO_PATH))
+            img.height, img.width = 54, round(54 * img.width / img.height)
+            ws.add_image(img, "A1")
+        except Exception:
+            pass  # no Pillow: the title still says what the sheet is
+    for r in range(1, len(lay["rows"]) + 1):
+        ws.row_dimensions[r].height = 19
+    ws.page_setup.orientation = "landscape"  # prints one page wide, like the record sheets
+    ws.page_setup.fitToWidth, ws.page_setup.fitToHeight = 1, 0
+    ws.sheet_properties.pageSetUpPr.fitToPage = True
     buf = io.BytesIO()
     wb.save(buf)
     name = f"{'WGA_Batch' if kind == 'wga' else 'Seq_Run'}_{re.sub(r'[^A-Za-z0-9]+', '_', b['meta']['batchNo'])}.xlsx"
@@ -243,7 +297,7 @@ def xlsx(b: dict) -> tuple[bytes, str]:
 # ---- Results uploaded back: the downloaded block, filled in at the bench ----
 # Sample columns the bench fills in, per kind; a blank cell in the file leaves the saved value alone.
 RESULT_KEYS = {"wga": ("dnaConc", "purified", "index", "sampleType"),
-               "seq": ("dnaConc", "volume", "pool", "index", "i7", "i5", "remarks", "sampleType")}
+               "seq": ("dnaConc", "volume", "pool", "index", "i7", "i5", "remarks")}
 
 
 def _txt(v, dotted=False) -> str:
@@ -306,14 +360,13 @@ def read_results(data: bytes) -> dict:
 
     meta = {k: right_of(label) for k, label in META[kind]}
     kit = {}
-    if kind == "wga":
-        for r, row in labels.items():
-            low = [x.lower() for x in row]
-            if "kit / reagent" in low and "lot no." in low and r + 1 < len(rows):
-                for k, label in KIT:
-                    if label.lower() in low:
-                        kit[k] = _txt(rows[r + 1][low.index(label.lower())], dotted=(k == "expiry"))
-                break
+    for r, row in labels.items():
+        low = [x.lower() for x in row]
+        if "kit / reagent" in low and "lot no." in low and r + 1 < len(rows):
+            for k, label in KIT:
+                if label.lower() in low:
+                    kit[k] = _txt(rows[r + 1][low.index(label.lower())], dotted=(k == "expiry"))
+            break
     head_r = next((r for r, row in labels.items() if "embryo tag" in [x.lower() for x in row]), None)
     if head_r is None:
         raise ValueError("Couldn't find the Sample Details header row (with 'Embryo Tag') in the file")

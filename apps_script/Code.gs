@@ -572,11 +572,23 @@ function batchBlockSave_(body) {
   (body.boxes || []).forEach(function (b) {
     tab.getRange(start + b[0] - 1, 1, b[1] - b[0] + 1, b[2]).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
   });
-  (body.center || []).forEach(function (c) { tab.getRange(start + c[0] - 1, c[1]).setHorizontalAlignment('center'); });
-  (body.bold || []).forEach(function (c) { tab.getRange(start + c[0] - 1, c[1]).setFontWeight('bold').setFontSize(12); });
-  (body.bands || []).forEach(function (r) {
-    tab.getRange(start + r - 1, 1, 1, body.span || width).setBackground('#cfe2f3').setFontWeight('bold').setFontSize(13).setHorizontalAlignment('center');
+  // Styled ranges: section bands (blue), the title and sample header (peach), labels (bold), centred cells.
+  (body.styles || []).forEach(function (st) {
+    var rg = tab.getRange(start + st.r1 - 1, st.c1, st.r2 - st.r1 + 1, st.c2 - st.c1 + 1);
+    if (st.bg) rg.setBackground('#' + st.bg);
+    if (st.bold) rg.setFontWeight('bold');
+    if (st.size) rg.setFontSize(st.size);
+    if (st.center) rg.setHorizontalAlignment('center');
   });
+  // The Anderson logo in the sequencing record's top-left cell (sent as base64 by the server).
+  if (body.logo && body.logoB64) {
+    try {
+      var img = SpreadsheetApp.newCellImage().setSourceUrl('data:image/png;base64,' + body.logoB64).build();
+      tab.getRange(start + body.logo[0] - 1, body.logo[1]).setValue(img);
+    } catch (e) {
+      tab.getRange(start + body.logo[0] - 1, body.logo[1]).setValue('ANDERSON DIAGNOSTICS & LABS').setFontWeight('bold').setHorizontalAlignment('center');
+    }
+  }
   if (!old) (body.widths || []).forEach(function (w, i) { if (tab.getColumnWidth(i + 1) < w * 7) tab.setColumnWidth(i + 1, w * 7); });
   tab.getRange(start + ':' + start).addDeveloperMetadata(BATCH_MD_KEY, JSON.stringify({ id: String(body.id), rows: rows.length }));
   return { ok: true, row: start };
