@@ -2553,3 +2553,7 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .tatx-chart{margin-top:14px;overflow-x:auto}
 .tat-line-svg{display:block;min-width:460px}
 @media(max-width:620px){.tatx-verdict{gap:18px}.tatx-big strong{font-size:34px}}
+/* Overview Patients / Embryos toggle: the picked side is filled teal so it stands out on the white page */
+#overviewUnitToggle{background:#e9f1ef;border-color:#d3e3df}
+#overviewUnitToggle .prep-seg{color:#4f6369}
+#overviewUnitToggle .prep-seg.active{background:#0a7180!important;color:#fff!important;box-shadow:0 1px 3px rgba(10,113,128,.3)}
