@@ -262,6 +262,7 @@ function doPost(e) {
     if (body.action === 'editsRevert') return jsonOutput_(editsRevert_(body));
     if (body.action === 'newSample') return jsonOutput_(newSampleAppend_(body));
     if (body.action === 'batchSave') return jsonOutput_(batchSave_(body));
+    if (body.action === 'batchBlockSave') return jsonOutput_(batchBlockSave_(body));
     if (body.action === 'batchDelete') return jsonOutput_(batchDelete_(body));
     return jsonOutput_({ error: 'Unknown action' });
   } catch (err) {
@@ -513,5 +514,70 @@ function batchSave_(body) {
 function batchDelete_(body) {
   var tab = batchTab_(body.tab), rows = batchIdRows_(tab, body.id);
   for (var i = rows.length - 1; i >= 0; i--) tab.deleteRow(rows[i]);
-  return { ok: true, removed: rows.length };
+  return { ok: true, removed: rows.length + batchBlockRemove_(tab, body.id) };
+}
+
+// ---- Batch blocks: each batch written like the live batch record sheets (Batch identification, Kit / reagent,
+// QC check, Sample details). The block's first row carries developer metadata {id, rows}, so saving the
+// batch again (results uploaded) replaces its block in place of adding a second one.
+var BATCH_MD_KEY = 'emBatchBlock';
+
+function batchBlockFind_(tab, id) {
+  var found = tab.createDeveloperMetadataFinder().withKey(BATCH_MD_KEY).find();
+  for (var i = 0; i < found.length; i++) {
+    var info = {};
+    try { info = JSON.parse(found[i].getValue()); } catch (e) {}
+    if (String(info.id) === String(id)) return { md: found[i], row: found[i].getLocation().getRow().getRow(), rows: info.rows || 1 };
+  }
+  return null;
+}
+
+// Removes the batch's block (and the blank spacer row after it); returns the rows removed.
+function batchBlockRemove_(tab, id) {
+  var hit = batchBlockFind_(tab, id);
+  if (!hit) return 0;
+  var n = hit.rows, after = hit.row + n;
+  if (after <= tab.getMaxRows() && tab.getRange(after, 1, 1, Math.max(tab.getLastColumn(), 1)).isBlank()) n++;
+  var range = tab.getRange(hit.row, 1, n, tab.getMaxColumns());
+  range.breakApart();
+  hit.md.remove();
+  if (n >= tab.getMaxRows()) { tab.insertRowsAfter(tab.getMaxRows(), 1); }
+  tab.deleteRows(hit.row, n);
+  return n;
+}
+
+function batchBlockSave_(body) {
+  var tab = batchTab_(body.tab), rows = body.rows || [];
+  if (!rows.length) return { ok: true };
+  // Old flat rows of this batch (one row per sample) go; a tab left with only their header row is emptied.
+  var flat = batchIdRows_(tab, body.id);
+  for (var i = flat.length - 1; i >= 0; i--) tab.deleteRow(flat[i]);
+  if (tab.getLastRow() === 1 &&
+      tab.getRange(1, 1, 1, tab.getLastColumn()).getValues()[0].map(function (h) { return String(h).trim().toLowerCase(); }).indexOf('batch id') >= 0) {
+    tab.clear();
+  }
+  // Replace the batch's block where it was; a new batch goes below the last one, after a blank row.
+  var old = batchBlockFind_(tab, body.id), start = 0;
+  if (old) {
+    batchBlockRemove_(tab, body.id);
+    if (old.row <= tab.getLastRow()) { start = old.row; tab.insertRowsBefore(start, rows.length + 1); }
+  }
+  if (!start) start = tab.getLastRow() === 0 ? 1 : tab.getLastRow() + 2;
+  var width = rows[0].length;
+  if (tab.getMaxRows() < start + rows.length) tab.insertRowsAfter(tab.getMaxRows(), start + rows.length - tab.getMaxRows());
+  if (tab.getMaxColumns() < width) tab.insertColumnsAfter(tab.getMaxColumns(), width - tab.getMaxColumns());
+  var block = tab.getRange(start, 1, rows.length, width);
+  block.clear().setNumberFormat('@').setValues(rows).setFontSize(11).setVerticalAlignment('middle').setWrap(true);
+  (body.merges || []).forEach(function (m) { tab.getRange(start + m[0] - 1, m[1], m[2] - m[0] + 1, m[3] - m[1] + 1).merge(); });
+  (body.boxes || []).forEach(function (b) {
+    tab.getRange(start + b[0] - 1, 1, b[1] - b[0] + 1, b[2]).setBorder(true, true, true, true, true, true, '#000000', SpreadsheetApp.BorderStyle.SOLID);
+  });
+  (body.center || []).forEach(function (c) { tab.getRange(start + c[0] - 1, c[1]).setHorizontalAlignment('center'); });
+  (body.bold || []).forEach(function (c) { tab.getRange(start + c[0] - 1, c[1]).setFontWeight('bold').setFontSize(12); });
+  (body.bands || []).forEach(function (r) {
+    tab.getRange(start + r - 1, 1, 1, body.span || width).setBackground('#cfe2f3').setFontWeight('bold').setFontSize(13).setHorizontalAlignment('center');
+  });
+  if (!old) (body.widths || []).forEach(function (w, i) { if (tab.getColumnWidth(i + 1) < w * 7) tab.setColumnWidth(i + 1, w * 7); });
+  tab.getRange(start + ':' + start).addDeveloperMetadata(BATCH_MD_KEY, JSON.stringify({ id: String(body.id), rows: rows.length }));
+  return { ok: true, row: start };
 }

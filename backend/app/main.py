@@ -103,7 +103,7 @@ _ROLE_RULES = {
     "member": [
         ("GET", r"/api/(store/.+|cases|cases/[^/]+/images|images|case-runs|dashboard|cell-edits|edits-sheet|result-file-months|sync-sheet/status)"),
         ("GET", r"/uploads/.+"), ("POST", r"/api/sync-sheet"), ("POST", r"/api/cases/[^/]+/images"),
-        ("GET", r"/api/batches(/[^/]+/xlsx)?"), ("POST", r"/api/batches"), ("DELETE", r"/api/batches/[^/]+"),
+        ("GET", r"/api/batches(/[^/]+/xlsx)?"), ("POST", r"/api/batches(/results)?"), ("DELETE", r"/api/batches/[^/]+"),
     ],
     # Coordinator: read-only home page (same data the member role can read).
     "coordinator": [
@@ -512,6 +512,38 @@ def delete_batch(batch_id: str, request: Request, db: Session = Depends(get_db))
         raise HTTPException(404, "Batch not found")
     log_activity(db, "batch_delete", f"{'WGA batch' if hit['kind'] == 'wga' else 'Seq run'} {hit['meta']['batchNo']}", request=request)
     return {"ok": True}
+
+@app.post("/api/batches/results")
+async def post_batch_results(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """The downloaded batch file, filled in at the bench. Its values go on the batch (and its block in the edits
+    sheet is re-written); the WGA concentrations also go on the embryos as edits, so the dashboard and the
+    edits sheet's embryo rows show them like a value typed into the registry."""
+    user = _require_lab_user(request)
+    name = user.get("username") or "Unknown"
+    data = await file.read(10 * 1024 * 1024 + 1)
+    if len(data) > 10 * 1024 * 1024:
+        raise HTTPException(413, "File is too large (max 10 MB)")
+    try:
+        out = batches.apply_results(data, name)
+    except ValueError as ex:
+        raise HTTPException(400, str(ex))
+    b = out["batch"]
+    kv = db.get(KVStore, "embryomatrix-imported-cases")
+    for s in out["changed"]:
+        sid = s.get("editSid") or s.get("sampleId") or " ".join(x for x in (s.get("patient"), s.get("received")) if x)
+        tag = s.get("editTag") or re.sub(r"[^A-Za-z0-9]", "", s.get("embryo", "")).upper()
+        for col, k in (("dna conc unpurified", "dnaConc"), ("dna conc purified", "purified")):
+            if not s.get(k):
+                continue
+            entry = cell_edits.save_edit(sample_id=sid, embryo=tag, column=col, value=s[k], user=name)
+            if entry["oldValue"] == entry["value"]:
+                continue
+            row = edits_sheet.full_row(kv.value if kv else [], sid, tag, _embryo_edits(sid, tag))
+            edits_sheet.push_edit(entry, row)
+    noun = "WGA batch" if b["kind"] == "wga" else "Seq run"
+    log_activity(db, "batch_results", f"{noun} {b['meta']['batchNo']} · results for {out['matched']} sample(s)"
+                 + (f" · {len(out['unmatched'])} not matched" if out["unmatched"] else ""), request=request)
+    return {"batch": b, "matched": out["matched"], "changed": len(out["changed"]), "unmatched": out["unmatched"]}
 
 @app.get("/api/batches/{batch_id}/xlsx")
 def batch_xlsx(batch_id: str, request: Request):
