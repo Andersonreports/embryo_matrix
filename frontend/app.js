@@ -1748,7 +1748,10 @@ async function handleResultAttach(files,opts={}){
  try{const r=await fetch('/api/upload-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:{files:entries.map(e=>e.file.name),matched:matchedRows,at:mergedAt}})});if(r.ok)uploadLogCache=(await r.json()).value||uploadLogCache}catch(err){}
  await setupCases();await loadResultFiles(updated);renderResultFiles();
  const embryos=entries.reduce((n,e)=>n+e.keys.length,0);
- parsed.filter(p=>p.hasDetails).forEach(p=>listHtml(p.file.name,'nodetail',p.missing));
+ // The file's Details tab is a month-wide registry snapshot, not a manifest of who this run should report on - most
+ // of its names are unrelated to this run and never had a result coming. Listing every one of them as "needing a
+ // look" is noise that reads as a mistake when there isn't one, so it is no longer added to this report. (The
+ // Upload check page under Run reports is the right place to see genuinely overdue results, month by month.)
  renderUploadReport(status,`${entries.length} file(s) uploaded · results added for ${embryos} embryo(s) across ${matchedRows} sample row(s).`+skippedNote,report);
  toast(`Results added for ${embryos} embryo(s)`);
 }
