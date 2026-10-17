@@ -49,7 +49,6 @@ function render(){
  const rows=all.filter(r=>(!testF||r.test===testF)&&(!needle||[r.patient,r.embryo,r.sampleId,r.test].join(' ').toLowerCase().includes(needle)));
  const keys=new Set(all.map(r=>r.key));picked.forEach(k=>{if(!keys.has(k))picked.delete(k)});
  const groups=[];rows.forEach(r=>{const g=groups[groups.length-1];if(g&&g.patient===r.patient)g.rows.push(r);else groups.push({patient:r.patient,rows:[r]})});
- const K=KIND[kind],mine=list.filter(b=>b.kind===kind).slice().reverse();
  root.innerHTML=`<div class="bx">
   <div class="bx-top"><div class="prep-segments bx-kind" role="tablist">${Object.entries(KIND).map(([k,v])=>`<button type="button" class="prep-seg${k===kind?' active':''}" data-kind="${k}" role="tab" aria-selected="${k===kind}">${v.label}</button>`).join('')}</div>
    <div class="search-wrap bx-search"><span>⌕</span><input id="bxSearch" placeholder="Search patient, embryo or sample ID…" value="${esc(q)}"></div>
@@ -57,8 +56,6 @@ function render(){
   <div class="bx-bar"><div><strong>${all.length}</strong> embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${rows.length!==all.length?` · ${rows.length} shown`:''}</div>
    <div class="bx-bar-act"><span class="bx-count">${picked.size} selected</span><button type="button" class="secondary compact" id="bxClear"${picked.size?'':' disabled'}>Clear</button><button type="button" class="primary" id="bxMake"${picked.size?'':' disabled'}>Create ${kind==='wga'?'WGA batch':'sequencing run'}</button></div></div>
   <div class="bx-table-wrap" id="bxTable">${groups.length?`<table class="prep-table bx-table"><thead><tr><th class="bx-ck"><input type="checkbox" id="bxAll" aria-label="Select all shown"${rows.length&&rows.every(r=>picked.has(r.key))?' checked':''}></th><th>Patient</th><th>Embryo</th><th>Sample ID</th><th>Test</th><th>Received</th><th>Biopsy</th>${kind==='seq'?'<th>WGA</th>':''}</tr></thead><tbody>${groups.map(g=>{const on=g.rows.every(r=>picked.has(r.key));return g.rows.map((r,i)=>`<tr class="${picked.has(r.key)?'on':''}${i===0?' bx-first':''}" data-key="${esc(r.key)}"><td class="bx-ck"><input type="checkbox"${picked.has(r.key)?' checked':''} aria-label="Select ${esc(r.patient)} ${esc(r.embryo)}"></td>${i===0?`<td class="strong bx-pat" rowspan="${g.rows.length}"><label><input type="checkbox" class="bx-pck" data-patient="${esc(g.patient)}"${on?' checked':''}> ${esc(g.patient)}</label><small>${g.rows.length} embryo${g.rows.length>1?'s':''}</small></td>`:''}<td class="mono">${esc(r.embryo)}</td><td class="mono">${esc(r.sampleId||'—')}</td><td>${esc(r.test||'—')}</td><td class="muted">${esc(r.received)}</td><td class="muted">${esc(r.biopsy||'—')}</td>${kind==='seq'?`<td>${r.wga?`<span class="bx-wga ok">${esc(r.wga)}</span>`:'<span class="bx-wga">Not yet</span>'}</td>`:''}</tr>`).join('')}).join('')}</tbody></table>`:`<div class="chart-empty">No embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${needle||testF?' match these filters':''}.</div>`}</div>
-  <h3 class="bx-h">${K.plural} made here</h3>
-  <div class="bx-made">${mine.length?mine.map(b=>`<div class="bx-card"><div><strong>${esc(K.noun)} ${esc(b.meta.batchNo)}</strong><small>${esc(b.meta.date||'')} · ${b.samples.length} sample${b.samples.length>1?'s':''} · ${esc(b.createdBy)} · ${esc(b.createdAt)}</small></div><span class="bx-sent ${b.sent?'ok':''}" title="${esc(b.error||'')}">${b.sent?'In edits sheet':'Sending to edits sheet…'}</span><a class="secondary compact" href="/api/batches/${encodeURIComponent(b.id)}/xlsx" download>Download</a><button type="button" class="text-button bx-del" data-id="${esc(b.id)}">Delete</button></div>`).join(''):`<p class="muted">None yet - pick embryos above and create one. Each can be downloaded as an Excel block in the batch sheet's layout.</p>`}</div>
  </div>`;
  root._rows=rows;
  fitTableHeight($('#bxTable'))}
@@ -98,9 +95,9 @@ function onClick(e){
  if(t.id==='bxMake'){openCreate();return}
  if(t.id==='bxAll'){(root._rows||[]).forEach(r=>t.checked?picked.add(r.key):picked.delete(r.key));render();return}
  if(t.classList.contains('bx-pck')){(root._rows||[]).filter(r=>r.patient===t.dataset.patient).forEach(r=>t.checked?picked.add(r.key):picked.delete(r.key));render();return}
- const del=t.closest('.bx-del');if(del){const b=list.find(x=>x.id===del.dataset.id);if(b&&confirm(`Delete ${KIND[b.kind].noun} ${b.meta.batchNo}? Its embryos go back to the pending list and its rows leave the edits sheet. The live batch sheet is not touched.`))fetch(`/api/batches/${encodeURIComponent(b.id)}`,{method:'DELETE'}).then(r=>{if(!r.ok)throw 0;toast('Batch deleted');return load()}).then(render).catch(()=>toast('Could not delete'));return}
  const tr=t.closest('tbody tr[data-key]');if(tr&&!t.closest('a,button,label')){const k=tr.dataset.key;if(t.type!=='checkbox'){picked.has(k)?picked.delete(k):picked.add(k)}else{t.checked?picked.add(k):picked.delete(k)}render()}}
 
+window.addEventListener('resize',()=>fitTableHeight($('#bxTable')));
 window.renderBatchCreationView=async function(container){
  root=container;root.innerHTML='<div class="chart-empty">Loading…</div>';
  if(!container._bxWired){container._bxWired=true;container.addEventListener('click',onClick);
