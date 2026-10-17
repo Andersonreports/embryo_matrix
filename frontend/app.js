@@ -956,7 +956,12 @@ const unitWord=(cap=false)=>overviewUnit==='embryos'?(cap?'Embryos':'embryos'):(
 // One row per embryo of a record. How many comes from the sheet's "Number of embryos" column
 // (blank = 1); the embryo names only supply each row's own result, so extra names are dropped
 // and missing ones padded. The Embryos Tracked card counts the same rows, so both always agree.
-function embryoRowsOf(e){const n=Math.max(1,Math.round(embryoUnits(e))),split=expandEmbryoRow(e);if(split.length>=n)return split.slice(0,n);const pad=split.length===1?split[0]:e;return[...split,...Array.from({length:n-split.length},()=>pad)]}
+function embryoRowsOf(e){const nRaw=parseFloat(field(e,['number of embryos'])),n=Math.max(1,Math.round(embryoUnits(e))),split=expandEmbryoRow(e);
+ // The sheet says 1 embryo but the name lists several (e.g. "KJE-1,2,3,4"): the count is likely wrong, so keep every
+ // tag together on one row rather than dropping all but the first. Only for an explicit count of 1, not a blank one
+ // (a blank count on a real multi-embryo record must still split). Team may revisit - see the count-authority note.
+ if(nRaw===1&&split.length>1)return[e];
+ if(split.length>=n)return split.slice(0,n);const pad=split.length===1?split[0]:e;return[...split,...Array.from({length:n-split.length},()=>pad)]}
 function overviewRows(){const rows=allEmbryos();return overviewUnit==='embryos'?rows.flatMap(embryoRowsOf):rows}
 function syncOverviewUnitUi(){document.querySelectorAll('#overviewUnitToggle [data-unit]').forEach(b=>{const on=b.dataset.unit===overviewUnit;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on))});document.querySelectorAll('[data-unit-text]').forEach(el=>{el.textContent=el.dataset.unitText.replace('{Unit}',unitWord(true)).replace('{unit}',unitWord())});document.querySelectorAll('.kpi-unit').forEach(el=>{const k=el.dataset.k;el.textContent=k==='cap'?unitWord(true):k==='sing'?unitWord(true).replace(/s$/,''):unitWord()});const kl=$('#kpiUnitLabel');if(kl)kl.textContent=unitWord(true)}
 function setOverviewUnit(unit){overviewUnit=unit==='embryos'?'embryos':'samples';try{localStorage.setItem('em-overview-unit',overviewUnit)}catch{}renderAnalytics()}
