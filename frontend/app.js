@@ -1429,7 +1429,10 @@ function scoreTrackerRow(det,t){let sc=0;const sid=cleanId(field(det,['sample id
  if(sid&&tsid&&sid===tsid)sc+=4;
  const box=normCol(field(det,['box number'])),tbox=normCol(field(t,['box number']));if(box&&tbox&&box===tbox&&box!=='NA')sc+=3;
  const dEmb=field(det,['embryo name','embryo details','embryo id']),tEmb=field(t,['embryo name','embryo id','embryo']);
- if(normCol(dEmb)&&normCol(dEmb)===normCol(tEmb))sc+=3;else{const a=new Set(expandEmbryoTags(dEmb));if(expandEmbryoTags(tEmb).some(x=>a.has(x)))sc+=1.5}
+ // Strong embryo match: the result's exact tag (suffix and all, e.g. KM1H) is one of this row's embryos. embryoNameParts
+ // keeps the (H)/(D) suffixes that tell repeat/sibling embryos apart; expandEmbryoTags drops them, so it is only the loose fallback.
+ const detId=cleanId(dEmb),tParts=embryoNameParts(tEmb,embryoUnits(t),Object.keys(t._embryoResults||{})).map(cleanId);
+ if(normCol(dEmb)&&normCol(dEmb)===normCol(tEmb))sc+=3;else if(detId&&tParts.includes(detId))sc+=3;else{const a=new Set(expandEmbryoTags(dEmb));if(expandEmbryoTags(tEmb).some(x=>a.has(x)))sc+=1.5}
  const ns=nameSim(field(det,['patient name','patient']),field(t,['patient name','patient']));sc+=ns>=3?3:ns>=2.5?2.5:ns>=2?2:ns>=1?1:0;
  if(daysMeet(field(det,['date sample received']),field(t,['date sample received'])))sc+=2;
  if(daysMeet(field(det,['date of biopsy']),field(t,['date of biopsy'])))sc+=1;
