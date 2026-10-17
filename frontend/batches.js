@@ -27,7 +27,7 @@ function placed(k){const m=new Map,add=(arr,lab)=>arr.forEach(b=>(b.samples||[])
  else{add(sheetSeq,b=>`Run ${b.runId}`);add(list.filter(b=>b.kind==='seq'),b=>`Run ${b.meta.batchNo} (here)`)}
  return m}
 
-// One row per embryo still waiting for this step, newest received first, a patient's embryos together.
+// One row per embryo still waiting for this step, oldest received first, a patient's embryos together.
 function pending(k){
  const done=placed(k),inWga=placed('wga'),out=[];
  for(const e of allEmbryos()){
@@ -40,8 +40,8 @@ function pending(k){
    out.push({key:kk,patient,embryo:tag,caseRef:e._case,sampleId:field(e,['sample id']),test:canonicalTestName(field(e,['test name']))||e._case?.test||'',
     received,biopsy:field(e,['date of biopsy']),dnaConc:field(e,['wga conc unpurified','wga conc'])||'',
     wga:field(e,['wga done on'])||inWga.get(kk)||''})})}
- const first=new Map;out.forEach(r=>{const p=r.patient.toUpperCase(),d=dmyKey(r.received);if(!first.has(p)||first.get(p)<d)first.set(p,d)});
- return out.sort((a,b)=>first.get(b.patient.toUpperCase()).localeCompare(first.get(a.patient.toUpperCase()))||a.patient.localeCompare(b.patient)||a.embryo.localeCompare(b.embryo,undefined,{numeric:true}))}
+ const first=new Map;out.forEach(r=>{const p=r.patient.toUpperCase(),d=dmyKey(r.received);if(!first.has(p)||first.get(p)>d)first.set(p,d)});
+ return out.sort((a,b)=>first.get(a.patient.toUpperCase()).localeCompare(first.get(b.patient.toUpperCase()))||a.patient.localeCompare(b.patient)||a.embryo.localeCompare(b.embryo,undefined,{numeric:true}))}
 
 function render(){
  const all=pending(kind),tests=[...new Set(all.map(r=>r.test).filter(Boolean))].sort(),needle=q.trim().toLowerCase();
