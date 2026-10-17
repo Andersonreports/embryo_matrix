@@ -66,3 +66,8 @@
 .bx-range{display:inline-flex;align-items:center;gap:6px;font:600 12px "Inter";color:#6b7a73}
 .bx-range input{height:32px;padding:0 10px;border:1px solid #0a8a86;border-radius:999px;background:#fff;font:500 12.5px "Inter";color:#20302a}
 .bx-fclear{margin-left:auto;font-size:12.5px;font-weight:600;color:#a04f3d}
+/* Every header and value centred, both ways */
+.bx-table th,.bx-table td{text-align:center!important;vertical-align:middle!important}
+.bx-table .bx-pat label{justify-content:center}
+.bx-table .bx-pat small{margin:3px 0 0;text-align:center}
+.bx-table .bx-client{max-width:none}
