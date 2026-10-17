@@ -76,3 +76,12 @@
  body.sidebar-nav #homeView .home-toolbar{display:none!important}
  body.sidebar-nav #homeView .home-period{position:static;height:auto;margin:0 0 8px!important}
 }
+/* The old top-bar rules in styles.css size .nav-item with !important (and wrap icons in a
+   30px box), which beat the rail sizes above - these win back for main and sub items. */
+body.sidebar-nav .topbar .topnav .nav-item{padding:5px 12px!important;font-size:12.5px!important;gap:8px!important;min-height:0;line-height:1.25}
+body.sidebar-nav .topbar .topnav .nav-item span:has(>.ico){width:22px;height:22px;border-radius:7px}
+body.sidebar-nav .topbar .topnav .nav-item .ico{width:19px;height:19px}
+body.sidebar-nav .topbar .topnav .nav-subitem{padding:3px 12px!important;font-size:11.5px!important;gap:7px!important}
+body.sidebar-nav .topbar .topnav .nav-subitem span:has(>.ico){width:16px;height:16px}
+body.sidebar-nav .topbar .topnav .nav-subitem .ico{width:13px;height:13px}
+body.sidebar-nav .topbar .topnav .nav-item b{font-size:10.5px;padding:1px 6px}
