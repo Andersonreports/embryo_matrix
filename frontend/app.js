@@ -1338,14 +1338,31 @@ function fieldKey(r,names){for(const n of names){const k=Object.keys(r).find(x=>
 function withEmbryoResult(r,embryo){if(!r._embryoResults)return r;const own=r._embryoResults[cleanId(embryo)];if(own){const{_fileId,...vals}=own,out={...r,...vals};if('karyotype mwf' in vals||'karyotype normal wf' in vals)out['karyotype']=vals['karyotype mwf']||vals['karyotype normal wf']||'';return out}
  // No result of its own yet: show only what the sample sheet had, not another embryo's result.
  const out={...r},orig=r._resultOriginals||{};RESULT_FIELDS.forEach(f=>{if(orig[f]!=null)out[f]=orig[f];else if(f in orig)delete out[f]});return out}
-// One reading of an embryo name: "DM-1.1,1.2" -> DM-1.1, DM-1.2 (biopsy 1, embryos 1-2); "SV-1.2.3" or "IS-9.16.6.13" use
-// dots between embryos -> SV-1, SV-2, SV-3. The dots are read as separators only when that gives the record's number of
-// embryos and the commas don't. Unlike expandEmbryoTags (every plausible tag, for matching result files), this lists
-// each embryo once, so counts and "missing result" lists stay right.
-function embryoNameParts(name,n){const clean=String(name||'').replace(/(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$/i,'').trim(),cut=clean.lastIndexOf('-'),prefix=cut>0?clean.slice(0,cut+1):'',list=cut>0?clean.slice(cut+1):clean;
- const commas=list.split(',').map(x=>x.trim()).filter(Boolean),dots=/^[\d\s.,]+$/.test(list)?list.split(/[.,]/).map(x=>x.trim()).filter(Boolean):[];
- const pick=n>1&&dots.length===n&&commas.length!==n?dots:commas;return pick.length>=2?pick.map(x=>prefix+x):clean?[clean]:[]}
-function expandEmbryoRow(r){const key=fieldKey(r,['sample name','embryo name','embryo']);if(!key)return[r];const parts=embryoNameParts(r[key],embryoUnits(r));
+// One reading of an embryo name, each embryo listed once (unlike expandEmbryoTags, which lists every plausible tag for
+// matching result files), so counts and "missing result" lists stay right. Candidate readings:
+//  1. one tag before the last hyphen, commas between embryos: "DM-1.1,1.2" -> DM-1.1, DM-1.2 (biopsy 1, embryos 1-2),
+//     "IS-9,16,6,13", "DM-A,B,C", ".MR-1,2", "SN-1,SN2" (an item already carrying the tag's letters keeps its own);
+//  2. every comma item its own tag, a bare number taking the letters of the item before it: "JA-1, JA-2", "VCB,VCC",
+//     "KM-1(H), KM-2(D)", "PG,PG-1,2" -> PG, PG-1, PG-2, "NV1,2" -> NV1, NV2, "AR2.1,2.2" -> AR2.1, AR2.2;
+//  3. the tag's letters only, when its own digits look like a slip: "MS0-1,2" -> MS1, MS2 (only wins when uploaded
+//     results carry those names);
+//  4. dots between embryos: "SV-1.2.3" -> SV-1, SV-2, SV-3, "IS-9.16.6.13".
+// A reading that repeats a tag is dropped. The rest are ranked by: every tag has an uploaded result (known = result
+// keys), gives the record's number of embryos (n), most tags with results, then the order above.
+// tests/embryo-names.test.js pins the real sheet spellings - run `node --test tests/*.test.js` after any change here.
+function embryoNameParts(name,n,known){const clean=String(name||'').replace(/(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$/i,'').trim();if(!clean)return[];
+ const items=s=>s.split(',').map(x=>x.trim()).filter(Boolean),letters=x=>String(x).replace(/\d.*$/,'').replace(/[^A-Za-z]/g,'').toUpperCase(),
+  cut=clean.lastIndexOf('-'),prefix=cut>0?clean.slice(0,cut+1):'',list=cut>0?clean.slice(cut+1):clean,cands=[];
+ if(prefix){const pl=letters(prefix);cands.push(items(list).map(x=>pl&&letters(x).startsWith(pl)?x:prefix+x))}
+ let lead='';cands.push(items(clean).map(x=>{if(!/^[^0-9]*[A-Za-z]/.test(x))return lead+x;const h=x.lastIndexOf('-');lead=h>0?x.slice(0,h+1):x.replace(/\d.*$/,'');return x}));
+ if(prefix&&/\d/.test(prefix)&&/^[\d\s,]+$/.test(list)){const bare=prefix.replace(/[^A-Za-z]/g,'');if(bare)cands.push(items(list).map(x=>bare+x))}
+ if(/^[\d\s.,]+$/.test(list)&&list.includes('.'))cands.push(list.split(/[.,]/).map(x=>x.trim()).filter(Boolean).map(x=>prefix+x));
+ const have=new Set([...(known||[])].map(cleanId)),hits=c=>c.filter(t=>have.has(cleanId(t))).length,
+  score=(c,i)=>[c.length&&hits(c)===c.length?1:0,c.length===n?1:0,hits(c),-i],
+  ok=cands.map((c,i)=>({c,s:score(c,i)})).filter(({c})=>c.length&&new Set(c.map(cleanId)).size===c.length);
+ const pick=ok.sort((a,b)=>{for(let i=0;i<a.s.length;i++)if(a.s[i]!==b.s[i])return b.s[i]-a.s[i];return 0})[0]?.c||[];
+ return pick.length>=2?pick:[clean]}
+function expandEmbryoRow(r){const key=fieldKey(r,['sample name','embryo name','embryo']);if(!key)return[r];const parts=embryoNameParts(r[key],embryoUnits(r),Object.keys(r._embryoResults||{}));
  if(parts.length<2){const clean=parts[0]||'';return[withEmbryoResult(r,clean)]}
  return parts.map(t=>withEmbryoResult({...r,[key]:t},t))}
 function resolvedEmbryos(c){if(!c.embryos?.length)return[];const idxMap=new Map,out=[];for(const r of c.embryos)for(const er of expandEmbryoRow(r)){const id=resultIdentity(er),ek=`${cleanId(id.patient)}|${cleanId(id.embryo)}`;if(idxMap.has(ek)){const existing=out[idxMap.get(ek)];for(const[k,v]of Object.entries(er))if(v!=null&&String(v).trim()!==''&&(existing[k]==null||String(existing[k]).trim()===''))existing[k]=v;if(!existing._outcome&&er._outcome)existing._outcome=er._outcome}else{idxMap.set(ek,out.length);out.push({...er})}}return out}
@@ -1954,7 +1971,7 @@ function uploadCheckData(){const by=new Map,runIdx=new Map;
  // The sequencing run this embryo was loaded in (from the Sequencing Batch Record, by patient + embryo, never by run number alone); the date tells repeats apart.
  const runOf=(patient,tag,seq)=>{let c=runIdx.get(`${nameKey(patient)}|${cleanId(tag)}`)||[];if(c.length>1&&seq){const sk=dayKeys(seq),same=c.filter(r=>[...dayKeys(r.runDate)].some(k=>sk.has(k)));c=same.length?same:c}return c.length===1?c[0]:null};
  allEmbryos().forEach(e=>{const tab=String(e._importSource||''),m=tabMonth(tab);if(!m||/not\s*reporting|pending/i.test(tab))return;
-  const tags=embryoNameParts(field(e,['embryo name','embryo id','embryo']),embryoUnits(e)).map(cleanId).filter(Boolean),list=tags.length?tags:Array.from({length:embryoUnits(e)},(_,i)=>`#${i+1}`),due=progressStage(e)>=3,g=by.get(m)||{m,total:0,filled:0,missing:[],notDue:0};
+  const tags=embryoNameParts(field(e,['embryo name','embryo id','embryo']),embryoUnits(e),Object.keys(e._embryoResults||{})).map(cleanId).filter(Boolean),list=tags.length?tags:Array.from({length:embryoUnits(e)},(_,i)=>`#${i+1}`),due=progressStage(e)>=3,g=by.get(m)||{m,total:0,filled:0,missing:[],notDue:0};
   list.forEach(t=>{g.total++;const patient0=field(e,['patient name','patient'])||e._case?.patient||'',has=!!(e._embryoResults&&e._embryoResults[t])||(!e._embryoResults&&!!(field(e,['conclusion'])||field(e,['qc'])));if(has)g.filled++;else if(due){const run=runOf(patient0,t,field(e,['seq date']));g.missing.push({patient:patient0,embryo:t.startsWith('#')?'':t,client:e._case?.client||field(e,['center name','hospital clinic name']),test:field(e,['test name','test']),seq:field(e,['seq date']),run:run?`RUN ${run.runId}`:(runsOf(e)[0]?`RUN ${runsOf(e)[0]}`:''),sequencer:field(e,['seq platform'])||run?.platform||'',wgaBy:field(e,['wga done by']),embryologist:field(e,['embryologist name','embryologist'])})}else g.notDue++});by.set(m,g)});
  return[...by.values()].sort((a,b)=>b.m.localeCompare(a.m))}
 function drawRunReportsUpload(body,state){const data=uploadCheckData(),ex=$('#rrExport');

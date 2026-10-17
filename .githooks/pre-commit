@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Blocks a commit that breaks how embryo names are read (tests/). Enable once per clone:  git config core.hooksPath .githooks
+cd "$(git rev-parse --show-toplevel)" || exit 1
+command -v node >/dev/null || { echo "pre-commit: node not found, embryo-name tests skipped"; exit 0; }
+node --test tests/*.test.js >/tmp/embryo-tests.log 2>&1 || { grep -E "✖|expected|actual|^\s+[+-]" /tmp/embryo-tests.log | head -30; echo; echo "Commit stopped: embryo-name tests failed (node --test tests/*.test.js)."; exit 1; }

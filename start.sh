@@ -9,6 +9,13 @@ if [ ! -f ".venv/bin/python" ]; then
     ".venv/bin/python" -m pip install -q -r requirements.txt
 fi
 
+# Embryo names must split into the right embryos (tests/embryo-names.test.js); warn loudly if a change broke that.
+if command -v node >/dev/null 2>&1; then
+    if ! node --test ../tests/*.test.js >/dev/null 2>&1; then
+        echo "WARNING: embryo-name tests FAILED - embryo counts / result matching may be wrong. Run: node --test tests/*.test.js"
+    fi
+fi
+
 PORT=8001
 echo "Starting Embryo Matrix on http://127.0.0.1:${PORT} (also reachable on your LAN IP)"
 LAN_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
