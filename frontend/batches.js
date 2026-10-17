@@ -12,6 +12,9 @@ const SKIP_PATIENT=/^(buffer|ntc|nc|blank|control|neg|pos)\b/i;
 const key=(patient,tag)=>`${String(patient||'').toUpperCase().replace(/[^A-Z]/g,'')}|${cleanId(tag)}`;
 const dmy=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?`${m[3]}-${m[2]}-${m[1]}`:iso||''};
 const dmyKey=v=>{const m=/(\d{1,2})\D(\d{1,2})\D(\d{4})/.exec(v||'');return m?`${m[3]}${m[2].padStart(2,'0')}${m[1].padStart(2,'0')}`:'00000000'};
+// Kit expiry is written dd.mm.yyyy in the batch sheet; the date picker works in yyyy-mm-dd.
+const toIso=v=>{const m=/^(\d{1,2})\D(\d{1,2})\D(\d{2}|\d{4})$/.exec(String(v||'').trim());return m?`${m[3].length===2?'20'+m[3]:m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:''};
+const dotted=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?`${m[3]}.${m[2]}.${m[1]}`:iso||''};
 const today=()=>new Date().toLocaleDateString('en-CA');
 let root=null,kind='wga',list=[],sheetWga=[],sheetSeq=[],picked=new Set,q='',fOpen=false,lastKey='',idxStart=1,sampleType='EMBRYO BIOPSY D-5';
 const idxLabel=n=>`V${String(n).padStart(3,'0')}`;
@@ -129,14 +132,14 @@ function openCreate(){
  d.innerHTML=`<div class="vu-dhead"><h3>Create ${kind==='wga'?'WGA batch':'sequencing run'}</h3><button type="button" class="secondary compact" data-close>Close</button></div><div class="vu-dbody">
   <p class="fu-note" style="margin-top:0">${sel.length} embryo${sel.length>1?'s':''} from ${new Set(sel.map(r=>r.patient)).size} patient${new Set(sel.map(r=>r.patient)).size>1?'s':''}. It is saved here and in the edits sheet; download it to paste into the live batch sheet.</p>
   <h4 class="bx-sec">Batch identification</h4><div class="fu-grid">${f('batchNo',K.noLabel+' *',nextNo(kind))}${f('date',K.dateLabel,today(),'date')}${f('instrument',K.instLabel,K.instDefault)}${f('instrumentId','Instrument ID')}${kind==='seq'?f('seqType','Seq type')+f('operator','Operator'):''}</div>
-  ${kind==='wga'?`<h4 class="bx-sec">Kit / reagent</h4><div class="fu-grid">${f('k_name','Kit / reagent',kit.name||'')}${f('k_manufacturer','Manufacturer',kit.manufacturer||'')}${f('k_lot','Lot no.',kit.lot||'')}${f('k_expiry','Expiry date',kit.expiry||'')}${f('k_qty','Qty used',String(sel.length),'number',' min="0"')}${f('k_preparedBy','Prepared by',kit.preparedBy||'')}${f('k_checkedBy','Checked by',kit.checkedBy||'')}</div>`:''}
+  ${kind==='wga'?`<h4 class="bx-sec">Kit / reagent</h4><div class="fu-grid">${f('k_name','Kit / reagent',kit.name||'')}${f('k_manufacturer','Manufacturer',kit.manufacturer||'')}${f('k_lot','Lot no.',kit.lot||'')}${f('k_expiry','Expiry date',toIso(kit.expiry),'date')}${f('k_qty','Qty used',String(sel.length),'number',' min="0"')}${f('k_preparedBy','Prepared by',kit.preparedBy||'')}${f('k_checkedBy','Checked by',kit.checkedBy||'')}</div>`:''}
   <h4 class="bx-sec">Samples</h4><div class="fu-grid">${f('sampleType','Sample type',sampleType)}${kind==='wga'?f('indexStart','First barcode number (V…)',String(idxStart),'number',' min="1"'):f('indexStart','First index number (V…, blank = leave empty)','','number',' min="1"')}</div>
   <div class="fu-actions"><button type="button" class="primary" id="bxGo">Create and download</button></div><p class="fu-note" id="bxErr" role="alert" style="color:#b3261e;font-weight:600;margin:12px 0 0"></p></div>`;
  d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-close]'))d.close()});
  d.querySelector('#bxGo').onclick=async ev=>{const b=ev.currentTarget,v=n=>d.querySelector(`[name="${n}"]`)?.value.trim()||'',err=d.querySelector('#bxErr');
   const start=parseInt(v('indexStart'),10),meta={batchNo:v('batchNo'),date:dmy(v('date')),instrument:v('instrument'),instrumentId:v('instrumentId'),seqType:v('seqType'),operator:v('operator')};
   if(!meta.batchNo){err.textContent=K.noLabel+' is required';return}
-  const kitOut=kind==='wga'?{process:'WGA',name:v('k_name'),manufacturer:v('k_manufacturer'),lot:v('k_lot'),expiry:v('k_expiry'),qty:v('k_qty'),preparedBy:v('k_preparedBy'),checkedBy:v('k_checkedBy')}:{};
+  const kitOut=kind==='wga'?{process:'WGA',name:v('k_name'),manufacturer:v('k_manufacturer'),lot:v('k_lot'),expiry:dotted(v('k_expiry')),qty:v('k_qty'),preparedBy:v('k_preparedBy'),checkedBy:v('k_checkedBy')}:{};
   const samples=sel.map((r,i)=>({key:r.key,patient:r.patient,embryo:r.embryo,sampleId:r.sampleId,test:r.test,biopsy:r.biopsy,received:r.received,sampleType:v('sampleType'),
    dnaConc:r.dnaConc,purified:kind==='wga'?r.purified:'',index:Number.isFinite(start)?idxLabel(start+i):''}));
   b.disabled=true;err.textContent='';
