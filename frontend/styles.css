@@ -2575,5 +2575,5 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .up-table th,.up-table td{white-space:nowrap}
 .up-table th:nth-child(2),.up-table td:nth-child(2),.up-table th:nth-child(4),.up-table td:nth-child(4){white-space:normal}
 /* Upload check: give Patient and Client room so most names fit on one line */
-.up-table th:nth-child(2),.up-table td:nth-child(2){min-width:150px}
-.up-table th:nth-child(4),.up-table td:nth-child(4){min-width:150px}
+.up-table th:nth-child(2),.up-table td:nth-child(2){min-width:170px}
+.up-table th:nth-child(4),.up-table td:nth-child(4){min-width:160px}

@@ -1348,7 +1348,8 @@ function withEmbryoResult(r,embryo){if(!r._embryoResults)return r;const own=r._e
 //     results carry those names);
 //  4. dots between embryos: "SV-1.2.3" -> SV-1, SV-2, SV-3, "IS-9.16.6.13".
 // A reading that repeats a tag is dropped. The rest are ranked by: every tag has an uploaded result (known = result
-// keys), gives the record's number of embryos (n), most tags with results, then the order above.
+// keys): first the reading whose tag count matches the record's Number of embryos (n), then every tag has a
+// result, then most tags with results, then the order above.
 // tests/embryo-names.test.js pins the real sheet spellings - run `node --test tests/*.test.js` after any change here.
 function embryoNameParts(name,n,known){const clean=String(name||'').replace(/(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$/i,'').trim();if(!clean)return[];
  const items=s=>s.split(',').map(x=>x.trim()).filter(Boolean),letters=x=>String(x).replace(/\d.*$/,'').replace(/[^A-Za-z]/g,'').toUpperCase(),
@@ -1358,7 +1359,7 @@ function embryoNameParts(name,n,known){const clean=String(name||'').replace(/(?:
  if(prefix&&/\d/.test(prefix)&&/^[\d\s,]+$/.test(list)){const bare=prefix.replace(/[^A-Za-z]/g,'');if(bare)cands.push(items(list).map(x=>bare+x))}
  if(/^[\d\s.,]+$/.test(list)&&list.includes('.'))cands.push(list.split(/[.,]/).map(x=>x.trim()).filter(Boolean).map(x=>prefix+x));
  const have=new Set([...(known||[])].map(cleanId)),hits=c=>c.filter(t=>have.has(cleanId(t))).length,
-  score=(c,i)=>[c.length&&hits(c)===c.length?1:0,c.length===n?1:0,hits(c),-i],
+  score=(c,i)=>[c.length===n?1:0,c.length&&hits(c)===c.length?1:0,hits(c),-i],
   ok=cands.map((c,i)=>({c,s:score(c,i)})).filter(({c})=>c.length&&new Set(c.map(cleanId)).size===c.length);
  const pick=ok.sort((a,b)=>{for(let i=0;i<a.s.length;i++)if(a.s[i]!==b.s[i])return b.s[i]-a.s[i];return 0})[0]?.c||[];
  return pick.length>=2?pick:[clean]}
