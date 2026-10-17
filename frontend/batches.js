@@ -78,17 +78,17 @@ function render(){
  const sel=all.filter(r=>picked.has(r.key)),selPatients=new Set(sel.map(r=>r.patient)).size,noWga=kind==='seq'?sel.filter(r=>!r.wga).length:0,
   selTests=Object.entries(sel.reduce((m,r)=>(m[r.test||'No test']=(m[r.test||'No test']||0)+1,m),{})).map(([t,n])=>`${t}: ${n}`).join(' · '),
   made=list.filter(b=>b.kind===kind).length;
- // Columns: the WGA tab follows the WGA batch sheet's Sample Details (S. No. and barcode fill in for the embryos
- // picked, in the order they'll be written), then a few columns that help choose.
+ // Columns: the WGA tab follows the WGA batch sheet's Sample Details (the barcode fills in for the embryos picked,
+ // in the order they'll be written; S. No. is only in the sheet), then a few columns that help choose.
  const selNo=new Map(sel.map((r,i)=>[r.key,i])),dash='<span class="muted">—</span>',td=(v,cls='')=>`<td class="${cls}">${v?esc(v):dash}</td>`;
- const C={sno:['S. No.',r=>`<td class="mono">${selNo.has(r.key)?selNo.get(r.key)+1:dash}</td>`],biopsy:['Biopsy Date',r=>td(r.biopsy,'muted')],received:['Received Date',r=>td(r.received,'muted')],
+ const C={biopsy:['Biopsy Date',r=>td(r.biopsy,'muted')],received:['Received Date',r=>td(r.received,'muted')],
   type:['Sample Type',r=>`<td class="bx-type">${esc(sampleType)}</td>`],patient:['Patient Name','patient'],embryo:['Embryo Tag',r=>td(r.embryo,'mono')],
   index:['Barcode / Index',r=>`<td class="mono">${selNo.has(r.key)?esc(idxLabel(idxStart+selNo.get(r.key))):dash}</td>`],
   dna:['DNA Conc. (ng/µL)',r=>td(r.dnaConc,'mono')],pur:['Purified WGA Conc. (ng/µL)',r=>td(r.purified,'mono')],
   sid:['Sample ID',r=>td(r.sampleId,'mono')],test:['Test',r=>td(r.test)],client:['Client',r=>`<td class="bx-client" title="${esc(r.client)}">${r.client?esc(r.client):dash}</td>`],
   wait:['Waiting',r=>`<td>${waitChip(waitDays(r.received))}</td>`],
   wga:['WGA',r=>`<td>${r.wga?`<span class="bx-wga ok">${esc(r.wga)}</span>`:'<span class="bx-wga">Not yet</span>'}</td>`]};
- const cols=(kind==='wga'?['sno','biopsy','received','type','patient','embryo','index','dna','pur','sid','test','client','wait']
+ const cols=(kind==='wga'?['biopsy','received','type','patient','embryo','index','dna','pur','sid','test','client','wait']
   :['patient','embryo','sid','test','client','received','wait','biopsy','wga']).map(k=>C[k]);
  const groups=[];rows.forEach(r=>{const g=groups[groups.length-1];if(g&&g.patient===r.patient)g.rows.push(r);else groups.push({patient:r.patient,rows:[r]})});
  root.innerHTML=`<div class="bx">
