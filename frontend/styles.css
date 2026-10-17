@@ -2562,3 +2562,5 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .rr-bar:has(#rrUpload.on):has(+ #rrBody .up-head) .rr-actions{position:absolute;right:0;top:6px;height:42px;display:flex;align-items:center}
 .rr-bar:has(#rrUpload.on) + #rrBody .up-head{padding-right:170px;flex-wrap:nowrap;min-height:42px}
 .rr-bar:has(#rrUpload.on) + #rrBody .up-head h3{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Upload check table: dates, embryo tags and run numbers never break across lines */
+.up-table th:nth-child(3),.up-table td:nth-child(3),.up-table th:nth-child(6),.up-table td:nth-child(6),.up-table th:nth-child(7),.up-table td:nth-child(7){white-space:nowrap}
