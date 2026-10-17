@@ -27,3 +27,11 @@
 .bx-dlg .bx-sec:first-of-type{margin-top:4px}
 @media(max-width:700px){.bx-bar{flex-direction:column;align-items:stretch}.bx-bar-act{justify-content:flex-end}}
 .bx-table td,.bx-table th{padding-left:12px;padding-right:12px}
+.bx-filters{margin:-2px 0 14px}
+.bx-filters .od-filter input{font:500 13px "Inter";text-transform:none;letter-spacing:0;color:#20302a;height:36px;padding:0 10px;border:1px solid #cfdcd8;border-radius:10px;background:#fff;width:100%}
+.bx-filters .od-filter input:focus,.bx-filters .od-filter select:focus{border-color:#0a8a86;outline:none}
+.bx-filters .od-filter select:disabled{opacity:.55;cursor:not-allowed}
+.bx-filters .bx-date{min-width:140px;flex:0 1 160px}
+#bxFltToggle{display:inline-flex;align-items:center;gap:6px}
+#bxFltToggle .filters-badge{min-width:18px;padding:0 5px;border-radius:9px;background:#e3ece9;color:#59645d;font-size:11px;text-align:center}
+#bxFltToggle .filters-badge.has-active{background:#0a7180;color:#fff}

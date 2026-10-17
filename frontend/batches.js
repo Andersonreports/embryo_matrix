@@ -13,7 +13,20 @@ const key=(patient,tag)=>`${String(patient||'').toUpperCase().replace(/[^A-Z]/g,
 const dmy=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?`${m[3]}-${m[2]}-${m[1]}`:iso||''};
 const dmyKey=v=>{const m=/(\d{1,2})\D(\d{1,2})\D(\d{4})/.exec(v||'');return m?`${m[3]}${m[2].padStart(2,'0')}${m[1].padStart(2,'0')}`:'00000000'};
 const today=()=>new Date().toLocaleDateString('en-CA');
-let root=null,kind='wga',list=[],sheetWga=[],sheetSeq=[],picked=new Set,q='',testF='';
+let root=null,kind='wga',list=[],sheetWga=[],sheetSeq=[],picked=new Set,q='',testF='',fOpen=true;
+// Filters under the search bar. Received is a date range; the rest are pick-lists built from the pending rows.
+const flt={from:'',to:'',client:'',embryologist:'',receivedBy:'',kit:'',wgaBy:'',platform:'',wgaState:''};
+const FLT={wga:[['client','Client'],['embryologist','Embryologist'],['receivedBy','Received by'],['kit','Kit']],
+ seq:[['client','Client'],['embryologist','Embryologist'],['kit','Kit'],['wgaBy','WGA done by'],['wgaState','WGA'],['platform','Sequencer']]};
+try{fOpen=localStorage.getItem('em-bx-filters')!=='closed'}catch{}
+const isoKey=iso=>(iso||'').replace(/-/g,'');
+const blankish=v=>!v||/^(not assigned|not recorded|na|n\/a|nil|—|-)$/i.test(String(v).trim())?'':String(v).trim();
+// The sheet spells the same kit or sequencer several ways (SINGLE SEQ / SINGLESEQ, GENOLABM / GenoLab-M):
+// group by letters and digits only and show the commonest spelling.
+function unifySpellings(rows,f){const ck=v=>v.toUpperCase().replace(/[^A-Z0-9]/g,''),n={};
+ rows.forEach(r=>{if(r[f])((n[ck(r[f])]=n[ck(r[f])]||{})[r[f]]=(n[ck(r[f])][r[f]]||0)+1)});
+ const best={};Object.entries(n).forEach(([k,v])=>best[k]=Object.entries(v).sort((a,b)=>b[1]-a[1])[0][0]);
+ rows.forEach(r=>{if(r[f])r[f]=best[ck(r[f])]})}
 
 async function load(){
  const [mine,w,s]=await Promise.all([fetch('/api/batches').then(r=>r.ok?r.json():[]).catch(()=>[]),
@@ -39,23 +52,36 @@ function pending(k){
   units.forEach((u,i)=>{const tag=dup?`${names[i]||'E'}#${i+1}`:names[i]||'',kk=key(patient,tag);if(!tag||done.has(kk))return;
    out.push({key:kk,patient,embryo:tag,caseRef:e._case,sampleId:field(e,['sample id']),test:canonicalTestName(field(e,['test name']))||e._case?.test||'',
     received,biopsy:field(e,['date of biopsy']),dnaConc:field(e,['wga conc unpurified','wga conc'])||'',
-    wga:field(e,['wga done on'])||inWga.get(kk)||''})})}
+    wga:field(e,['wga done on'])||inWga.get(kk)||'',
+    client:blankish(e._case?.client||field(e,['center name'])),embryologist:blankish(e._case?.embryologist||field(e,['embryologist name'])),
+    receivedBy:blankish(field(e,['received by'])),kit:blankish(field(e,['kit detail'])),wgaBy:blankish(field(e,['wga done by'])),platform:blankish(field(e,['seq platform']))})})}
+ ['client','embryologist','receivedBy','kit','wgaBy','platform'].forEach(f=>unifySpellings(out,f));
  const first=new Map;out.forEach(r=>{const p=r.patient.toUpperCase(),d=dmyKey(r.received);if(!first.has(p)||first.get(p)>d)first.set(p,d)});
  return out.sort((a,b)=>first.get(a.patient.toUpperCase()).localeCompare(first.get(b.patient.toUpperCase()))||a.patient.localeCompare(b.patient)||a.embryo.localeCompare(b.embryo,undefined,{numeric:true}))}
 
 function render(){
  const all=pending(kind),tests=[...new Set(all.map(r=>r.test).filter(Boolean))].sort(),needle=q.trim().toLowerCase();
  if(testF&&!tests.includes(testF))testF='';
- const rows=all.filter(r=>(!testF||r.test===testF)&&(!needle||[r.patient,r.embryo,r.sampleId,r.test].join(' ').toLowerCase().includes(needle)));
+ const defs=FLT[kind],val=(r,k)=>k==='wgaState'?(r.wga?'Done':'Not yet'):r[k],
+  optsOf=k=>k==='wgaState'?['Done','Not yet']:[...new Set(all.map(r=>r[k]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+ defs.forEach(([k])=>{if(flt[k]&&!optsOf(k).includes(flt[k]))flt[k]=''});
+ const nFlt=defs.filter(([k])=>flt[k]).length+(flt.from||flt.to?1:0),fromK=isoKey(flt.from),toK=isoKey(flt.to);
+ const rows=all.filter(r=>(!testF||r.test===testF)&&defs.every(([k])=>!flt[k]||val(r,k)===flt[k])&&(!fromK||dmyKey(r.received)>=fromK)&&(!toK||dmyKey(r.received)<=toK)&&(!needle||[r.patient,r.embryo,r.sampleId,r.test].join(' ').toLowerCase().includes(needle)));
  const keys=new Set(all.map(r=>r.key));picked.forEach(k=>{if(!keys.has(k))picked.delete(k)});
  const groups=[];rows.forEach(r=>{const g=groups[groups.length-1];if(g&&g.patient===r.patient)g.rows.push(r);else groups.push({patient:r.patient,rows:[r]})});
  root.innerHTML=`<div class="bx">
   <div class="bx-top"><div class="prep-segments bx-kind" role="tablist">${Object.entries(KIND).map(([k,v])=>`<button type="button" class="prep-seg${k===kind?' active':''}" data-kind="${k}" role="tab" aria-selected="${k===kind}">${v.label}</button>`).join('')}</div>
    <div class="search-wrap bx-search"><span>⌕</span><input id="bxSearch" placeholder="Search patient, embryo or sample ID…" value="${esc(q)}"></div>
-   <select id="bxTest" class="chart-filter" aria-label="Test"><option value="">All tests</option>${tests.map(t=>`<option${t===testF?' selected':''}>${esc(t)}</option>`).join('')}</select></div>
+   <select id="bxTest" class="chart-filter" aria-label="Test"><option value="">All tests</option>${tests.map(t=>`<option${t===testF?' selected':''}>${esc(t)}</option>`).join('')}</select>
+   <button type="button" class="secondary compact${fOpen?' active':''}" id="bxFltToggle" aria-expanded="${fOpen}">⚲ Filters <b class="filters-badge${nFlt?' has-active':''}">${nFlt}</b></button></div>
+  <div class="od-filters bx-filters${fOpen?'':' hidden'}">
+   <label class="od-filter bx-date"><span>Received from</span><input type="date" data-flt="from" value="${esc(flt.from)}"${flt.to?` max="${esc(flt.to)}"`:''}></label>
+   <label class="od-filter bx-date"><span>Received to</span><input type="date" data-flt="to" value="${esc(flt.to)}"${flt.from?` min="${esc(flt.from)}"`:''}></label>
+   ${defs.map(([k,l])=>{const o=optsOf(k);return `<label class="od-filter"><span>${l}</span><select data-flt="${k}"${o.length?'':' disabled title="Not filled in the sheet for these embryos yet"'}><option value="">${o.length?'All':'No data'}</option>${o.map(v=>`<option value="${esc(v)}"${flt[k]===v?' selected':''}>${esc(v)}</option>`).join('')}</select></label>`}).join('')}
+   ${nFlt?'<button type="button" class="od-clear" id="bxFltClear">Clear filters</button>':''}</div>
   <div class="bx-bar"><div><strong>${all.length}</strong> embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${rows.length!==all.length?` · ${rows.length} shown`:''}</div>
    <div class="bx-bar-act"><span class="bx-count">${picked.size} selected</span><button type="button" class="secondary compact" id="bxClear"${picked.size?'':' disabled'}>Clear</button><button type="button" class="primary" id="bxMake"${picked.size?'':' disabled'}>Create ${kind==='wga'?'WGA batch':'sequencing run'}</button></div></div>
-  <div class="bx-table-wrap" id="bxTable">${groups.length?`<table class="prep-table bx-table"><thead><tr><th class="bx-ck"><input type="checkbox" id="bxAll" aria-label="Select all shown"${rows.length&&rows.every(r=>picked.has(r.key))?' checked':''}></th><th>Patient</th><th>Embryo</th><th>Sample ID</th><th>Test</th><th>Received</th><th>Biopsy</th>${kind==='seq'?'<th>WGA</th>':''}</tr></thead><tbody>${groups.map(g=>{const on=g.rows.every(r=>picked.has(r.key));return g.rows.map((r,i)=>`<tr class="${picked.has(r.key)?'on':''}${i===0?' bx-first':''}" data-key="${esc(r.key)}"><td class="bx-ck"><input type="checkbox"${picked.has(r.key)?' checked':''} aria-label="Select ${esc(r.patient)} ${esc(r.embryo)}"></td>${i===0?`<td class="strong bx-pat" rowspan="${g.rows.length}"><label><input type="checkbox" class="bx-pck" data-patient="${esc(g.patient)}"${on?' checked':''}> ${esc(g.patient)}</label><small>${g.rows.length} embryo${g.rows.length>1?'s':''}</small></td>`:''}<td class="mono">${esc(r.embryo)}</td><td class="mono">${esc(r.sampleId||'—')}</td><td>${esc(r.test||'—')}</td><td class="muted">${esc(r.received)}</td><td class="muted">${esc(r.biopsy||'—')}</td>${kind==='seq'?`<td>${r.wga?`<span class="bx-wga ok">${esc(r.wga)}</span>`:'<span class="bx-wga">Not yet</span>'}</td>`:''}</tr>`).join('')}).join('')}</tbody></table>`:`<div class="chart-empty">No embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${needle||testF?' match these filters':''}.</div>`}</div>
+  <div class="bx-table-wrap" id="bxTable">${groups.length?`<table class="prep-table bx-table"><thead><tr><th class="bx-ck"><input type="checkbox" id="bxAll" aria-label="Select all shown"${rows.length&&rows.every(r=>picked.has(r.key))?' checked':''}></th><th>Patient</th><th>Embryo</th><th>Sample ID</th><th>Test</th><th>Received</th><th>Biopsy</th>${kind==='seq'?'<th>WGA</th>':''}</tr></thead><tbody>${groups.map(g=>{const on=g.rows.every(r=>picked.has(r.key));return g.rows.map((r,i)=>`<tr class="${picked.has(r.key)?'on':''}${i===0?' bx-first':''}" data-key="${esc(r.key)}"><td class="bx-ck"><input type="checkbox"${picked.has(r.key)?' checked':''} aria-label="Select ${esc(r.patient)} ${esc(r.embryo)}"></td>${i===0?`<td class="strong bx-pat" rowspan="${g.rows.length}"><label><input type="checkbox" class="bx-pck" data-patient="${esc(g.patient)}"${on?' checked':''}> ${esc(g.patient)}</label><small>${g.rows.length} embryo${g.rows.length>1?'s':''}</small></td>`:''}<td class="mono">${esc(r.embryo)}</td><td class="mono">${esc(r.sampleId||'—')}</td><td>${esc(r.test||'—')}</td><td class="muted">${esc(r.received)}</td><td class="muted">${esc(r.biopsy||'—')}</td>${kind==='seq'?`<td>${r.wga?`<span class="bx-wga ok">${esc(r.wga)}</span>`:'<span class="bx-wga">Not yet</span>'}</td>`:''}</tr>`).join('')}).join('')}</tbody></table>`:`<div class="chart-empty">No embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${needle||testF||nFlt?' match these filters':''}.</div>`}</div>
  </div>`;
  root._rows=rows;
  fitTableHeight($('#bxTable'))}
@@ -91,6 +117,8 @@ function openCreate(){
 function onClick(e){
  const t=e.target;
  const kb=t.closest('[data-kind]');if(kb){if(kb.dataset.kind!==kind){kind=kb.dataset.kind;picked.clear();render()}return}
+ if(t.closest('#bxFltToggle')){fOpen=!fOpen;try{localStorage.setItem('em-bx-filters',fOpen?'open':'closed')}catch{}render();return}
+ if(t.id==='bxFltClear'){Object.keys(flt).forEach(k=>flt[k]='');render();return}
  if(t.id==='bxClear'){picked.clear();render();return}
  if(t.id==='bxMake'){openCreate();return}
  if(t.id==='bxAll'){(root._rows||[]).forEach(r=>t.checked?picked.add(r.key):picked.delete(r.key));render();return}
@@ -102,6 +130,6 @@ window.renderBatchCreationView=async function(container){
  root=container;root.innerHTML='<div class="chart-empty">Loading…</div>';
  if(!container._bxWired){container._bxWired=true;container.addEventListener('click',onClick);
   container.addEventListener('input',e=>{if(e.target.id==='bxSearch'){q=e.target.value;const pos=e.target.selectionStart;render();const s=$('#bxSearch');s.focus();s.setSelectionRange(pos,pos)}});
-  container.addEventListener('change',e=>{if(e.target.id==='bxTest'){testF=e.target.value;render()}})}
+  container.addEventListener('change',e=>{if(e.target.id==='bxTest'){testF=e.target.value;render()}else if(e.target.dataset.flt){flt[e.target.dataset.flt]=e.target.value;render()}})}
  await load();if(root===container)render()};
 })();
