@@ -1452,7 +1452,13 @@ function trustTracker(det,t,fileDate,x){const dr=field(det,['date sample receive
 function matchTrackerRow(det,tix,fileDate){const tags=expandEmbryoTags(field(det,['embryo name','embryo details','embryo id']));if(!tags.length)return null;
  const cand=new Set;tags.forEach(t=>(tix.byTag.get(t)||[]).forEach(r=>cand.add(r)));if(!cand.size)return null;
  const sid=cleanId(field(det,['sample id'])),box=normCol(field(det,['box number']));
- const scored=[...cand].map(t=>({t,...scoreTrackerRow(det,t),idEq:(sid&&cleanId(field(t,['sample id']))===sid)||(box&&box!=='NA'&&normCol(field(t,['box number']))===box)})).filter(x=>x.sc>=6&&(x.ns>=1||x.idEq));
+ let scored=[...cand].map(t=>({t,...scoreTrackerRow(det,t),idEq:(sid&&cleanId(field(t,['sample id']))===sid)||(box&&box!=='NA'&&normCol(field(t,['box number']))===box)})).filter(x=>x.sc>=6&&(x.ns>=1||x.idEq));
+ // A candidate whose patient name is nothing like det's (ns===0) is dropped when another candidate sharing the same
+ // embryo tag clearly IS det's patient (ns>=2.5): box/sample-ID agreement must never outrank patient identity when a
+ // correctly-named alternative exists. Without this, a file whose own Details tab mislabels a box as a different
+ // patient (box+sample-ID match that OTHER patient's tracker row) can win over the right patient's own row just
+ // because the box number happens to agree - exactly how two patients' PGT results got swapped in RUN103A.
+ if(scored.some(x=>x.ns>=2.5))scored=scored.filter(x=>x.ns>0||!scored.some(y=>y.ns>=2.5));
  lastMatchWhy='';if(!scored.length){lastMatchWhy='no PGS-NGS row has this patient + embryo';return null}
  // Safety gate: a result must never land on a different patient who happens to share a name and embryo tag (re-biopsies, repeat
  // cycles). The tracker row's received date has to agree with the file's own copy of it, and cannot fall after the run itself.
