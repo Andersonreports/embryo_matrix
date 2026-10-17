@@ -2577,3 +2577,6 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 /* Upload check: give Patient and Client room so most names fit on one line */
 .up-table th:nth-child(2),.up-table td:nth-child(2){min-width:170px}
 .up-table th:nth-child(4),.up-table td:nth-child(4){min-width:160px}
+/* Uploaded result files: search box in the section header */
+.log-head{flex-wrap:wrap}
+.rf-search{flex:0 1 260px;min-width:200px;margin-left:auto}
