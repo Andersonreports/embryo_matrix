@@ -63,8 +63,9 @@ function pending(k){
   units.forEach((u,i)=>{const tag=dup?`${names[i]||'E'}#${i+1}`:names[i]||'',kk=key(patient,tag);if(!tag||done.has(kk))return;
    const wv=wgaVals.get(kk)||{};
    out.push({key:kk,editSid:editSampleId(e),editTag:editEmbryoTag(names[i]),patient,embryo:tag,caseRef:e._case,sampleId:field(e,['sample id']),test:canonicalTestName(field(e,['test name']))||e._case?.test||'',
-    received,biopsy:field(e,['date of biopsy']),dnaConc:field(u,['dna conc unpurified','wga conc unpurified','wga conc'])||field(e,['dna conc unpurified','wga conc unpurified','wga conc'])||wv.dnaConc||'',
-    purified:field(u,['dna conc purified','wga conc purified'])||field(e,['dna conc purified','wga conc purified'])||wv.purified||'',
+    received,biopsy:field(e,['date of biopsy']),
+    dnaConc:ownDnaValue(field(e,['dna conc unpurified','wga conc unpurified','wga conc']),names[i])||wv.dnaConc||'',
+    purified:String((e._embryoResults||{})[cleanId(names[i])]?.['wga conc']||'').trim()||wv.purified||'',
     wga:field(e,['wga done on'])||inWga.get(kk)||'',
     client:blankish(e._case?.client||field(e,['center name'])),embryologist:blankish(e._case?.embryologist||field(e,['embryologist name'])),
     receivedBy:blankish(field(e,['received by'])),kit:blankish(field(e,['kit detail'])),wgaBy:blankish(field(e,['wga done by'])),platform:blankish(field(e,['seq platform']))})})}

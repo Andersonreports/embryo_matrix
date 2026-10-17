@@ -284,7 +284,7 @@ def xlsx(b: dict) -> tuple[bytes, str]:
         except Exception:
             pass  # no Pillow: the title still says what the sheet is
     for r in range(1, len(lay["rows"]) + 1):
-        ws.row_dimensions[r].height = 19
+        ws.row_dimensions[r].height = 20
     ws.page_setup.orientation = "landscape"  # prints one page wide, like the record sheets
     ws.page_setup.fitToWidth, ws.page_setup.fitToHeight = 1, 0
     ws.sheet_properties.pageSetUpPr.fitToPage = True
