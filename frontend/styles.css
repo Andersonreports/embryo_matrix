@@ -2571,3 +2571,6 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .rr-bar:has(#rrUpload.on) + #rrBody .up-note span{display:inline;margin:0 0 0 8px}
 /* Upload check table: a hairline between columns */
 .up-table th+th,.up-table td+td{border-left:1px solid #edf1ef}
+/* Upload check table: only Patient and Client may wrap; short values (GENOLAB M, EMBRYO SURE…) stay on one line */
+.up-table th,.up-table td{white-space:nowrap}
+.up-table th:nth-child(2),.up-table td:nth-child(2),.up-table th:nth-child(4),.up-table td:nth-child(4){white-space:normal}
