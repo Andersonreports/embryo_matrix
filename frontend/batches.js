@@ -120,6 +120,12 @@ function render(){
 
 function nextNo(k){const nums=[...(k==='wga'?sheetWga:sheetSeq).map(b=>b.runId),...list.filter(b=>b.kind===k).map(b=>b.meta.batchNo)].map(v=>/^\d+$/.test(String(v||'').trim())?+v:0);return String(Math.max(0,...nums)+1)}
 function lastKit(k){const mine=list.filter(b=>b.kind===k&&b.kit?.name).pop();if(mine)return mine.kit;const s=[...(k==='wga'?sheetWga:sheetSeq)].reverse().find(b=>b.kit?.name);return s?.kit||{}}
+// Every distinct kit used before for this batch kind, with its most recently seen manufacturer/lot/expiry -
+// backs the Kit field's dropdown and the manufacturer/lot auto-fill when a kit is picked from it.
+function kitCatalog(k){const by=new Map,add=kit=>{const name=kit?.name?.trim();if(!name)return;const row=by.get(name.toUpperCase())||{name,manufacturer:'',lot:'',expiry:'',count:0};
+  row.count++;row.name=name;row.manufacturer=kit.manufacturer||row.manufacturer;row.lot=kit.lot||row.lot;row.expiry=kit.expiry||row.expiry;by.set(name.toUpperCase(),row)};
+ (k==='wga'?sheetWga:sheetSeq).forEach(b=>add(b.kit));list.filter(b=>b.kind===k).forEach(b=>add(b.kit));
+ return [...by.values()].sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name))}
 
 // Batches made on this page, newest first: download the Excel block again, or delete one (its embryos return to the list).
 function openMade(){
@@ -134,16 +140,22 @@ function openMade(){
  d.showModal()}
 
 function openCreate(){
- const K=KIND[kind],sel=pending(kind).filter(r=>picked.has(r.key)),kit=lastKit(kind),d=document.createElement('dialog');
+ const K=KIND[kind],sel=pending(kind).filter(r=>picked.has(r.key)),kit=lastKit(kind),kits=kitCatalog(kind),d=document.createElement('dialog');
  d.className='vu-dialog fu-dialog bx-dlg';document.body.append(d);d.addEventListener('close',()=>d.remove());
  const f=(name,label,val='',type='text',extra='')=>`<label class="fu-f"><span>${label}</span><input name="${name}" type="${type}" value="${esc(val)}" autocomplete="off"${extra}></label>`;
  d.innerHTML=`<div class="vu-dhead"><h3>Create ${kind==='wga'?'WGA batch':'sequencing run'}</h3><button type="button" class="secondary compact" data-close>Close</button></div><div class="vu-dbody">
   <p class="fu-note" style="margin-top:0">${sel.length} embryo${sel.length>1?'s':''} from ${new Set(sel.map(r=>r.patient)).size} patient${new Set(sel.map(r=>r.patient)).size>1?'s':''}. It is saved here and in the edits sheet; download it to paste into the live batch sheet.</p>
   <h4 class="bx-sec">Batch identification</h4><div class="fu-grid">${f('batchNo',K.noLabel+' *',nextNo(kind))}${f('date',K.dateLabel,today(),'date')}${f('instrument',K.instLabel,K.instDefault)}${f('instrumentId','Instrument ID')}${kind==='seq'?f('seqType','Seq type')+f('operator','Operator'):''}</div>
-  ${`<h4 class="bx-sec">Kit / reagent</h4><div class="fu-grid">${f('k_name','Kit / reagent',kit.name||'')}${f('k_manufacturer','Manufacturer',kit.manufacturer||'')}${f('k_lot','Lot no.',kit.lot||'')}${f('k_expiry','Expiry date',toIso(kit.expiry),'date')}${f('k_qty','Qty used',String(sel.length),'number',' min="0"')}${f('k_preparedBy','Prepared by',kit.preparedBy||'')}${f('k_checkedBy','Checked by',kit.checkedBy||'')}</div>`}
+  ${`<h4 class="bx-sec">Kit / reagent</h4><div class="fu-grid">${f('k_name','Kit / reagent',kit.name||'','text',' list="bxKitDL"')}${f('k_manufacturer','Manufacturer',kit.manufacturer||'')}${f('k_lot','Lot no.',kit.lot||'')}${f('k_expiry','Expiry date',toIso(kit.expiry),'date')}${f('k_qty','Qty used',String(sel.length),'number',' min="0"')}${f('k_preparedBy','Prepared by',kit.preparedBy||'')}${f('k_checkedBy','Checked by',kit.checkedBy||'')}</div>
+  <datalist id="bxKitDL">${kits.map(it=>`<option value="${esc(it.name)}">`).join('')}</datalist>`}
   <h4 class="bx-sec">Samples</h4><div class="fu-grid">${kind==='wga'?f('sampleType','Sample type',sampleType)+f('indexStart','First barcode number (e.g. 1 → V001, V002…)',String(idxStart),'number',' min="1"'):f('indexStart','First index ID (e.g. 321 → 321, 322…; blank = leave empty)',seqIdxStart,'number',' min="1"')}</div>
   <div class="fu-actions"><button type="button" class="primary" id="bxGo">Create and download</button></div><p class="fu-note" id="bxErr" role="alert" style="color:#b3261e;font-weight:600;margin:12px 0 0"></p></div>`;
  d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-close]'))d.close()});
+ // Picking a known kit from the dropdown fills in its last manufacturer/lot/expiry too.
+ d.querySelector('[name="k_name"]')?.addEventListener('input',e=>{
+  const match=kits.find(it=>it.name.toUpperCase()===e.target.value.trim().toUpperCase());if(!match)return;
+  const mf=d.querySelector('[name="k_manufacturer"]'),lt=d.querySelector('[name="k_lot"]'),ex=d.querySelector('[name="k_expiry"]');
+  if(mf)mf.value=match.manufacturer||mf.value;if(lt)lt.value=match.lot||lt.value;if(ex&&match.expiry)ex.value=toIso(match.expiry)});
  d.querySelector('#bxGo').onclick=async ev=>{const b=ev.currentTarget,v=n=>d.querySelector(`[name="${n}"]`)?.value.trim()||'',err=d.querySelector('#bxErr');
   const start=parseInt(v('indexStart'),10),meta={batchNo:v('batchNo'),date:dmy(v('date')),instrument:v('instrument'),instrumentId:v('instrumentId'),seqType:v('seqType'),operator:v('operator')};
   if(!meta.batchNo){err.textContent=K.noLabel+' is required';return}
