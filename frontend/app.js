@@ -779,8 +779,14 @@ function buildRunsView(){const idx=buildSampleIndex(),view=(list,kind)=>list.map
 const resultFileRuns=()=>[...new Set(resultFilesCache.map(f=>String(f.run||'').toUpperCase().replace(/\s+/g,'')||runNumberOf(f.fileName)).filter(Boolean))];
 // Live pipeline strip: every sample in the PGS-NGS sheet by where it is right now. Click a stage to list its samples.
 const FUNNEL_STAGES=[['pending','Awaiting WGA','received, no WGA date','#6b766f'],['wga','Awaiting sequencing','WGA done, no SEQ date','#2f6b98'],['seq','Report preparation','sequenced, report not finished','#c07a1d'],['released','Report released','NGS report + Attune upload','#1f8a52']];
-// A report is issued per patient, so report cards count each patient + sample ID once, whatever its embryo or sheet-row count.
-const reportCount=rows=>new Set(rows.map(r=>{const e=r.row||r,n=String(field(e,['patient name'])||(e._case&&e._case.patient)||'').toUpperCase().replace(/[^A-Z0-9]/g,''),id=String(field(e,['sample id'])||'').toUpperCase().replace(/[^A-Z0-9]/g,'');return n||id?n+'|'+id:Math.random()})).size;
+// A report is issued per patient, so this counts distinct patients - never sample IDs and
+// never sheet rows. One patient routinely spans several sample IDs (a re-biopsy, a second
+// cycle, a batch split across runs); keying on patient + sample ID counted each of those as
+// its own report, which is how REPORT RELEASED came out larger than PATIENTS. Rows with no
+// name are skipped rather than counted as one each - the old Math.random() key inflated the
+// total by one per nameless row. Same patientKey() as countPatients(), so the two tiles are
+// always measured on the same basis.
+const reportCount=rows=>{const s=new Set();rows.forEach(r=>{const k=patientKey(r.row||r)||patientKey({_case:r.c});if(k)s.add(k)});return s.size};
 function stageRows(inPeriod=false){const out={pending:[],wga:[],seq:[],released:[]};cases.forEach(c=>(c.embryos||[]).forEach(row=>{if(isNotReporting(row)||(inPeriod&&!inHomePeriod(row)))return;out[rowStage(row)].push({row,c,n:embryoRowsOf(row).length})}));return out}
 function renderStageFunnel(){const el=$('#stageFunnel');if(!el)return;const st=stageRows(),count=k=>st[k].reduce((n,x)=>n+x.n,0),total=FUNNEL_STAGES.reduce((n,[k])=>n+count(k),0)||1;
  el.innerHTML=FUNNEL_STAGES.map(([k,label,hint,color])=>`<button type="button" class="sf-step" data-stage="${k}" style="--c:${color}" title="${escapeHtml(hint)} - click to list"><strong>${count(k).toLocaleString()}</strong><span>${label}</span><small>${hint}</small><i style="width:${Math.max(2,Math.round(count(k)/total*100))}%"></i></button>`).join('');
