@@ -12,8 +12,8 @@ input:focus{outline:2px solid var(--brand);outline-offset:1px}
 button{margin-top:20px;width:100%;padding:12px;border:0;border-radius:999px;background:var(--brand);color:#fff;font:600 15px Inter,system-ui,sans-serif;cursor:pointer}
 button:disabled{opacity:.6}#err{color:var(--err);font-size:13px;min-height:18px;margin-top:12px}
 /* Brand watermark, same faint mark as the app shell. */
-body::after{content:"";position:fixed;top:50%;left:50%;width:min(56vmin,520px);height:min(56vmin,520px);translate:-50% -50%;background:url("/static/assets/logos/watermark.png") center/contain no-repeat;opacity:.055;pointer-events:none;z-index:300}
-@media(prefers-color-scheme:dark){body::after{opacity:.11}}
+body::after{content:"";position:fixed;top:50%;left:50%;width:min(56vmin,520px);height:min(56vmin,520px);translate:-50% -50%;background:url("/static/assets/logos/watermark.png") center/contain no-repeat;opacity:.035;pointer-events:none;z-index:300}
+@media(prefers-color-scheme:dark){body::after{opacity:.07}}
 </style></head><body>
 <form id="f"><img src="/static/assets/logos/logo.png" alt="" width="52" height="52" style="display:block;margin:0 0 12px"><h1>EmbryoMatrix</h1><p>Sign in to continue</p>
 <label for="u">Username</label><input id="u" autocomplete="username" autocapitalize="none" required autofocus>

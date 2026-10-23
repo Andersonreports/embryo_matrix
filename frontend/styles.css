@@ -2588,6 +2588,6 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
    strength it tints without touching readability, and pointer-events:none keeps it out of
    every click. Dialogs render in the top layer, so they stay clean. Tune the two variables
    below; --wm-opacity:0 turns it off. Left out of print so reports stay clean. */
-:root{--wm-size:min(56vmin,620px);--wm-opacity:.055}
+:root{--wm-size:min(56vmin,620px);--wm-opacity:.035}
 body::after{content:"";position:fixed;top:50%;left:50%;width:var(--wm-size);height:var(--wm-size);margin:calc(var(--wm-size)/-2) 0 0 calc(var(--wm-size)/-2);background:url("/static/assets/logos/watermark.png") center/contain no-repeat;opacity:var(--wm-opacity);pointer-events:none;z-index:300}
 @media print{body::after{display:none}}
