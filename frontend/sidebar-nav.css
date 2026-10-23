@@ -86,3 +86,11 @@ body.sidebar-nav .topbar .topnav .nav-subitem span:has(>.ico){width:18px;height:
 body.sidebar-nav .topbar .topnav .nav-subitem .ico{width:15px;height:15px}
 body.sidebar-nav .topbar .topnav .nav-item b{font-size:10.5px;padding:1px 6px}
 body.sidebar-nav .topbar .topnav{justify-content:flex-start!important}
+
+/* Brand watermark (styles.css) centres on the viewport; with the rail in place that
+   puts it half under the opaque sidebar. Shift it to the centre of the content area,
+   and back when the rail is collapsed away. */
+@media(min-width:901px){
+ body.sidebar-nav::before{left:calc(50% + 127px)}
+ body.sidebar-nav.sidebar-collapsed::before{left:50%}
+}
