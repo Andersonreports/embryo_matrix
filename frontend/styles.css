@@ -2581,11 +2581,13 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .log-head{flex-wrap:wrap}
 .rf-search{flex:0 1 260px;min-width:200px;margin-left:auto}
 
-/* Brand watermark — one faint Anderson mark behind every screen. The whole app is a
-   single shell, so this one rule covers every tab. It is fixed (stays put while a view
-   scrolls) and sits at z-index -1: above the page background, below panels, tables,
-   headers and dialogs, so nothing reads through the white cards. Tune the two variables
+/* Brand watermark — one faint Anderson mark on every screen. The whole app is a single
+   shell, so this one rule covers every tab. It is fixed (stays put while a view scrolls)
+   and sits ABOVE the content rather than behind it: dense screens like Outcomes fill the
+   viewport with opaque white panels, and a mark behind those is invisible. At this
+   strength it tints without touching readability, and pointer-events:none keeps it out of
+   every click. Dialogs render in the top layer, so they stay clean. Tune the two variables
    below; --wm-opacity:0 turns it off. Left out of print so reports stay clean. */
-:root{--wm-size:min(56vmin,620px);--wm-opacity:.07}
-body::before{content:"";position:fixed;top:50%;left:50%;width:var(--wm-size);height:var(--wm-size);margin:calc(var(--wm-size)/-2) 0 0 calc(var(--wm-size)/-2);background:url("/static/assets/logos/watermark.png") center/contain no-repeat;opacity:var(--wm-opacity);pointer-events:none;z-index:-1}
-@media print{body::before{display:none}}
+:root{--wm-size:min(56vmin,620px);--wm-opacity:.1}
+body::after{content:"";position:fixed;top:50%;left:50%;width:var(--wm-size);height:var(--wm-size);margin:calc(var(--wm-size)/-2) 0 0 calc(var(--wm-size)/-2);background:url("/static/assets/logos/watermark.png") center/contain no-repeat;opacity:var(--wm-opacity);pointer-events:none;z-index:300}
+@media print{body::after{display:none}}

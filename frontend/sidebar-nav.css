@@ -91,6 +91,6 @@ body.sidebar-nav .topbar .topnav{justify-content:flex-start!important}
    puts it half under the opaque sidebar. Shift it to the centre of the content area,
    and back when the rail is collapsed away. */
 @media(min-width:901px){
- body.sidebar-nav::before{left:calc(50% + 127px)}
- body.sidebar-nav.sidebar-collapsed::before{left:50%}
+ body.sidebar-nav::after{left:calc(50% + 127px)}
+ body.sidebar-nav.sidebar-collapsed::after{left:50%}
 }
