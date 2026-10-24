@@ -104,11 +104,45 @@ def _pick(cands, test):
 TRUSTED_TABS = {"pending", "october 2026"}
 
 
+def _future_only_fix(row, today):
+    """A trusted tab is left alone - except a date that lands in the future, which proves that one cell
+    is still month-first whatever the column was set to (10-12-2026 in the October tab is 12 October).
+    Only the day/month swap is considered, and only when it is a real date that is not itself in the
+    future; anything else keeps what was typed and is flagged unclear rather than guessed at."""
+    fixes, unclear = {}, []
+    for field in DATE_FIELDS:
+        text = row.get(field)
+        toks = _tokens(text)
+        if not toks:
+            continue
+        pieces, pos, changed, bad = [], 0, False, False
+        for m, d, mo, y in toks:
+            pieces.append(str(text)[pos:m.start()])
+            pos = m.end()
+            current = _mk(y, mo, d)
+            if current is None or current <= today:
+                pieces.append(m.group(0))
+                continue
+            swapped = _mk(y, d, mo) if d <= 12 and d != mo else None
+            if swapped and swapped <= today:
+                pieces.append(_fmt(swapped))
+                changed = True
+            else:
+                pieces.append(m.group(0))
+                bad = True
+        pieces.append(str(text)[pos:])
+        if bad:
+            unclear.append(field)
+        elif changed:
+            fixes[field] = "".join(pieces)
+    return fixes, unclear
+
+
 def normalize_row(row, today=None):
     """-> (fixes {field: new text}, unclear [field, ...]). The row itself is not modified."""
     today = today or date.today()
     if str(row.get("_importSource") or "").strip().lower() in TRUSTED_TABS:
-        return {}, []
+        return _future_only_fix(row, today)
     tab = tab_month(row.get("_importSource"))
     fixes, unclear = {}, []
     resolved = {}      # step name -> chosen date (single, the latest when a cell holds several)
@@ -128,11 +162,13 @@ def normalize_row(row, today=None):
         pieces, pos = [], 0
         for m, d, mo, y in toks:
             cands = cand_dates(d, mo, y, tab) or readings(d, mo, y)
+            # A repair must never land in the future, including when only one reading survives:
+            # dropping every candidate leaves the cell as typed and flags it unclear.
+            cands = [c for c in cands if c <= today + timedelta(days=1)]
             pick = None
             if len(cands) == 1:
                 pick = cands[0]                                   # cannot be flipped
             else:
-                cands = [c for c in cands if c <= today + timedelta(days=1)] or cands   # never in the future
                 if use_tab and tab:
                     pick = _pick(cands, lambda c: _fits_tab(c, tab))
                 if pick is None and anchor is not None:

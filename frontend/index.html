@@ -16,17 +16,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:wght@500;600;700&family=DM+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="/static/assets/logos/logo.svg" />
-  <link rel="stylesheet" href="/static/styles.css?v=20261023d" />
+  <link rel="stylesheet" href="/static/styles.css?v=20261024q" />
   <link rel="stylesheet" href="/static/trf-doc.css?v=20261010s" />
   <link rel="stylesheet" href="/static/calculators.css?v=20261015a" />
   <link rel="stylesheet" href="/static/batches.css?v=20261017m" />
-  <link rel="stylesheet" href="/static/sidebar-nav.css?v=20261023b" />
+  <link rel="stylesheet" href="/static/sidebar-nav.css?v=20261024h" />
 </head>
 <body>
   <div class="app-shell">
     <main>
       <div class="topbar">
-        <div class="brand"><img class="brand-logo" src="/static/assets/logos/logo.png" alt="EmbryoMatrix" width="40" height="40"><span><span class="brand-title">EmbryoMatrix</span><small>PGT INTELLIGENCE</small></span></div>
+        <div class="brand"><img class="brand-logo" src="/static/assets/logos/logo.png" alt="EmbryoMatrix" width="40" height="40"><span><span class="brand-title">EmbryoMatrix</span><small>Every Embryo. Every Milestone. Every Moment.</small></span></div>
         <nav class="topnav" aria-label="Main navigation">
           <button class="nav-item nav-color-teal active" data-view="dashboard" id="dashNav"><span><img class="ico" src="/static/assets/icons/navigation__home.png" alt=""></span> Home</button>
           <button class="nav-item nav-color-teal" data-view="home" id="runStatusNav"><span><img class="ico" src="/static/assets/icons/run-summary__runs.png" alt=""></span> Run status <b id="homeBatchesStat">0</b></button>
@@ -36,7 +36,7 @@
           <button class="nav-item nav-color-amber" data-view="runreports"><span><img class="ico" src="/static/assets/icons/navigation__run-reports.png" alt=""></span> Run reports</button>
           <button class="nav-item nav-color-teal" data-view="calc"><span><img class="ico" src="/static/assets/icons/navigation__ngs-calculators.svg" alt=""></span> NGS Calculators</button>
           <button class="nav-item nav-color-teal" data-view="coord" id="coordNav" hidden><span><img class="ico" src="/static/assets/icons/navigation__home.png" alt=""></span> Home</button>
-          <button class="nav-item nav-color-blue" data-view="trfs"><span><img class="ico" src="/static/assets/icons/navigation__digital-trfs.png" alt=""></span> TRFs <b id="trfNavCount">0</b></button>
+          <button class="nav-item nav-color-blue" data-view="trfs"><span><img class="ico" src="/static/assets/icons/navigation__digital-trfs.png" alt=""></span> Digital TRF <b id="trfNavCount">0</b></button>
           <button class="nav-item nav-color-green" data-view="followup" id="fuNav" hidden><span><img class="ico" src="/static/assets/icons/navigation__embryo-results.png" alt=""></span> Clinical follow-up</button>
           <button class="nav-item nav-color-teal" data-view="fuTrack" id="fuTrackNav" hidden><span><img class="ico" src="/static/assets/icons/navigation__patient.png" alt=""></span> Embryo tracking</button>
           <button class="nav-item nav-color-green" data-view="fuTasks" id="fuTasksNav" hidden><span><img class="ico" src="/static/assets/icons/navigation__patient.png" alt=""></span> Follow-up tasks</button>
@@ -79,7 +79,8 @@
         </div>
         <div class="search-wrap registry-header-search hidden" id="embSearchWrap"><span>⌕</span><input id="embSearch" type="search" placeholder="Search embryologist name…" autocomplete="off"></div>
         <div class="prep-segments header-center-toggle hidden" id="embryologistSortOrder" role="tablist" aria-label="Sort embryologists">
-          <button type="button" class="prep-seg active" data-sort="pass">Most QC passed</button>
+          <button type="button" class="prep-seg active" data-sort="quality">Best pass rate</button>
+          <button type="button" class="prep-seg" data-sort="pass">Most QC passed</button>
           <button type="button" class="prep-seg" data-sort="total">Most samples</button>
           <button type="button" class="prep-seg" data-sort="fail">Most failed</button>
           <button type="button" class="prep-seg" data-sort="asc">Fewest samples</button>
@@ -108,7 +109,7 @@
         <div class="home-toolbar"><h2 class="home-title">Run-wise status <small class="run-filter-note" id="runFilterNote"></small></h2><div class="search-wrap" id="runSearchWrap"><span>⌕</span><input id="runSearch" placeholder="Search run, platform or patient…"></div><button class="nav-item import-data-btn home-overview-btn" data-view="overview" title="Open the overview dashboard"><span><img class="ico" src="/static/assets/icons/navigation__overview.png" alt=""></span> <span class="nav-label">Overview</span></button><button class="nav-item samples-go" id="samplesGo" data-view="samples" title="Open the embryo registry"><span><img class="ico" src="/static/assets/icons/navigation__samples.png" alt=""></span> Embryo registry <b id="caseCount2">0</b></button><button class="nav-item import-data-btn" data-view="import" title="Upload result"><span><img class="ico" src="/static/assets/icons/navigation__upload-result.png" alt=""></span> <span class="nav-label">Upload result</span></button></div>
         <div class="home-period" id="homePeriod"></div>
         <div class="stats" id="homeStats">
-          <article><div><small>PATIENTS</small><strong id="homePatientsStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/assets/icons/run-summary__patients.png" alt=""></span></article>
+          <article><div><small>PATIENTS</small><strong id="homePatientsStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/assets/icons/run-summary__patient-female.png" alt=""></span></article>
           <article><div><small>TOTAL EMBRYOS</small><strong id="homeEmbryosStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/assets/icons/stages-results__total-embryos.png" alt=""></span></article>
           <article data-stage="released" tabindex="0" role="button" title="List samples with a released report"><div><small>REPORT RELEASED</small><strong id="homeReleasedStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/assets/icons/stages-results__report-sent.png" alt=""></span></article>
           <article id="homeReportPrepCard" data-stage="ongoing" tabindex="0" role="button" title="List samples whose report is not released yet"><div><small>REPORT ONGOING</small><strong id="homeReportPrepStat">0</strong></div><span class="stat-icon has-img"><img class="ico" src="/static/assets/icons/stages-results__report-preparation.png" alt=""></span></article>
@@ -131,9 +132,8 @@
           <div class="ov2-top">
             <article class="panel ov2-card"><div class="ov2-head"><div><h2 data-unit-text="Monthly {unit}">Monthly samples</h2><p id="monthlySub">&nbsp;</p></div><select class="chart-filter" id="volumeMonthFilter" aria-label="Filter Monthly chart by month"><option value="">All months</option></select></div><div class="chart-container" id="monthlyChart"></div><div class="other-pills" id="monthlyOther"></div></article>
             <article class="panel ov2-card ov2-kpis">
-              <div class="ov2-kpi"><strong id="monthlyTotal">—</strong><b id="kpiUnitLabel">Samples</b><span id="kpiUnitNote">Across all months shown</span></div>
-              <div class="ov2-kpi"><strong class="bad" id="failureRate">0%</strong><b>QC fail</b><span>Of <span class="kpi-unit">samples</span> tested</span></div>
-              <div class="ov2-kpi"><strong id="inconclusiveRate">0%</strong><b>Awaiting result</b><span>Of all <span class="kpi-unit">samples</span></span></div>
+              <div class="ov2-kpi"><strong id="monthlyTotal">—</strong><b id="kpiUnitLabel">Samples</b><span id="kpiUnitNote">Across all months shown</span><img class="ov2-kpi-ico" id="kpiUnitIcon" src="/static/assets/icons/run-summary__patient-female.png" alt=""></div>
+              <div class="ov2-kpi"><strong class="bad" id="failureRate">0%</strong><b>QC fail</b><span>Of <span class="kpi-unit">samples</span> tested</span><img class="ov2-kpi-ico" src="/static/assets/icons/stages-results__qc-fail.png" alt=""></div>
             </article>
           </div>
           <div class="ov2-mid">
@@ -199,8 +199,8 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <script src="/static/clients.js?v=20261012c"></script>
   <script src="/static/trf-doc.js?v=20261010s"></script>
-  <script src="/static/app.js?v=20261023c"></script>
-  <script src="/static/followup.js?v=20261016b"></script>
+  <script src="/static/app.js?v=20261024j"></script>
+  <script src="/static/followup.js?v=20261024b"></script>
   <script src="/static/coordinator.js?v=20261012c"></script>
   <script src="/static/calculators.js?v=20261015a"></script>
   <script src="/static/batches.js?v=20261017o"></script>

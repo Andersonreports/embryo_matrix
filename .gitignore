@@ -28,3 +28,9 @@ Embryosure (2)/
 NIPGS Results/
 backend/.session_secret
 apps_script/Code.deploy.gs
+.env.bak*
+
+# Generated reports/diagnostics with real patient/client names - not for a public repo
+others/reports/
+others/documents/
+others/icon-library/

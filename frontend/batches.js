@@ -119,6 +119,12 @@ function render(){
  const tw=$('#bxTable');fitTableHeight(tw);if(tw)tw.scrollTop=prevScroll}
 
 function nextNo(k){const nums=[...(k==='wga'?sheetWga:sheetSeq).map(b=>b.runId),...list.filter(b=>b.kind===k).map(b=>b.meta.batchNo)].map(v=>/^\d+$/.test(String(v||'').trim())?+v:0);return String(Math.max(0,...nums)+1)}
+// The kit, instrument and the people preparing/checking barely change from one batch to the next,
+// so a new batch opens on whatever was entered last time instead of an empty form. Kept per kind,
+// because a WGA batch and a sequencing run use different kits and instruments.
+const BX_LAST='em-batch-last';
+function lastEntry(k){try{return (JSON.parse(localStorage.getItem(BX_LAST)||'{}')||{})[k]||{}}catch{return{}}}
+function rememberEntry(k,vals){try{const all=JSON.parse(localStorage.getItem(BX_LAST)||'{}')||{};all[k]={...all[k],...vals};localStorage.setItem(BX_LAST,JSON.stringify(all))}catch{}}
 function lastKit(k){const mine=list.filter(b=>b.kind===k&&b.kit?.name).pop();if(mine)return mine.kit;const s=[...(k==='wga'?sheetWga:sheetSeq)].reverse().find(b=>b.kit?.name);return s?.kit||{}}
 // Every distinct kit used before for this batch kind, with its most recently seen manufacturer/lot/expiry -
 // backs the Kit field's dropdown and the manufacturer/lot auto-fill when a kit is picked from it.
@@ -141,14 +147,15 @@ function openMade(){
 
 function openCreate(){
  const K=KIND[kind],sel=pending(kind).filter(r=>picked.has(r.key)),kit=lastKit(kind),kits=kitCatalog(kind),d=document.createElement('dialog');
+ const prev=lastEntry(kind),was=(a,b)=>a||b||'';
  d.className='vu-dialog fu-dialog bx-dlg';document.body.append(d);d.addEventListener('close',()=>d.remove());
  const f=(name,label,val='',type='text',extra='')=>`<label class="fu-f"><span>${label}</span><input name="${name}" type="${type}" value="${esc(val)}" autocomplete="off"${extra}></label>`;
  d.innerHTML=`<div class="vu-dhead"><h3>Create ${kind==='wga'?'WGA batch':'sequencing run'}</h3><button type="button" class="secondary compact" data-close>Close</button></div><div class="vu-dbody">
   <p class="fu-note" style="margin-top:0">${sel.length} embryo${sel.length>1?'s':''} from ${new Set(sel.map(r=>r.patient)).size} patient${new Set(sel.map(r=>r.patient)).size>1?'s':''}. It is saved here and in the edits sheet; download it to paste into the live batch sheet.</p>
-  <h4 class="bx-sec">Batch identification</h4><div class="fu-grid">${f('batchNo',K.noLabel+' *',nextNo(kind))}${f('date',K.dateLabel,today(),'date')}${f('instrument',K.instLabel,K.instDefault)}${f('instrumentId','Instrument ID')}${kind==='seq'?f('seqType','Seq type')+f('operator','Operator'):''}</div>
-  ${`<h4 class="bx-sec">Kit / reagent</h4><div class="fu-grid">${f('k_name','Kit / reagent',kit.name||'','text',' list="bxKitDL"')}${f('k_manufacturer','Manufacturer',kit.manufacturer||'')}${f('k_lot','Lot no.',kit.lot||'')}${f('k_expiry','Expiry date',toIso(kit.expiry),'date')}${f('k_qty','Qty used',String(sel.length),'number',' min="0"')}${f('k_preparedBy','Prepared by',kit.preparedBy||'')}${f('k_checkedBy','Checked by',kit.checkedBy||'')}</div>
+  <h4 class="bx-sec">Batch identification</h4><div class="fu-grid">${f('batchNo',K.noLabel+' *',nextNo(kind))}${f('date',K.dateLabel,today(),'date')}${f('instrument',K.instLabel,was(prev.instrument,K.instDefault))}${f('instrumentId','Instrument ID',was(prev.instrumentId))}${kind==='seq'?f('seqType','Seq type',was(prev.seqType))+f('operator','Operator',was(prev.operator)):''}</div>
+  ${`<h4 class="bx-sec">Kit / reagent</h4><div class="fu-grid">${f('k_name','Kit / reagent',was(prev.k_name,kit.name),'text',' list="bxKitDL"')}${f('k_manufacturer','Manufacturer',was(prev.k_manufacturer,kit.manufacturer))}${f('k_lot','Lot no.',was(prev.k_lot,kit.lot))}${f('k_expiry','Expiry date',was(prev.k_expiry,toIso(kit.expiry)),'date')}${f('k_qty','Qty used',String(sel.length),'number',' min="0"')}${f('k_preparedBy','Prepared by',was(prev.k_preparedBy,kit.preparedBy))}${f('k_checkedBy','Checked by',was(prev.k_checkedBy,kit.checkedBy))}</div>
   <datalist id="bxKitDL">${kits.map(it=>`<option value="${esc(it.name)}">`).join('')}</datalist>`}
-  <h4 class="bx-sec">Samples</h4><div class="fu-grid">${kind==='wga'?f('sampleType','Sample type',sampleType)+f('indexStart','First barcode number (e.g. 1 → V001, V002…)',String(idxStart),'number',' min="1"'):f('indexStart','First index ID (e.g. 321 → 321, 322…; blank = leave empty)',seqIdxStart,'number',' min="1"')}</div>
+  <h4 class="bx-sec">Samples</h4><div class="fu-grid">${kind==='wga'?f('sampleType','Sample type',was(prev.sampleType,sampleType))+f('indexStart','First barcode number (e.g. 1 → V001, V002…)',String(idxStart),'number',' min="1"'):f('indexStart','First index ID (e.g. 321 → 321, 322…; blank = leave empty)',seqIdxStart,'number',' min="1"')}</div>
   <div class="fu-actions"><button type="button" class="primary" id="bxGo">Create and download</button></div><p class="fu-note" id="bxErr" role="alert" style="color:#b3261e;font-weight:600;margin:12px 0 0"></p></div>`;
  d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-close]'))d.close()});
  // Picking a known kit from the dropdown fills in its last manufacturer/lot/expiry too.
@@ -166,7 +173,11 @@ function openCreate(){
   try{const r=await fetch('/api/batches',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kind,meta,kit:kitOut,samples})}),j=await r.json().catch(()=>({}));
    if(!r.ok)throw new Error(typeof j.detail==='string'?j.detail:'Could not create (error '+r.status+')');
    const a=document.createElement('a');a.href=`/api/batches/${encodeURIComponent(j.id)}/xlsx`;a.download='';document.body.append(a);a.click();a.remove();
-   toast(`${K.noun} ${j.meta.batchNo} created - ${j.samples.length} samples`);if(Number.isFinite(start)){if(kind==='wga')idxStart=start+samples.length;else seqIdxStart=String(start+samples.length)}if(v('sampleType'))sampleType=v('sampleType');picked.clear();d.close();await load();render()}
+   toast(`${K.noun} ${j.meta.batchNo} created - ${j.samples.length} samples`);if(Number.isFinite(start)){if(kind==='wga')idxStart=start+samples.length;else seqIdxStart=String(start+samples.length)}if(v('sampleType'))sampleType=v('sampleType');
+   rememberEntry(kind,{instrument:v('instrument'),instrumentId:v('instrumentId'),seqType:v('seqType'),operator:v('operator'),
+    k_name:v('k_name'),k_manufacturer:v('k_manufacturer'),k_lot:v('k_lot'),k_expiry:v('k_expiry'),
+    k_preparedBy:v('k_preparedBy'),k_checkedBy:v('k_checkedBy'),sampleType:v('sampleType')});
+   picked.clear();d.close();await load();render()}
   catch(x){err.textContent=x.message;b.disabled=false}};
  d.showModal()}
 

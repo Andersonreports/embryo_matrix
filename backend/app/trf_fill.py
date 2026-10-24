@@ -6,6 +6,10 @@ logo, header and footer is exactly the paper form. The submission is typed on to
 is drawn with WeasyPrint (absolutely positioned text, ticks and dots, in PDF points measured from
 the template) and merged onto each template page with pypdf.
 
+The exception is page 3 (FORM G - FORM OF CONSENT): the template's own page is typed hard against the
+left edge and leaves a wide right margin, so it is replaced by a generated page with the same wording
+and artwork but even margins (see _form_g_page_pdf).
+
 All coordinates are in points from the top-left of the A4 page (595.276 x 841.89).
 """
 import html
@@ -239,45 +243,20 @@ def _embryo_pages(d: dict, kind: str, meta: dict) -> list[Overlay]:
     return pages
 
 
-def _page3(d: dict, kind: str) -> Overlay:
-    o = Overlay()
-    rel = str(d.get("consentRelation") or "")
-    # The form's own wording is 12 pt, so what is typed on the dotted blanks is 11 pt (shrinking only when it would not fit).
-    t = lambda x, base, v, size, maxw, **k: o.text(x, base + 1.6, v, size, maxw, blank=True, **k)
-    if kind == "A":
-        t(98, 138.1, d.get("patientName"), 11, 138, min_size=6)
-        t(337, 138.1, d.get("consentGuardianName"), 11, 125, min_size=6)
-        t(14, 154.1, d.get("consentAge"), 11, 52)
-        t(180, 154.1, d.get("patientAddress"), 10, 340, min_size=6)
-        t(58, 558.6, d.get("companionName"), 10, 140, min_size=6)
-        t(273, 558.6, d.get("companionAddress"), 10, 248, min_size=6)
-        t(168, 573.1, d.get("companionRelation"), 10, 120, min_size=6)
-        wife_x = 262
-    else:
-        t(98, 138.1, d.get("patientName"), 11, 160, min_size=6)
-        t(362, 138.1, d.get("consentGuardianName"), 11, 165, min_size=6)
-        t(112, 154.1, d.get("consentAge"), 11, 52)
-        t(278, 154.1, d.get("patientAddress"), 10, 250, min_size=6)
-        t(58, 560.4, d.get("companionName"), 10, 198, min_size=6)
-        t(312, 560.4, d.get("companionAddress"), 10, 202, min_size=6)
-        t(352, 576.5, d.get("companionRelation"), 10, 164, min_size=6)
-        wife_x = 285
-    if rel in ("Wife", "Daughter"):
-        o.text(wife_x, 124.2, f"({rel})", 6.2, 60, bold=True)
-    o.text(48, 460.5, fmt_date(d.get("consentDate")), 9)
-    o.text(48, 489.0, d.get("consentPlace"), 9, 200)
-    g_name, g_reg = d.get("gynaecologistName"), d.get("gynaecologistRegNo")
-    if g_name or g_reg:
-        o.text(100, 688.0, f"Name: {g_name or ''}", 9, 250)
-        o.text(360, 688.0, f"Reg. No.: {g_reg or ''}", 9, 190)
-    o.text(50, 704.0, fmt_date(d.get("explanationDate")), 9)
-    c_name, c_reg, c_addr = d.get("geneticClinicName"), d.get("geneticClinicRegNo"), d.get("geneticClinicAddress")
-    if c_name or c_reg:
-        o.text(100, 750.0, f"Name: {c_name or ''}", 9, 250)
-        o.text(360, 750.0, f"Reg. No.: {c_reg or ''}", 9, 190)
-    if c_addr:
-        o.text(100, 766.0, f"Address: {c_addr}", 8.5, 440, min_size=5.5)
-    return o
+# Page 3 (Form G) is NOT taken from the paper templates. Their own Form G page is typed hard against
+# the left edge (~3.8 mm) while leaving ~11.7 mm free on the right, so a filled copy looks lopsided.
+# The page is generated instead from trf_pdf._page3 - the same legal wording, the same header curve and
+# footer services strip, the same "Pg.3 of 3" - laid out by frontend/trf-doc.css with even margins, and
+# with every consent value typed inline on its blank rather than overlaid on the scan's dotted leaders.
+def _form_g_page_pdf(d: dict) -> bytes:
+    from weasyprint import HTML
+
+    from . import trf_pdf
+
+    html_doc = (f'<!doctype html><html><head><meta charset="utf-8">'
+                f'<link rel="stylesheet" href="file://{trf_pdf.CSS_PATH}"></head>'
+                f'<body class="td-print">{trf_pdf._page3(d)}</body></html>')
+    return HTML(string=html_doc, base_url=str(trf_pdf.FRONTEND_DIR)).write_pdf()
 
 
 # Page 4 (both forms): the outcome follow-up consent. The paper templates have no such page, so it
@@ -344,13 +323,16 @@ def render_trf_filled_pdf(data: dict, meta: dict | None = None) -> bytes:
     d, meta = data or {}, meta or {}
     kind = "M" if d.get("formType") == "PGT-M" else "A"
     worksheet = _embryo_pages(d, kind, meta)
-    overlays = [_page1(d, kind, meta), worksheet[0], _page3(d, kind)]
+    overlays = [_page1(d, kind, meta), worksheet[0]]
     body = "".join(o.html() for o in overlays)
     overlay_pdf = HTML(string=f"<!doctype html><html><head><meta charset='utf-8'><style>{OVERLAY_CSS}</style></head><body>{body}</body></html>").write_pdf()
     tpl = PdfReader(str(TEMPLATES[kind]))
     ov = PdfReader(io.BytesIO(overlay_pdf))
     out = PdfWriter()
     for i, page in enumerate(tpl.pages):
+        if i == 2:  # the template's own Form G page is replaced by the generated one (see _form_g_page_pdf)
+            out.add_page(PdfReader(io.BytesIO(_form_g_page_pdf(d))).pages[0])
+            continue
         if i < len(ov.pages):
             page.merge_page(ov.pages[i])
         out.add_page(page)

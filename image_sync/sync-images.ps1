@@ -84,7 +84,7 @@ function Invoke-ProtocolSyncPass {
         $file = Join-Path $folder ("{0}_{1}" -f $doc.id, (Get-SafeName $doc.filename "protocol$($doc.id)"))
         if (-not (Test-Path $file)) {
             try {
-                Invoke-WebRequest -Uri ($server + $doc.url) -OutFile $file -UseBasicParsing -TimeoutSec 300
+                Invoke-WebRequest -Uri ($server + $doc.url) -Headers $headers -OutFile $file -UseBasicParsing -TimeoutSec 300
             } catch {
                 if (Test-Path $file) { Remove-Item $file -Force }
                 Write-Log "FAILED protocol $($doc.id) ($($doc.filename)): $($_.Exception.Message)"
@@ -142,7 +142,7 @@ function Invoke-PlacedSyncPass {
             }
         } else {
             try {
-                Invoke-WebRequest -Uri ($server + $it.url) -OutFile $target -UseBasicParsing -TimeoutSec 300
+                Invoke-WebRequest -Uri ($server + $it.url) -Headers $headers -OutFile $target -UseBasicParsing -TimeoutSec 300
             } catch {
                 if (Test-Path $target) { Remove-Item $target -Force }
                 Write-Log "FAILED $($it.label) $($it.name): $($_.Exception.Message)"

@@ -59,7 +59,7 @@ function seqPlatformCanonicalMap(embryos){const compactKey=s=>s.trim().toUpperCa
 function reportStatus(r={}){const has=k=>!!field(r,[k]);return (has('attune upload')&&has('ngs report'))||isCompleteOnSeq(r,r._case)?'Completed':'Pending'}
 function progressStage(r={}){const has=k=>!!field(r,[k]);if(has('date sample received')&&has('wga done on')&&((has('seq date')&&has('attune upload')&&has('ngs report'))||isCompleteOnSeq(r,r._case)))return 4;if(has('date sample received')&&has('wga done on')&&(has('seq date')||isCompleteOnSeq(r,r._case)))return 3;if(has('date sample received')&&has('wga done on'))return 2;if(has('date sample received'))return 1;return 0}
 function caseProgressStage(c){const list=c.embryos?.length?c.embryos:[{}];return Math.min(...list.map(progressStage))}
-function progressStepper(stage,r={}){const labels=['Received','WGA','Sequencing','Report preparation','Report send'];const dateFields=['date sample received','wga done on','seq date','attune upload','ngs report'];const stepIcons={0:'stages__received',1:'stages__wga',2:'stages__sequencing',3:'stages__report-preparation',4:'stages__report-send'};const states=({0:['active','pending','pending','pending','pending'],1:['done','active','pending','pending','pending'],2:['done','done','active','pending','pending'],3:['done','done','done','active','pending']})[stage]||['done','done','done','done','done'];const check='<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';return `<div class="progress-stepper">${labels.map((label,i)=>{const date=states[i]==='done'?field(r,[dateFields[i]]):'';return `${i?`<div class="progress-line ${states[i-1]==='done'?'done':'pending'}"></div>`:''}<div class="progress-step ${states[i]}"><span class="progress-dot">${stepIcons[i]?`<img src="/static/assets/icons/${stepIcons[i]}.png" alt="">`:states[i]==='done'?check:i+1}</span><span class="progress-label">${label}</span>${date?`<span class="progress-date">${escapeHtml(date)}</span>`:''}</div>`}).join('')}</div>`}
+function progressStepper(stage,r={}){const labels=['Received','WGA','Sequencing','Report preparation','Report Sent'];const dateFields=['date sample received','wga done on','seq date','attune upload','ngs report'];const stepIcons={0:'stages__received',1:'stages__wga',2:'stages__sequencing',3:'stages__report-preparation',4:'stages__report-send'};const states=({0:['active','pending','pending','pending','pending'],1:['done','active','pending','pending','pending'],2:['done','done','active','pending','pending'],3:['done','done','done','active','pending']})[stage]||['done','done','done','done','done'];const check='<svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';return `<div class="progress-stepper">${labels.map((label,i)=>{const date=states[i]==='done'?field(r,[dateFields[i]]):'';return `${i?`<div class="progress-line ${states[i-1]==='done'?'done':'pending'}"></div>`:''}<div class="progress-step ${states[i]}"><span class="progress-dot">${stepIcons[i]?`<img src="/static/assets/icons/${stepIcons[i]}.png" alt="">`:states[i]==='done'?check:i+1}</span><span class="progress-label">${label}</span>${date?`<span class="progress-date">${escapeHtml(date)}</span>`:''}</div>`}).join('')}</div>`}
 function caseMatchesMonth(c,month){if(!month)return true;return c.embryos?.length?c.embryos.some(e=>recordMonth(e)===month):false}
 // Each sheet row's own standard test name (a sample can span rows with different tests).
 function rowTestName(e){return canonicalTestName(field(e,['test name','test']))||'Not recorded'}
@@ -167,8 +167,10 @@ function embryoDataset(){const q=$('#patientSearch')?.value.toLowerCase()||'',mo
   return expanded.sort((a,b)=>(a.embryo._seq??0)-(b.embryo._seq??0))}
 const MIN_COLUMN_FILL_RATE=0.10,ALWAYS_SHOW_COLUMNS=new Set(['hospital clinic name']),PINNED_COLUMNS=['dna conc unpurified','dna conc purified','embryo grade','karyotype','pgt result','transferred','transferred on','transferred department','transfer details'];
 function embryoColumns(rows){const seen=new Set(),cols=[];rows.forEach(x=>Object.keys(x.embryo||{}).forEach(k=>{if(k.startsWith('_')||seen.has(k))return;seen.add(k);cols.push(k)}));PINNED_COLUMNS.forEach(k=>{if(!seen.has(k)){seen.add(k);cols.push(k)}});const total=rows.length||1;let filtered=cols.filter(k=>{if(PINNED_COLUMNS.includes(k))return true;const filled=rows.reduce((n,x)=>n+(String(x.embryo?.[k]??'').trim()!==''?1:0),0);return filled>0&&(ALWAYS_SHOW_COLUMNS.has(k)||/dna.*conc|conc.*dna|pgt result|embryo grade|wga conc/.test(k)||filled/total>=MIN_COLUMN_FILL_RATE)});const reorder=(afterPattern,keyPattern)=>{const afterKey=filtered.find(k=>afterPattern.test(k)),movedKey=filtered.find(k=>keyPattern.test(k));if(afterKey&&movedKey&&afterKey!==movedKey){filtered=filtered.filter(k=>k!==movedKey);filtered.splice(filtered.indexOf(afterKey)+1,0,movedKey)}};reorder(/embryo name|embryo id/,/dna conc unpurified/);reorder(/dna conc unpurified/,/dna conc purified/);reorder(/dna conc purified/,/^embryo grade$/);reorder(/^embryo grade$/,/^karyotype$/);reorder(/^karyotype$/,/pgt result/);reorder(/^transferred$/,/^transfer details$/);if(filtered.includes('date sample received'))filtered.push('tat date');return filtered}
-// TAT date: received date + 21 days for Embryo Sure and HLA tests, + 10 days for everything else.
-function tatDate(e,c){const rec=parseSheetDate(field(e,['date sample received']));if(!rec)return'';const test=canonicalTestName(field(e,['test','test name']))||c?.test||'',d=new Date(rec);d.setDate(d.getDate()+(/embryo\s*sure|hla/i.test(test)?21:10));return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`}
+// TAT date: received date + 21 days for Embryo Sure and HLA, + 14 days for PGT-A and PGT-SR
+// (and everything else - team corrected 23-10-2026, was wrongly 10 days: the lab mostly reports
+// around day 11, so a 10-day target was flagging the routine case as late).
+function tatDate(e,c){const rec=parseSheetDate(field(e,['date sample received']));if(!rec)return'';const test=canonicalTestName(field(e,['test','test name']))||c?.test||'',d=new Date(rec);d.setDate(d.getDate()+(/embryo\s*sure|hla/i.test(test)?21:14));return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`}
 const cellValue=(x,k)=>k==='tat date'?tatDate(x.embryo,x.case):x.embryo[k]
 // Overdue: TAT date has passed and the NGS report date is still empty.
 // Samples in the NOT REPORTING sheet are cancelled, so they are never counted as overdue.
@@ -185,15 +187,119 @@ const homePeriodOn=()=>!!(homePeriod.from||homePeriod.to);
 function inHomePeriod(e){if(!homePeriodOn())return true;const m=recordMonth(e);if(!isDateMonth(m))return false;return(!homePeriod.from||m>=homePeriod.from)&&(!homePeriod.to||m<=homePeriod.to)}
 // NIPGS and MaReCs samples are never counted as overdue.
 const OVERDUE_EXEMPT=/^(NIPGS|NIPGT|MARECS?)$/;
-function isOverdue(e,c){if(isNotReporting(e)||isCompleteOnSeq(e,c)||OVERDUE_EXEMPT.test(String(testNameOf(e)||'').toUpperCase().replace(/[^A-Z]/g,'')))return false;const tat=parseSheetDate(tatDate(e,c));if(!tat||field(e,['ngs report']))return false;const today=new Date();today.setHours(0,0,0,0);return tat<today}
+// Only a sample still awaiting its report, with a TAT date, can ever run late - everything else
+// must stay out of both halves of the overdue rate.
+// REPORT RELEASED and OVERDUE cover THREE tests and nothing else (team's call, 23-10-2026):
+//   PGT-A, PGT-SR, Embryo Sure.
+// NIPGS/NIPGT, Express Molecular Karyotyping (POC/AF/CVS) and Embryology validation are out of
+// both. A sample is overdue only when it is one of these three and its report date is empty.
+// PGT-A+M, PGT-M, HLA-C typing and Embryology validation are ADD-ON tests: they finish without a
+// report, so they belong on the Add-on tests tab, counted by state - never in REPORT ONGOING.
+// MaReCs, the NOT REPORTING sheet and non-embryo material (POC, AF, CVS, Express Molecular
+// Karyotyping) are in neither. An allow-list, not a deny-list, so a new test name has to be
+// placed deliberately instead of silently landing in the report backlog.
+const REPORT_PREP_TESTS=/^(PGTA|PGTSR|EMBRYOSURE)/;
+const reportTestKey=e=>String(testNameOf(e)||'').toUpperCase().replace(/[^A-Z+]/g,'');
+// PGT-A+M and PGT-A+HLA C both start with PGTA but are add-ons, so they are taken out first.
+const isReportPrepTest=e=>{const k=reportTestKey(e);return !k.includes('+M')&&!k.includes('HLA')&&REPORT_PREP_TESTS.test(k)};
+// THE one place that decides whether a sample is still waiting for a report: it has to be one of
+// the four report-prep tests, not on a NOT REPORTING sheet, and not already complete. The
+// REPORT ONGOING tile and the list it opens both go through here.
+const needsReport=(e,c)=>isReportPrepTest(e)&&!isNotReporting(e)&&!isCompleteOnSeq(e,c);
+// Overdue is the same three tests with an empty report date: one rule, so the overdue list and
+// the REPORT RELEASED tile can never disagree about which samples are in scope. (OVERDUE_EXEMPT
+// is now redundant - NIPGS and MaReCs are not in the allow-list at all - but it is left in place
+// as the record of why they were excluded.)
+function overdueEligible(e,c){return needsReport(e,c)&&!!parseSheetDate(tatDate(e,c))&&!field(e,['ngs report'])}
+function isOverdue(e,c){if(!overdueEligible(e,c))return false;const today=new Date();today.setHours(0,0,0,0);return parseSheetDate(tatDate(e,c))<today}
+// A sheet row is not a person: one patient often spans several rows, so anything labelled
+// "patients" counts distinct names. Placeholder names the lab types in (BUFFER and the like)
+// are still counted - whether they belong here is the team's call, not this code's.
+const patientKey=e=>String(field(e,['patient name','patient'])||e?._case?.patient||'').trim().toLowerCase().replace(/\s+/g,' ');
+function countPatients(list){const id=makePatientIdentity();const s=new Set();list.forEach(e=>{const k=id(e);if(k)s.add(k)});return s.size}
+// --- Patient identity -----------------------------------------------------------------------
+// A patient is identified by Sample ID (the Anderson ID) when the sheet has one: a repeat
+// biopsy, billed and entered as a new row, still carries the SAME Sample ID, so matching on it
+// recognises the second entry as the same patient instead of a new one. The name on that second
+// entry is often typed slightly differently - a dropped middle name ("SHRINIDHI RAMESH" /
+// "SHRINIDHI"), a one-letter typo ("PARAMJEET"/"PARANJEET KHANDPUR") - so an ID match is accepted
+// when the names are close, not only when they are identical.
+// An ID that recurs across names with NO resemblance at all is a different situation: the
+// sheet's day-based "REG..." registration numbers are reused across unrelated patients booked
+// the same day. Merging those would attach one patient's results to another's, so they are left
+// UNMERGED - each row counts as its own patient - and listed separately for the team to resolve
+// by hand (see duplicateSampleIdMismatches() below).
+// A row with no Sample ID cannot be matched to anything, so it is always its own patient - the
+// "one sheet row is one patient" default, overridden only when a trustworthy ID says otherwise.
+function levDistance(a,b){
+ if(a===b)return 0;
+ const dp=Array.from({length:b.length+1},(_,i)=>i);
+ for(let i=1;i<=a.length;i++){let prev=dp[0];dp[0]=i;
+  for(let j=1;j<=b.length;j++){const tmp=dp[j];dp[j]=a[i-1]===b[j-1]?prev:1+Math.min(prev,dp[j],dp[j-1]);prev=tmp}}
+ return dp[b.length];
+}
+// Exact match, or one name's words are a subset of the other's (a dropped middle name), or a
+// short edit distance relative to length (a typo/transliteration slip) - never a bare substring
+// or first-letter check, which would wrongly match unrelated names.
+function namesLikelySamePatient(a,b){
+ a=String(a||'').trim();b=String(b||'').trim();
+ if(!a||!b)return false;
+ if(a===b)return true;
+ const ta=a.split(' '),tb=b.split(' ');
+ if(ta.every(t=>tb.includes(t))||tb.every(t=>ta.includes(t)))return true;
+ const d=levDistance(a,b);
+ return d<=2&&d<=Math.max(a.length,b.length)*0.25;
+}
+const sampleIdOf=e=>String(field(e,['sample id','sample no','box number'])||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+// A row-level fallback key for a named patient with no Sample ID: unique enough that two
+// different unnamed-ID patients never collide, without relying on object identity (so it still
+// works when the same logical row has been rebuilt into a new object, e.g. across two separate
+// allEmbryos() calls).
+const rowFallbackKey=e=>`${patientKey(e)}|${field(e,['box number'])}|${field(e,['date sample received'])}|${field(e,['embryo name','embryo id','embryo'])}`;
+// Builds a FRESH grouping - call this once per computation (once per render, once per count),
+// never share one instance across unrelated computations, so results never bleed between them.
+function makePatientIdentity(){
+ const byId={};
+ return e=>{
+  const name=patientKey(e);if(!name)return null;         // no name at all: never counts as a patient
+  const sid=sampleIdOf(e);if(!sid)return rowFallbackKey(e);
+  const groups=byId[sid]||(byId[sid]=[]);
+  const hit=groups.find(g=>namesLikelySamePatient(g.name,name));
+  if(hit)return hit.key;
+  const key=`${sid}|${name}`;groups.push({name,key});return key;
+ };
+}
+// Sample IDs shared by names with NO resemblance to each other - almost always the sheet's
+// day-based registration numbers colliding across different patients, not one patient. Never
+// auto-merged; surfaced here for the team to resolve by hand.
+function duplicateSampleIdMismatches(){
+ const byId={};
+ allEmbryos(true).forEach(e=>{const sid=sampleIdOf(e),name=patientKey(e);if(!sid||!name)return;
+  (byId[sid]=byId[sid]||[]).push({e,name})});
+ const out=[];
+ Object.entries(byId).forEach(([sid,list])=>{
+  const names=[...new Set(list.map(x=>x.name))];
+  if(names.length<2)return;
+  let clash=false;
+  for(let i=0;i<names.length&&!clash;i++)for(let j=i+1;j<names.length;j++)if(!namesLikelySamePatient(names[i],names[j]))clash=true;
+  if(clash)out.push({sampleId:sid,rows:list.map(x=>x.e)})
+ });
+ return out;
+}
 let homeUnit=(()=>{try{return localStorage.getItem('em-home-unit')==='samples'?'samples':'embryos'}catch{return'embryos'}})();
-const homeCount=list=>homeUnit==='samples'?list.length:list.reduce((s,e)=>s+embryoRowsOf(e).length,0);
-function syncOverdueCard(){const stat=$('#overdueStat');if(!stat)return;const all=allEmbryos().filter(inHomePeriod),n=all.filter(e=>isOverdue(e,e._case)).length;stat.textContent=n.toLocaleString();const lab=stat.parentElement?.querySelector('small');if(lab)lab.innerHTML=`OVERDUE PATIENTS <span class="ov-pct">${all.length?(n/all.length*100).toFixed(1):'0.0'}%</span>`}
+// POC, amniotic fluid and CVS samples are all reported as Express Molecular Karyotyping by NGS.
+// They are prenatal/products-of-conception material, not embryos, so they stay out of anything
+// counting embryos - they are still real work and still appear in the test-wise chart.
+const NON_EMBRYO_TEST='Express Molecular Karyotyping by NGS';
+const isNonEmbryoSample=r=>canonicalTestName(field(r,['test name','test']))===NON_EMBRYO_TEST;
+const embryoOnly=list=>list.filter(r=>!isNonEmbryoSample(r));
+const homeCount=list=>homeUnit==='samples'?list.length:embryoOnly(list).reduce((s,e)=>s+embryoRowsOf(e).length,0);
+function syncOverdueCard(){const stat=$('#overdueStat');if(!stat)return;const all=allEmbryos().filter(inHomePeriod),n=countPatients(all.filter(e=>isOverdue(e,e._case))),awaiting=countPatients(all.filter(e=>overdueEligible(e,e._case)));stat.textContent=n.toLocaleString();const lab=stat.parentElement?.querySelector('small');if(lab)lab.innerHTML=`OVERDUE PATIENTS <span class="ov-pct" title="Of patients still awaiting a report">${awaiting?(n/awaiting*100).toFixed(1):'0.0'}%</span>`}
 const PIN_ICON='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg>';
 function fitTableHeight(el){if(!el)return;const top=el.getBoundingClientRect().top;let h=Math.max(240,window.innerHeight-top-24);el.style.maxHeight=`${h}px`;const overflow=document.documentElement.scrollHeight-window.innerHeight;if(overflow>0){h=Math.max(240,h-overflow);el.style.maxHeight=`${h}px`}}
 window.addEventListener('resize',()=>{fitTableHeight($('#caseTable .embryo-columns-table'));fitTableHeight($('#rebiopsyTableWrap'));fitTableHeight($('#overdueTableWrap'))});
 const EDITABLE_REGISTRY_COLS=new Set(['dna conc unpurified','dna conc purified','karyotype','pgt result']);
-function renderCases(){if(editingCell()&&$('#caseTable')?.contains(document.activeElement)){casesRefreshWaiting=true;return}syncOverdueCard();renderSheetTabs();renderTransferCards();casesRender={rows:[],cols:[]};const datasetRows=embryoDataset(),rows=sortNewestFirst?[...datasetRows].reverse():datasetRows,empty='<div class="empty-action"><h3>No records available</h3><p>Import the monthly register and embryo result files, or clear the current filters.</p><button class="primary" data-view="import">Upload result</button></div>',naturalCols=embryoColumns(rows),cols=[...naturalCols.filter(k=>frozenColumnKeys.has(k)),...naturalCols.filter(k=>!frozenColumnKeys.has(k))],chipCols=new Set(['sample id','box number','case id']);if(samplesScope){const tc=['transferred','transferred on','transferred department','transfer details'].filter(k=>cols.includes(k));if(tc.length){const rest=cols.filter(k=>!tc.includes(k)),i=rest.indexOf('test name');cols.splice(0,cols.length,...rest.slice(0,i+1),...tc,...rest.slice(i+1))}}{const pc=$('#pgtmCount');if(pc)pc.textContent=(samplesScope?rows.length:allEmbryos().filter(isPgtmSample).length).toLocaleString()}if($('#registryCount'))$('#registryCount').textContent=rows.length?`· ${rows.length.toLocaleString()} records`:'';const embryoStat=$('#samplesEmbryoStat');if(embryoStat)embryoStat.textContent=rows.reduce((s,x)=>s+embryoRowsOf(x.embryo).length,0).toLocaleString();const caseCountEl=$('#caseCount');if(caseCountEl)caseCountEl.textContent=registryViewMode==='embryo'?allEmbryos().flatMap(expandEmbryoRow).length:allEmbryos().length;casesRender={rows,cols};$('#caseTable').innerHTML=`<div class="embryo-columns-table"><table><thead><tr>${cols.map(k=>`<th>${escapeHtml(columnLabel(k))}<button class="col-freeze-btn${frozenColumnKeys.has(k)?' pinned':''}" data-freeze-col="${escapeHtml(k)}" title="${frozenColumnKeys.has(k)?'Unfreeze this column':'Freeze this column'}">${PIN_ICON}</button></th>`).join('')}</tr></thead><tbody>${rows.map((x,ri)=>{const focus=registryViewMode==='embryo'?embryoDisplayId(x.embryo):'';return `<tr data-ri="${ri}" data-case="${escapeHtml(x.case.id)}"${focus?` data-embryo-focus="${escapeHtml(focus)}"`:''}>${cols.map(k=>{const v=String(cellValue(x,k)??'');if(chipCols.has(k))return `<td>${v?`<span class="id-chip">${escapeHtml(v)}</span>`:''}</td>`;if(registryViewMode==='embryo'&&EDITABLE_REGISTRY_COLS.has(k)&&canEditResults()){const sampleId=editSampleId(x.embryo),tag=editEmbryoTag(field(x.embryo,['embryo name','embryo id','embryo']));if(sampleId)return `<td class="editable-cell" contenteditable="true" spellcheck="false" title="Click to edit" data-sample-id="${escapeHtml(sampleId)}" data-embryo="${escapeHtml(tag)}" data-column="${escapeHtml(k)}" data-original="${escapeHtml(v)}">${escapeHtml(v)}</td>`}return `<td${v.length>40?` class="wrap-cell" title="${escapeHtml(v)}"`:''}>${escapeHtml(v)}</td>`}).join('')}</tr>`}).join('')}</tbody></table></div>`+(rows.length?'':empty);$$('[data-case]').forEach(r=>r.onclick=()=>openPatient(cases.find(c=>c.id===r.dataset.case),r.dataset.embryoFocus||''));$$('#caseTable [data-view]').forEach(b=>b.onclick=()=>showView(b.dataset.view));$$('#caseTable [data-freeze-col]').forEach(b=>b.onclick=e=>{e.stopPropagation();const k=b.dataset.freezeCol;if(frozenColumnKeys.has(k))frozenColumnKeys.delete(k);else frozenColumnKeys.add(k);renderCases()});applyColumnFreeze($('#caseTable'),frozenColumnKeys.size);updateFiltersBadge();fitTableHeight($('#caseTable .embryo-columns-table'));wireEditableCells()}
+function renderCases(){if(editingCell()&&$('#caseTable')?.contains(document.activeElement)){casesRefreshWaiting=true;return}syncOverdueCard();renderSheetTabs();renderTransferCards();casesRender={rows:[],cols:[]};const datasetRows=embryoDataset(),rows=sortNewestFirst?[...datasetRows].reverse():datasetRows,empty='<div class="empty-action"><h3>No records available</h3><p>Import the monthly register and embryo result files, or clear the current filters.</p><button class="primary" data-view="import">Upload result</button></div>',naturalCols=embryoColumns(rows),cols=[...naturalCols.filter(k=>frozenColumnKeys.has(k)),...naturalCols.filter(k=>!frozenColumnKeys.has(k))],chipCols=new Set(['sample id','box number','case id']);if(samplesScope){const tc=['transferred','transferred on','transferred department','transfer details'].filter(k=>cols.includes(k));if(tc.length){const rest=cols.filter(k=>!tc.includes(k)),i=rest.indexOf('test name');cols.splice(0,cols.length,...rest.slice(0,i+1),...tc,...rest.slice(i+1))}}{const pc=$('#pgtmCount');if(pc)pc.textContent=(samplesScope?rows.length:allEmbryos().filter(isPgtmSample).length).toLocaleString()}if($('#registryCount'))$('#registryCount').textContent=rows.length?`· ${rows.length.toLocaleString()} records`:'';const embryoStat=$('#samplesEmbryoStat');if(embryoStat)embryoStat.textContent=rows.filter(x=>!isNonEmbryoSample(x.embryo)).reduce((s,x)=>s+embryoRowsOf(x.embryo).length,0).toLocaleString();const caseCountEl=$('#caseCount');if(caseCountEl)caseCountEl.textContent=registryViewMode==='embryo'?embryoOnly(allEmbryos()).reduce((s,e)=>s+embryoRowsOf(e).length,0):allEmbryos().length;casesRender={rows,cols};$('#caseTable').innerHTML=`<div class="embryo-columns-table"><table><thead><tr>${cols.map(k=>`<th>${escapeHtml(columnLabel(k))}<button class="col-freeze-btn${frozenColumnKeys.has(k)?' pinned':''}" data-freeze-col="${escapeHtml(k)}" title="${frozenColumnKeys.has(k)?'Unfreeze this column':'Freeze this column'}">${PIN_ICON}</button></th>`).join('')}</tr></thead><tbody>${rows.map((x,ri)=>{const focus=registryViewMode==='embryo'?embryoDisplayId(x.embryo):'';return `<tr data-ri="${ri}" data-case="${escapeHtml(x.case.id)}"${focus?` data-embryo-focus="${escapeHtml(focus)}"`:''}>${cols.map(k=>{const v=String(cellValue(x,k)??'');if(chipCols.has(k))return `<td>${v?`<span class="id-chip">${escapeHtml(v)}</span>`:''}</td>`;if(registryViewMode==='embryo'&&EDITABLE_REGISTRY_COLS.has(k)&&canEditResults()){const sampleId=editSampleId(x.embryo),tag=editEmbryoTag(field(x.embryo,['embryo name','embryo id','embryo']));if(sampleId)return `<td class="editable-cell" contenteditable="true" spellcheck="false" title="Click to edit" data-sample-id="${escapeHtml(sampleId)}" data-embryo="${escapeHtml(tag)}" data-column="${escapeHtml(k)}" data-original="${escapeHtml(v)}">${escapeHtml(v)}</td>`}if(k==='remarks')return v?`<td class="remarks-cell"><span class="remarks-clip">${escapeHtml(v)}</span></td>`:'<td></td>';const wrapClass=k==='karyotype'||k==='pgt result'?'wrap-cell wrap-cell-karyo':v.length>40?'wrap-cell':'';return `<td${wrapClass?` class="${wrapClass}" title="${escapeHtml(v)}"`:''}>${escapeHtml(v)}</td>`}).join('')}</tr>`}).join('')}</tbody></table></div>`+(rows.length?'':empty);$$('[data-case]').forEach(r=>r.onclick=()=>openPatient(cases.find(c=>c.id===r.dataset.case),r.dataset.embryoFocus||''));$$('#caseTable [data-view]').forEach(b=>b.onclick=()=>showView(b.dataset.view));$$('#caseTable [data-freeze-col]').forEach(b=>b.onclick=e=>{e.stopPropagation();const k=b.dataset.freezeCol;if(frozenColumnKeys.has(k))frozenColumnKeys.delete(k);else frozenColumnKeys.add(k);renderCases()});applyColumnFreeze($('#caseTable'),frozenColumnKeys.size);updateFiltersBadge();fitTableHeight($('#caseTable .embryo-columns-table'));wireEditableCells()}
 // Samples > Embryo view rows as last rendered - an edit sends its whole row to the edits sheet.
 let casesRender={rows:[],cols:[]};
 function editRowPayload(td,column,value){const x=casesRender.rows[+td.closest('tr')?.dataset.ri];if(!x)return[];const row=casesRender.cols.map(k=>[columnLabel(k),k===column?value:String(cellValue(x,k)??'')]);if(!casesRender.cols.includes('run id'))row.push(['RUN ID',runsOf(x.embryo).join(', ')]);return row}
@@ -238,7 +344,18 @@ const EMBRYOLOGIST_ALIASES={SINDHUJA:'SINDHUJA N S',SINDHIYA:'SINDHUJA N S',SIND
  CHITRAKAMBIR:'CHITRA KAMBLE',SNEHAHALDARKAR:'SNEHA HALDANKAR',SNEHAHALDAKAR:'SNEHA HALDANKAR',HALDARKAR:'SNEHA HALDANKAR',JAYARAMANR:'JAYARAMAN',RJAYARAMAN:'JAYARAMAN',RAJASHEKHARU:'RAJASHEKAR U',RAJSHEKARU:'RAJASHEKAR U',RAJASHEKAR:'RAJASHEKAR U',RAJASHEKHAR:'RAJASHEKAR U',RAJSHEKAR:'RAJASHEKAR U',RAJSHEKHAR:'RAJASHEKAR U',RAJASHEKHARV:'RAJASHEKAR U',NISHANTHSINGH:'NISHANTH SINGH',NISHNTHSINGH:'NISHANTH SINGH',NISHANTH:'NISHANTH SINGH',ARCHANAMANIKUE:'ARCHANA MANIKERE',ARCHANAMANIKUR:'ARCHANA MANIKERE',ARCHANAMARIKERE:'ARCHANA MANIKERE',RAJPRIYAPANDIAN:'RAJ PRIYA PANDIAN',RAJPRIYA:'RAJ PRIYA PANDIAN',UDAYKIRAN:'UDAY KIRAN',UDAYAKIRAN:'UDAY KIRAN',UDHAYKIRAN:'UDAY KIRAN',UADYAKIRAN:'UDAY KIRAN',UDAYKIRAND:'UDAY KIRAN',UDAYAKIRAND:'UDAY KIRAN',TEJANISHUKLA:'TEJASVI SHUKLA',TEJASISHUKLA:'TEJASVI SHUKLA',TEJASSHUKLA:'TEJASVI SHUKLA',TEJASWISHUKLA:'TEJASVI SHUKLA',TEJASVISUKLA:'TEJASVI SHUKLA',TEJASISURKCA:'TEJASVI SHUKLA',VIDYALAKSHMIRBHAT:'VIDYA LAKSHMI R BHAT',VIDHYALAKSHMIRBHAT:'VIDYA LAKSHMI R BHAT',MADUSUDHAN:'MADHUSUDHAN RAO',MADUSUDAN:'MADHUSUDHAN RAO',MADUSUDANRAO:'MADHUSUDHAN RAO',MADHUSUDHAN:'MADHUSUDHAN RAO',MADHUSUDAN:'MADHUSUDHAN RAO',MADHUSUDANRAO:'MADHUSUDHAN RAO',MOHDABDAS:'MOHD AQDAS',MOHDADDAS:'MOHD AQDAS',MOHDABDOS:'MOHD AQDAS'};
 // The one place a typed embryologist name becomes the real name (known misspellings only; anything else is kept as typed).
 function canonEmbryologist(n){const a=EMBRYOLOGIST_ALIASES[String(n||'').toUpperCase().replace(/[^A-Z0-9]/g,'')];return a||n}
-function applyEmbryologistAliases(rows){rows.forEach(r=>{const k=fieldKey(r,['embryologist name','embryologist']);if(!k)return;const alias=canonEmbryologist(r[k]);if(alias!==r[k])r[k]=alias});return rows}
+// Beyond the hand-written aliases, the same person is typed with stray spaces and dots
+// ("SIDDESH.B" / "SIDDESH  B"). Those collapse to one key, and the spelling the lab uses most
+// becomes the label, so one person is never split across two rows of a per-embryologist table.
+const EMB_KEY=n=>String(n||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const NON_EMBRYOLOGIST=/^(NA|NIL|NONE|BLANK|TEST|)$/;
+const embName=r=>{const k=fieldKey(r,['embryologist name','embryologist']);return k?String(canonEmbryologist(r[k])||'').trim().replace(/\s+/g,' '):''};
+function applyEmbryologistAliases(rows){
+ const counts={};
+ rows.forEach(r=>{const raw=embName(r),key=EMB_KEY(raw);if(NON_EMBRYOLOGIST.test(key))return;(counts[key]=counts[key]||{})[raw]=(counts[key][raw]||0)+1});
+ const canonical={};Object.entries(counts).forEach(([key,byRaw])=>{canonical[key]=Object.keys(byRaw).sort((a,b)=>byRaw[b]-byRaw[a]||a.localeCompare(b))[0]});
+ rows.forEach(r=>{const k=fieldKey(r,['embryologist name','embryologist']);if(!k)return;const raw=embName(r),key=EMB_KEY(raw);r[k]=NON_EMBRYOLOGIST.test(key)?'':(canonical[key]||raw)});
+ return rows}
 async function importedCases(){await loadCellEdits();const rows=applyEmbryologistAliases(((await kvGet('embryomatrix-imported-cases'))||[]).filter(r=>!r._stale).map(withResultDna).map(withKaryotype).map(withCellEdits)),clientCounts={},resolved=new Map();for(const r of rows){const res=clientFromDirectory(r);if(res){resolved.set(r,res);continue}const c=normalizeClientName(field(r,['center name','hospital clinic name','client']));if(c)clientCounts[c]=(clientCounts[c]||0)+1}const clientCanonical=buildClientCanonicalMap(clientCounts),groups=new Map;for(const r of rows){const patient=field(r,['patient name','patient'])||resultIdentity(r).patient||'Unnamed patient',caseId=field(r,['case id']),sampleId=field(r,['sample id','sample no','box number']),received=field(r,['date sample received']),center=field(r,['center name','hospital clinic name','client']),embryoTag=field(r,['embryo name','embryo id','embryo']),id=caseId||sampleId||`IM-${groups.size+1}`,uniquePart=cleanId(caseId||sampleId||'')||cleanId(`${center||''}${received||''}${embryoTag||''}`)||`AUTO${groups.size+1}`,key=`${patient.toLowerCase().replace(/\s+/g,'')}|${uniquePart}`;if(!groups.has(key))groups.set(key,{id,patient,embryologist:field(r,['embryologist name','embryologist'])||'Not assigned',...caseClientFields(resolved.get(r),clientCanonical[normalizeClientName(field(r,['center name','hospital clinic name','client']))]),test:canonicalTestName(field(r,['test name','test']))||'Not recorded',region:field(r,['location','region'])||'Not assigned',result:'Normal',samples:0,images:0,nabl:field(r,['nabl'])||'Pending',source:'Merged',embryos:[]});const c=groups.get(key),outcome=clinicalOutcome(r);if(c.test==='Not recorded'){const t=canonicalTestName(field(r,['test name','test']));if(t)c.test=t}c.samples++;c.embryos.push({...r,_outcome:outcome});if(outcome==='Inconclusive')c.result='Inconclusive';else if(['Abnormal','Fail'].includes(outcome)&&c.result!=='Inconclusive')c.result=outcome}return [...groups.values()]}
 async function setupCases(){cases=[...cases.filter(c=>c.source!=='Merged'),...await importedCases()];{const rs=$('#runFilter');if(rs){const cur=rs.value;rs.querySelectorAll('option:not(:first-child)').forEach(o=>o.remove());[...new Set(allEmbryos().flatMap(runsOf))].sort((a,b)=>(parseInt(b)||0)-(parseInt(a)||0)||b.localeCompare(a)).forEach(v=>rs.add(new Option(`Run ${v}`,v)));rs.value=[...rs.options].some(o=>o.value===cur)?cur:'';rs.onchange=()=>renderCases()}}$('#caseCount').textContent=allEmbryos().length;['embryologist','client','test','region'].forEach(k=>{const s=$(`#${k}Filter`);s.querySelectorAll('option:not(:first-child)').forEach(o=>o.remove());[...new Set(cases.map(c=>c[k]))].sort().forEach(v=>s.add(new Option(v,v)));s.onchange=()=>renderCases()});const ss=$('#storageFilter'),storageSelected=ss.value;ss.querySelectorAll('option:not(:first-child)').forEach(o=>o.remove());const statuses=[...new Set(cases.flatMap(c=>(c.embryos||[]).map(e=>storageInfo(e).status)))].sort();statuses.forEach(v=>ss.add(new Option(v,v)));ss.value=statuses.includes(storageSelected)?storageSelected:'';ss.onchange=()=>renderCases();const ts=$('#transferFilter'),transferSelected=ts.value;ts.querySelectorAll('option:not(:first-child)').forEach(o=>o.remove());const transferStatuses=[...new Set(cases.flatMap(c=>(c.embryos||[]).map(e=>transferInfo(e).status)))].sort();transferStatuses.forEach(v=>ts.add(new Option(v,v)));ts.value=transferStatuses.includes(transferSelected)?transferSelected:'';ts.onchange=()=>renderCases();const sms=$('#samplesMonthFilter');let samplesSelected=sms?.value||'';const monthValues=cases.flatMap(c=>(c.embryos||[]).map(recordMonth)).filter(Boolean);const months=[...[...new Set(monthValues.filter(isDateMonth))].sort(),...new Set(monthValues.filter(v=>!isDateMonth(v)))];if(!monthFilterDefaulted){monthFilterDefaulted=true;if(months.includes('Pending'))samplesSelected='Pending'}if(sms){sms.querySelectorAll('option:not(:first-child)').forEach(o=>o.remove());months.forEach(v=>sms.add(new Option(monthLabel(v),v)));sms.value=months.includes(samplesSelected)?samplesSelected:'';sms.onchange=()=>renderCases()}const CHART_RENDERERS={volumeMonthFilter:renderVolumeChart,testMonthFilter:renderTestChart,outcomeMonthFilter:renderOutcomeChart,clientMonthFilter:renderClientChart,regionMonthFilter:renderRegionChart,platformMonthFilter:renderPlatformChart,qualityMonthFilter:renderQualitySection};Object.entries(CHART_RENDERERS).forEach(([id,renderFn])=>{const sel=$(`#${id}`);if(!sel)return;const current=sel.value;sel.querySelectorAll('option:not(:first-child)').forEach(o=>o.remove());months.forEach(v=>sel.add(new Option(monthLabel(v),v)));sel.value=months.includes(current)?current:'';sel.onchange=()=>renderFn(overviewRows())});const clientLegendEl=$('#clientLegend');if(clientLegendEl)clientLegendEl.onclick=e=>{const row=e.target.closest('.legend-row');if(!row)return;toggleLegendSlice(row.dataset.pieId,row.dataset.label,()=>renderClientChart(overviewRows()))};$('#resultFilter').onchange=()=>renderCases();$('#reportStatusFilter').onchange=()=>renderCases();const prepCard=$('#reportPrepCard');if(prepCard){const openPrep=()=>showView('reportprep');prepCard.onclick=openPrep;prepCard.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openPrep()}}}const rebiopsyCard=$('#rebiopsyCard');if(rebiopsyCard){const openRebiopsy=()=>showView('rebiopsy');rebiopsyCard.onclick=openRebiopsy;rebiopsyCard.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openRebiopsy()}}}$('#patientSearch').oninput=()=>renderCases();$('#clearFilters').onclick=()=>{['embryologist','client','test','region','result','storage','transfer','reportStatus','run'].forEach(k=>$(`#${k}Filter`).value='');$('#patientSearch').value='';if(sms)sms.value='';renderCases()};$('#downloadCsv').onclick=e=>{e.stopPropagation();$('#exportMenu').classList.toggle('hidden')};$('#exportMenu').onclick=e=>{const b=e.target.closest('[data-format]');if(!b)return;if(b.dataset.format==='excel-all')downloadRegistry('excel',fullRegistryDataset(),'full-registry');else downloadRegistry(b.dataset.format);$('#exportMenu').classList.add('hidden')};$('#filtersToggle').onclick=e=>{e.stopPropagation();$('#filtersPanel').classList.toggle('hidden');$('#filtersToggle').classList.toggle('active');fitTableHeight($('#caseTable .embryo-columns-table'));revealFilters($('#filtersPanel'))};$('#filtersPanel').onclick=e=>e.stopPropagation();const viewToggle=$('#registryViewToggle');if(viewToggle)viewToggle.onclick=e=>{const b=e.target.closest('[data-mode]');if(!b)return;registryViewMode=b.dataset.mode;viewToggle.querySelectorAll('.prep-seg').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-selected',String(x===b))});renderCases()};refreshTestFilterOptions();renderCases();renderAnalytics();renderQcAlerts()}
 function csvCell(v){return `"${String(v??'').replace(/"/g,'""')}"`}
@@ -249,7 +366,9 @@ function fullRegistryDataset(){const rows=cases.flatMap(c=>c.embryos?.length?c.e
 function downloadFile(content,type,extension,name='registry'){const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`EmbryoMatrix-${name}-report-${new Date().toISOString().slice(0,10)}.${extension}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)}
 function downloadRegistry(format,dataset,name='registry'){if(format==='pdf'){window.print();return}const{headers,rows}=dataset||exportDataset();if(format==='json'){const data=rows.map(row=>Object.fromEntries(headers.map((h,i)=>[h,row[i]??''])));downloadFile(JSON.stringify({exportedAt:new Date().toISOString(),records:data},null,2),'application/json;charset=utf-8','json',name)}else if(format==='excel'){const cellStyle=` style="mso-number-format:'\\@';"`,table=`<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1"><colgroup>${headers.map(()=>'<col style="width:130px">').join('')}</colgroup><thead><tr>${headers.map(h=>`<th${cellStyle}>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(v=>`<td${cellStyle}>${escapeHtml(String(v??''))}</td>`).join('')}</tr>`).join('')}</tbody></table></body></html>`;downloadFile('﻿'+table,'application/vnd.ms-excel','xls',name)}else{const csv='﻿'+[headers,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n');downloadFile(csv,'text/csv;charset=utf-8','csv',name)}toast(`${rows.length} records exported as ${format==='excel'?'Excel':format.toUpperCase()}`)}
 function countBy(items,keyFn){return items.reduce((a,x)=>{const k=keyFn(x)||'Unknown';a[k]=(a[k]||0)+1;return a},{})}
-function allEmbryos(){return cases.flatMap(c=>c.embryos?.length?c.embryos.map(e=>({...e,_case:c})):Array.from({length:c.samples||1},()=>({_case:c,_outcome:c.result})))}
+// Karyotyping (POC / AF / CVS) is internal work, not embryo testing: it is left out of every count
+// and every dashboard. Only the test-wise chart asks for it, with allEmbryos(true).
+function allEmbryos(includeInternal=false){const rows=cases.flatMap(c=>c.embryos?.length?c.embryos.map(e=>({...e,_case:c})):Array.from({length:c.samples||1},()=>({_case:c,_outcome:c.result})));return includeInternal?rows:rows.filter(r=>!isNonEmbryoSample(r))}
 function truncateLabel(s,n){return s.length>n?s.slice(0,n-1)+'…':s}
 function niceMaxOf(max){const magnitude=Math.pow(10,Math.floor(Math.log10(max||1))),residual=(max||1)/magnitude;let niceResidual;if(residual<=1)niceResidual=1;else if(residual<=2)niceResidual=2;else if(residual<=5)niceResidual=5;else niceResidual=10;return niceResidual*magnitude}
 // Shared hover for bar-style charts: column band, other columns fade, and a
@@ -449,7 +568,13 @@ const QC_FAIL_SIGNALS=['inconclusive','low dna concentration','low reads','no dn
 // No DNA detected / low DNA / low reads / inconclusive in the conclusion or result is always a QC fail;
 // otherwise the QC column decides, and a recorded result with no QC value counts as a pass.
 function qcVerdict(e){const text=`${field(e,['conclusion'])} ${field(e,['result'])}`.toLowerCase().trim();if(text&&QC_FAIL_SIGNALS.some(s=>text.includes(s)))return'FAIL';const qc=field(e,['qc']).toUpperCase();if(qc==='FAIL'||qc==='PASS')return qc;return text?'PASS':null}
-function embryologistQcStats(rows){const byName={};rows.forEach(e=>{const name=e._case.embryologist||'Not assigned';if(name==='Not assigned'||/^(n\/?a|`)$/i.test(name.trim()))return;const q=byName[name]||(byName[name]={name,total:0,pass:0,fail:0});embryoRowsOf(e).forEach(er=>{const verdict=qcVerdict(er);q.total++;if(verdict==='PASS')q.pass++;else if(verdict==='FAIL')q.fail++})});return Object.values(byName).map(q=>({...q,pending:q.total-q.pass-q.fail,successRate:(q.pass+q.fail)?Math.round(q.pass/(q.pass+q.fail)*100):null})).sort((a,b)=>{const aResolved=a.successRate!==null,bResolved=b.successRate!==null;if(aResolved!==bResolved)return aResolved?-1:1;if(aResolved)return b.successRate-a.successRate||b.total-a.total;return b.total-a.total})}
+// Quality ranking: the pass rate decides, but only once enough embryos have an actual QC verdict -
+// a perfect 50/50 outranks 96/100, while 5/5 is too little evidence to lead the chart.
+const EMB_RANK_MIN=50;
+function byQuality(a,b){const qa=a.resolved>=EMB_RANK_MIN,qb=b.resolved>=EMB_RANK_MIN;
+ if(qa!==qb)return qa?-1:1;
+ return (b.rate??-1)-(a.rate??-1)||b.resolved-a.resolved||b.total-a.total||a.name.localeCompare(b.name)}
+function embryologistQcStats(rows){const byName={};rows.forEach(e=>{const name=e._case.embryologist||'Not assigned';if(name==='Not assigned'||/^(n\/?a|`)$/i.test(name.trim()))return;const q=byName[name]||(byName[name]={name,total:0,pass:0,fail:0});embryoRowsOf(e).forEach(er=>{const verdict=qcVerdict(er);q.total++;if(verdict==='PASS')q.pass++;else if(verdict==='FAIL')q.fail++})});return Object.values(byName).map(q=>({...q,pending:q.total-q.pass-q.fail,resolved:q.pass+q.fail,rate:(q.pass+q.fail)?q.pass/(q.pass+q.fail):null,successRate:(q.pass+q.fail)?Math.round(q.pass/(q.pass+q.fail)*100):null})).sort((a,b)=>{const aResolved=a.successRate!==null,bResolved=b.successRate!==null;if(aResolved!==bResolved)return aResolved?-1:1;if(aResolved)return b.successRate-a.successRate||b.total-a.total;return b.total-a.total})}
 // Stacked bar per embryologist: QC pass (green) at the base, QC fail (red) on top.
 function renderEmbryologistBarChart(id,stats,limit=10){
  const el=$(id);if(!el)return;
@@ -488,10 +613,12 @@ function renderEmbryologistRankList(id,stats){
  const el=$(id);if(!el)return;
  if(!stats.length){el.innerHTML='<div class="chart-empty">No samples in this period.</div>';return}
  const peak=Math.max(1,...stats.map(q=>q.total)),seg=(v,c)=>v?`<span style="width:${(v/peak*100).toFixed(2)}%;background:${c}"></span>`:'';
- const head=`<div class="emb-row emb-head" aria-hidden="true"><span>S.No</span><span>Embryologist</span><span>Embryos</span><span>Total</span><span>Passed</span><span>Failed</span><span>Awaiting</span><span title="${escapeHtml(embInc?.period||'')} report">Report embryos</span><span>Inconclusive</span><span>Inc. %</span></div>`;
+ // The monthly report columns come from a separate upload; with none loaded they would be a column of dashes.
+ const hasInc=!!embInc?.rows?.length;
+ const head=`<div class="emb-row emb-head" aria-hidden="true"><span>S.No</span><span>Embryologist</span><span>Embryos</span><span>Total</span><span>Passed</span><span>Failed</span><span>Awaiting</span><span title="Passed of those with a QC verdict">Pass %</span>${hasInc?`<span title="${escapeHtml(embInc?.period||'')} report">Report embryos</span><span>Inconclusive</span><span>Inc. %</span>`:''}</div>`;
  const incBy=new Map((embInc?.rows||[]).map(r=>[nameKey(r.name),r])),incTone=v=>v>=10?'high':v>=5?'mid':v>0?'low':'zero';
  const legend=`<div class="rg-legend emb-legend"><span><i style="background:${QUALITY_GOOD}"></i>QC Pass</span><span><i style="background:${QUALITY_CRITICAL}"></i>QC Fail</span><span><i style="background:${QUALITY_PENDING}"></i>Awaiting result</span></div>`;
- el.innerHTML=legend+`<div class="emb-list">${head}${stats.map((q,i)=>`<div class="emb-row" title="${escapeHtml(q.name)}: ${q.total} total · ${q.pass} passed · ${q.fail} failed · ${q.pending} awaiting"><span class="rank-index${i<3?' rank-top':''}">${i+1}</span><span class="emb-name">${escapeHtml(q.name)}</span><span class="emb-bar">${seg(q.pass,QUALITY_GOOD)}${seg(q.fail,QUALITY_CRITICAL)}${seg(q.pending,QUALITY_PENDING)}</span><strong class="emb-num">${q.total.toLocaleString()}</strong><span class="emb-num${q.pass?' emb-pass':''}">${q.pass.toLocaleString()}</span><span class="emb-num${q.fail?' emb-fail':''}">${q.fail.toLocaleString()}</span><span class="emb-num emb-wait">${q.pending.toLocaleString()}</span>${(()=>{const r=incBy.get(nameKey(q.name));if(!r)return'<span class="emb-num emb-wait">—</span><span class="emb-num emb-wait">—</span><span class="emb-num emb-wait">—</span>';const pct=r.total?r.inconclusive/r.total*100:0;return `<span class="emb-num">${r.total}</span><span class="emb-num">${r.inconclusive}</span><span class="emb-num"><span class="inc-pct ${incTone(pct)}">${pct.toFixed(2)}%</span></span>`})()}</div>`).join('')}</div>`;
+ el.innerHTML=legend+`<div class="emb-list${hasInc?'':' no-inc'}">${head}${stats.map((q,i)=>`<div class="emb-row" title="${escapeHtml(q.name)}: ${q.total} total · ${q.pass} passed · ${q.fail} failed · ${q.pending} awaiting"><span class="rank-index${i<3?' rank-top':''}">${i+1}</span><span class="emb-name">${escapeHtml(q.name)}</span><span class="emb-bar">${seg(q.pass,QUALITY_GOOD)}${seg(q.fail,QUALITY_CRITICAL)}${seg(q.pending,QUALITY_PENDING)}</span><strong class="emb-num">${q.total.toLocaleString()}</strong><span class="emb-num${q.pass?' emb-pass':''}">${q.pass.toLocaleString()}</span><span class="emb-num${q.fail?' emb-fail':''}">${q.fail.toLocaleString()}</span><span class="emb-num emb-wait">${q.pending.toLocaleString()}</span><span class="emb-num${q.resolved>=EMB_RANK_MIN?' emb-pass':''}">${q.successRate===null?'—':q.successRate+'%'}</span>${!hasInc?'':(()=>{const r=incBy.get(nameKey(q.name));if(!r)return'<span class="emb-num emb-wait">—</span><span class="emb-num emb-wait">—</span><span class="emb-num emb-wait">—</span>';const pct=r.total?r.inconclusive/r.total*100:0;return `<span class="emb-num">${r.total}</span><span class="emb-num">${r.inconclusive}</span><span class="emb-num"><span class="inc-pct ${incTone(pct)}">${pct.toFixed(2)}%</span></span>`})()}</div>`).join('')}</div>`;
 }
 function monthFiltered(rows,val){return val?rows.filter(e=>recordMonth(e)===val):rows}
 // Smooth hover for the monthly line chart: guide line, growing point,
@@ -533,7 +660,7 @@ const TEST_CANONICAL=[
  ['PGT-M',['PGT-M','PGT M','PGTM','PGT-M only','PGTM first','PGT-M first']],
  ['Embryo Sure',['Embryo Sure','Embryosure','PGT-A plus','PGT A plus','PGT/Embryosure','PGT-A/Embryosure','PGT-A+Embryo sure']],
  ['PGT-HLA-C Typing',['PGT-HLA-C typing','PGT HLA C typing']],
- ['Express Molecular Karyotyping by NGS',['Express molecular karyotyping by NGS','Express molecular typing by NGS','NGS karyotyping','AF','AF-NGS','CVS','POC']],
+ ['Express Molecular Karyotyping by NGS',['Express molecular karyotyping by NGS','Express molecular typing by NGS','Express moleculr karyotyping NGS','Express molecular karyotyping NGS','Express molecular karyotyping','NGS karyotyping','AF','AF-NGS','CVS','POC']],
  ['NIPGS',['NIPGS','NIPGT']],
  ['PGT-M/Embryo Sure',['PGT-M/Embryosure','Embryosure/PGT-M','PGT-M+Embryosure']],
  ['Embryo Sure/HLA-C Typing',['Embryosure/HLA-C typing','Embryosure+HLA-C','Embryosure+HLC-C','Embryosure HLA C typing']],
@@ -570,7 +697,7 @@ function renderEmbTopList(id,stats,limit=10){const el=$(id);if(!el)return;const 
  el.innerHTML=`<div class="hb-list">${shown.map(d=>{const t=d.pass+d.fail,w=t/max*100;return `<div class="hb-row" title="${escapeHtml(d.name)}: ${d.pass.toLocaleString()} QC pass, ${d.fail.toLocaleString()} QC fail"><span class="hb-name">${escapeHtml(d.name)}</span><span class="hb-track"><i class="hb-bar" style="width:${w}%"><b class="hb-pass" style="flex:${d.pass} 1 0"></b>${d.fail?`<b class="hb-fail" style="flex:${d.fail} 1 0"></b>`:''}</i></span><span class="hb-n">${t.toLocaleString()}</span></div>`}).join('')}</div>`}
 // Overview: a simple horizontal bar list (name, bar, count).
 function renderHBarList(id,entries){const el=$(id);if(!el)return;if(!entries.length){el.innerHTML=`<div class="chart-empty">No records in this period.</div>`;return}const max=Math.max(1,...entries.map(([,v])=>v));el.innerHTML=`<div class="hb-list">${entries.map(([n,v])=>`<div class="hb-row"><span class="hb-name">${escapeHtml(n)}</span><span class="hb-track"><i class="hb-bar hb-one" style="width:${v/max*100}%"></i></span><span class="hb-n">${v.toLocaleString()}</span></div>`).join('')}</div>`}
-function renderQualitySection(allRows){const rows=monthFiltered(allRows,$('#qualityMonthFilter')?.value||'');let pass=0,fail=0;rows.forEach(e=>{const v=qcVerdict(e);if(v==='PASS')pass++;else if(v==='FAIL')fail++});const pending=rows.length-pass-fail;$('#failureRate').textContent=`${(pass+fail)?Math.round(fail/(pass+fail)*100):0}%`;$('#inconclusiveRate').textContent=`${rows.length?Math.round(pending/rows.length*100):0}%`;const mv=$('#qualityMonthFilter')?.value||'';renderEmbTopList('#qualityChart',embryologistQcStats(allEmbryos().filter(e=>mv?recordMonth(e)===mv:isDateMonth(recordMonth(e)))).sort((x,y)=>y.pass-x.pass||y.total-x.total||x.name.localeCompare(y.name)),10)}
+function renderQualitySection(allRows){const rows=monthFiltered(allRows,$('#qualityMonthFilter')?.value||'');let pass=0,fail=0;rows.forEach(e=>{const v=qcVerdict(e);if(v==='PASS')pass++;else if(v==='FAIL')fail++});$('#failureRate').textContent=`${(pass+fail)?Math.round(fail/(pass+fail)*100):0}%`;const mv=$('#qualityMonthFilter')?.value||'';renderEmbTopList('#qualityChart',embryologistQcStats(allEmbryos().filter(e=>mv?recordMonth(e)===mv:isDateMonth(recordMonth(e)))).sort(byQuality),10)}
 // Overview stat cards: animated counts plus a line of context under each.
 function countUp(el,to){if(!el)return;const from=Number(el.dataset.v||0);el.dataset.v=to;if(from===to||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){el.textContent=to.toLocaleString();return}const t0=performance.now(),dur=700;const step=t=>{const k=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-k,3);el.textContent=Math.round(from+(to-from)*e).toLocaleString();if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)}
 function setMeter(id,pct){const el=$(id);if(el)el.style.width=`${Math.max(0,Math.min(100,pct))}%`}
@@ -609,6 +736,12 @@ function trfsMarkup(){return `<div class="trf-tabbar"><div class="prep-segments"
 let clinicNames=[];
 async function setupTrfsView(){
  const DRAFT='em-trf-draft',sheet=$('#trfSheet'),wrap=$('#trfTableWrap'),seg=$('#trfStatusSeg'),search=$('#trfSearch');let rows=[],status='New';const isClient=currentUser.role==='embryologist';if(isClient){status='All';const lb=document.querySelector('#trfModeSeg [data-mode="list"]');if(lb)lb.firstChild.textContent='My TRFs '}
+ // A team member files the signed hard copy the clinic sends in; raising and deciding TRFs is not theirs.
+ const canDecide=isStaff(),canCreate=currentUser.role!=='member';
+ if(!canCreate){status='All';document.querySelector('#trfModeSeg [data-mode="new"]')?.remove();
+  document.querySelector('#trfModeSeg [data-mode="list"]')?.classList.add('active');
+  ['#trfNewPane','#trfTypePick','#trfNewBar'].forEach(s=>document.querySelector(s)?.classList.add('hidden'));
+  $('#trfListPane')?.classList.remove('hidden')}
  // Clinic suggestions from the client list (clients.js); any other name can be typed.
  try{const names=new Set();clientDirectory().forEach(({brand,branches})=>branches.forEach(b=>names.add(b.branch?`${brand} – ${b.branch}`:brand)));clinicNames=[...names].sort()}catch{}
  // Clinic suggestions appear only for what the person types (never the whole client list - one client must not see the others).
@@ -658,7 +791,7 @@ async function setupTrfsView(){
   const list=rows.filter(r=>inSeg(status,r)&&(!q||[r.ref,r.patient,r.clinic,r.doctor].join(' ').toLowerCase().includes(q)));
   if(!list.length){wrap.innerHTML=`<div class="chart-empty">${rows.length?'No TRFs match.':'No TRFs submitted yet.'}</div>`;return}
   if(isClient){wrap.innerHTML=`<table class="prep-table trf-mine"><thead><tr><th>Reference</th><th>Submitted</th><th>Patient</th><th>Tests</th><th>Biopsy date</th><th class="num">Embryos</th><th>Status</th><th>Reason</th></tr></thead><tbody>${list.map(r=>`<tr><td class="mono">${escapeHtml(r.ref)}</td><td class="muted">${escapeHtml(fmt(r.submittedAt))}</td><td class="strong">${escapeHtml(r.patient)}</td><td>${escapeHtml(testNames(r.tests))}</td><td class="muted">${escapeHtml(r.biopsyDate||'—')}</td><td class="num">${r.embryos}</td><td><span class="trf-status s-${r.status.toLowerCase()}">${escapeHtml(r.status==='New'?'Pending':r.status)}</span>${r.statusAt&&r.status!=='New'?`<small class="trf-note">${escapeHtml(fmt(r.statusAt))}</small>`:''}</td><td class="trf-reason">${r.status==='Rejected'?escapeHtml(r.statusNote||'No reason was given'):'—'}</td></tr>`).join('')}</tbody></table>`;return}
-  wrap.innerHTML=`<table class="prep-table"><thead><tr><th>Reference</th><th>Submitted</th><th>Patient</th><th>Clinic</th><th>Referring doctor</th><th>Tests</th><th>Biopsy date</th><th class="num">Embryos</th><th>Status</th><th>Signed copy</th><th>Action</th></tr></thead><tbody>${list.map(r=>`<tr data-id="${r.id}" tabindex="0"><td class="mono">${escapeHtml(r.ref)}</td><td class="muted">${escapeHtml(fmt(r.submittedAt))}</td><td class="strong">${escapeHtml(r.patient)}</td><td class="clip" title="${escapeHtml(r.clinic)}">${escapeHtml(r.clinic)}</td><td>${escapeHtml(r.doctor)}</td><td>${escapeHtml(testNames(r.tests))}</td><td class="muted">${escapeHtml(r.biopsyDate||'—')}</td><td class="num">${r.embryos}</td><td><span class="trf-status s-${r.status.toLowerCase()}">${escapeHtml(r.status)}</span>${r.statusNote?`<small class="trf-note" title="${escapeHtml(r.statusNote)}">${escapeHtml(r.statusNote)}</small>`:''}</td><td>${trfSignedCell(r)}</td><td class="trf-row-actions">${r.status!=='Approved'?`<button type="button" class="secondary compact" data-set="Approved" data-id="${r.id}">Approve</button>`:''}${r.status!=='Rejected'?`<button type="button" class="secondary compact" data-set="Rejected" data-id="${r.id}">Reject</button>`:''}<button type="button" class="secondary compact trf-del" data-del="${r.id}" data-ref="${escapeHtml(r.ref)}" title="Delete this TRF" aria-label="Delete ${escapeHtml(r.ref)}">Delete</button></td></tr>`).join('')}</tbody></table>`};
+  wrap.innerHTML=`<table class="prep-table"><thead><tr><th>Reference</th><th>Submitted</th><th>Patient</th><th>Clinic</th><th>Referring doctor</th><th>Tests</th><th>Biopsy date</th><th class="num">Embryos</th><th>Status</th><th>Signed copy</th>${canDecide?'<th>Action</th>':''}</tr></thead><tbody>${list.map(r=>`<tr data-id="${r.id}" tabindex="0"><td class="mono">${escapeHtml(r.ref)}</td><td class="muted">${escapeHtml(fmt(r.submittedAt))}</td><td class="strong">${escapeHtml(r.patient)}</td><td class="clip" title="${escapeHtml(r.clinic)}">${escapeHtml(r.clinic)}</td><td>${escapeHtml(r.doctor)}</td><td>${escapeHtml(testNames(r.tests))}</td><td class="muted">${escapeHtml(r.biopsyDate||'—')}</td><td class="num">${r.embryos}</td><td><span class="trf-status s-${r.status.toLowerCase()}">${escapeHtml(r.status)}</span>${r.statusNote?`<small class="trf-note" title="${escapeHtml(r.statusNote)}">${escapeHtml(r.statusNote)}</small>`:''}</td><td>${trfSignedCell(r)}</td>${canDecide?`<td class="trf-row-actions">${r.status!=='Approved'?`<button type="button" class="secondary compact" data-set="Approved" data-id="${r.id}">Approve</button>`:''}${r.status!=='Rejected'?`<button type="button" class="secondary compact" data-set="Rejected" data-id="${r.id}">Reject</button>`:''}<button type="button" class="secondary compact trf-del" data-del="${r.id}" data-ref="${escapeHtml(r.ref)}" title="Delete this TRF" aria-label="Delete ${escapeHtml(r.ref)}">Delete</button></td>`:''}</tr>`).join('')}</tbody></table>`};
  const load=async()=>{try{const res=await fetch(isClient?'/api/my-trfs':'/api/trf');if(!res.ok)throw 0;rows=await res.json();const n=rows.filter(r=>r.status==='New').length,nav=$('#trfNavCount');if(nav)nav.textContent=n;$('#trfListCount').textContent=rows.length;draw()}catch{wrap.innerHTML='<div class="chart-empty">Submitted TRFs could not be loaded. Try again.</div>'}};
  $('#trfModeSeg').onclick=e=>{const b=e.target.closest('[data-mode]');if(!b)return;$('#trfModeSeg').querySelectorAll('.prep-seg').forEach(x=>x.classList.toggle('active',x===b));$('#trfNewPane').classList.toggle('hidden',b.dataset.mode!=='new');$('#trfListPane').classList.toggle('hidden',b.dataset.mode!=='list');$('#trfTypePick').classList.toggle('hidden',b.dataset.mode!=='new');$('#trfNewBar').classList.toggle('hidden',b.dataset.mode!=='new')};
  seg.onclick=e=>{const b=e.target.closest('[data-status]');if(b){status=b.dataset.status;draw()}};
@@ -675,13 +808,12 @@ function trfSignedCell(r){if(r.signedUrl)return `<a class="trf-signed ok" data-s
 function trfSignedBar(t){const up=`<label class="secondary compact tsp-up">${t.signedUrl?'Replace':'Upload signed copy'}<input type="file" id="trfSignedUp" accept="application/pdf,image/*" hidden></label>`;
  if(t.signedUrl)return `<div class="trf-signedbar ok"><span><b>Patient-signed copy received</b> · ${escapeHtml(trfFmtWhen(t.signedAt))}${t.signedBy?` · by ${escapeHtml(t.signedBy)}`:''}</span><span class="tsb-actions"><a class="secondary compact" href="${escapeHtml(t.signedUrl)}" target="_blank" rel="noopener">View signed copy</a>${up}</span></div>`;
  return `<div class="trf-signedbar ${t.signedOverdue?'late':''}"><span><b>Signed copy not uploaded</b> · optional</span><span class="tsb-actions">${up}</span></div>`}
-// Shown right after a TRF is submitted: print it, get the patient's signature, scan and upload it back.
+// Shown right after a TRF is submitted: print it and send the signed paper in - the lab files the copy.
 function trfSignedDialog(t,d){return new Promise(resolve=>{const dlg=document.createElement('dialog');dlg.className='trf-remark-dialog trf-sign-dialog';
- dlg.innerHTML=`<form method="dialog"><h3>TRF submitted · ${escapeHtml(t.ref)}</h3><p class="tsd-lead">Please upload the <b>patient-signed copy</b> as soon as possible. It is mandatory.</p><ol class="tsd-steps"><li>Print the TRF</li><li>Get the patient to sign it</li><li>Scan the signed copy and upload it here</li></ol><p class="tsd-note">The team is notified if the signed copy has not been received within 24 hours.</p><p class="trf-remark-err hidden" data-err></p><div class="tsd-actions"><button type="button" class="secondary compact" data-print>Print TRF</button><label class="primary compact tsp-up">Upload signed copy<input type="file" accept="application/pdf,image/*" hidden></label><button type="button" class="secondary compact" data-later>I'll upload it later</button></div></form>`;
+ dlg.innerHTML=`<form method="dialog"><h3>TRF submitted · ${escapeHtml(t.ref)}</h3><p class="tsd-lead">Print the TRF and have the <b>patient sign it</b>.</p><ol class="tsd-steps"><li>Print the TRF</li><li>Get the patient to sign it</li><li>Send the signed copy to the lab with the samples</li></ol><p class="tsd-note">The lab files the signed copy once the hard copy arrives — there is nothing to upload here.</p><div class="tsd-actions"><button type="button" class="secondary compact" data-print>Print TRF</button><button type="button" class="primary compact" data-later>Done</button></div></form>`;
  document.body.appendChild(dlg);const done=()=>{dlg.close();dlg.remove();resolve()};
  dlg.querySelector('[data-print]').onclick=()=>printTrf(d,{ref:t.ref,submittedAt:t.submittedAt});
  dlg.querySelector('[data-later]').onclick=done;dlg.addEventListener('cancel',e=>{e.preventDefault();done()});
- dlg.querySelector('input').onchange=async e=>{const f=e.target.files[0];if(!f)return;const err=dlg.querySelector('[data-err]');err.classList.add('hidden');try{await uploadSignedTrf(t.id,f);toast(`Signed copy received for ${t.ref}`);done()}catch(x){err.textContent=x.message;err.classList.remove('hidden')}};
  dlg.showModal()})}
 // Asks the approver for a remark before a TRF is approved (optional) or rejected (required). Resolves to the text, or null if cancelled.
 function trfRemarkDialog(status,ref){return new Promise(resolve=>{const need=status==='Rejected',dlg=document.createElement('dialog');dlg.className='trf-remark-dialog';
@@ -713,6 +845,76 @@ function openTrfDialog(t,setStatus,onChange){let dlg=$('#trfDialog');
   try{const res=await fetch(`/api/trf/${t.id}/case`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:{caseCode}})});if(!res.ok)throw new Error();toast(`Linked to case ${caseCode}`);dlg.close()}catch{toast('Could not link this TRF to that case')}};
  dlg.showModal();
 }
+// --- Re-biopsy history -------------------------------------------------------------------
+// A re-biopsied patient has more than one sample row: the first biopsy and each repeat, each
+// with its own received / WGA / SEQ / report dates and its own results. The registry shows
+// only the latest, so the earlier cycle looks lost. This gathers every attempt for the patient,
+// oldest first, and keeps both cycles' results side by side instead of one replacing the other.
+// An attempt is one (sample ID + received date): a repeat biopsy always arrives as a new row.
+//
+// Grouped by patientIdentity (Sample ID + close-name match), NOT by name alone: two different
+// women sharing a first name (common in this sheet - see makePatientIdentity) would otherwise be
+// shown as one patient's history, mixing one person's results into another's record.
+function rebiopsyAttempts(c){
+ const id=makePatientIdentity();
+ const all=allEmbryos(true);
+ const seedRow=(c&&c.embryos&&c.embryos[0])||{_case:c};
+ const key=id(seedRow);
+ if(!key)return[];
+ const by=new Map();
+ all.filter(e=>id(e)===key).forEach(e=>{
+  const sid=field(e,['sample id','sample no','box number'])||'',rec=field(e,['date sample received'])||'';
+  const k=`${cleanId(sid)}|${rec}`;let g=by.get(k);
+  if(!g)by.set(k,g={sampleId:sid||'—',received:rec,sortKey:dmyKey(rec)||'',rows:[]});
+  g.rows.push(e);
+ });
+ return[...by.values()].sort((a,b)=>(a.sortKey||'9999').localeCompare(b.sortKey||'9999'));
+}
+// Every result recorded against one attempt, one entry per embryo tag.
+function attemptResults(a){
+ const out=[];
+ a.rows.forEach(e=>{
+  const own=e._embryoResults||{};
+  const tags=expandEmbryoTags(field(e,['embryo name','embryo id','embryo']));
+  const seen=new Set();
+  tags.forEach(t=>{const p=own[t]||null;seen.add(t);
+   out.push({tag:t,qc:(p&&p['qc'])||field(e,['qc'])||'',karyotype:(p&&(p['karyotype mwf']||p['karyotype normal wf']))||field(e,['karyotype'])||'',
+    result:(p&&p['pgt result'])||field(e,['conclusion'])||'',has:!!p});});
+  // A result filed under a tag the sheet's embryo name does not list is still a real result.
+  Object.keys(own).forEach(t=>{if(seen.has(t))return;const p=own[t];
+   out.push({tag:t,qc:p['qc']||'',karyotype:p['karyotype mwf']||p['karyotype normal wf']||'',result:p['pgt result']||'',has:true,stray:true})});
+ });
+ return out;
+}
+function openRebiopsyHistory(c){
+ const attempts=rebiopsyAttempts(c);
+ if(!attempts.length){toast('No sample rows found for this patient');return}
+ let dlg=$('#rbHistDialog');
+ if(!dlg){dlg=document.createElement('dialog');dlg.id='rbHistDialog';dlg.className='stage-dialog rbh-dialog';document.body.appendChild(dlg);
+  dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()})}
+ const D=v=>escapeHtml(String(v||'').trim()||'—');
+ const first=(a,k)=>{for(const r of a.rows){const v=field(r,[k]);if(v)return v}return''};
+ const STEPS=[['Received','date sample received'],['WGA','wga done on'],['Sequencing','seq date'],['Report released','ngs report']];
+ const body=attempts.map((a,i)=>{
+  const res=attemptResults(a),done=STEPS.filter(([,k])=>first(a,k)).length;
+  const label=i===0?'First biopsy':`Re-biopsy ${i}`;
+  return `<section class="rbh-attempt">
+   <header class="rbh-head"><span class="rbh-badge${i?' is-repeat':''}">${escapeHtml(label)}</span>
+    <span class="rbh-sid">Sample ${D(a.sampleId)}</span>
+    <span class="rbh-count">${res.length} embryo${res.length===1?'':'s'}</span></header>
+   <ol class="rbh-steps">${STEPS.map(([lab,k])=>{const v=first(a,k);return `<li class="rbh-step${v?' is-done':''}"><b>${escapeHtml(lab)}</b><span>${D(v)}</span></li>`}).join('')}</ol>
+   ${done<STEPS.length?`<p class="rbh-pending">Report status: <b>${done===STEPS.length?'released':'still in progress'}</b></p>`:''}
+   <table class="rbh-table"><thead><tr><th>Embryo</th><th>QC</th><th>Karyotype</th><th>Result</th></tr></thead><tbody>${
+    res.length?res.map(r=>`<tr${r.has?'':' class="rbh-noresult"'}><td class="mono">${D(r.tag)}${r.stray?' <em class="rbh-stray">filed separately</em>':''}</td><td>${D(r.qc)}</td><td>${D(r.karyotype)}</td><td>${D(r.result)}</td></tr>`).join('')
+    :'<tr><td colspan="4" class="muted">No results recorded for this attempt.</td></tr>'}</tbody></table>
+  </section>`}).join('');
+ dlg.innerHTML=`<div class="sd-bar"><div><strong>${escapeHtml(c.patient||'Patient')}</strong> <span class="muted">re-biopsy history · ${attempts.length} attempt${attempts.length===1?'':'s'}</span></div><button type="button" class="close" aria-label="Close">×</button></div>
+  <div class="rbh-wrap">${body}
+   <p class="rbh-note">Every cycle's results are kept. Deciding which to keep or remove is not wired up here yet — removing a result still means deleting its result file from Upload result.</p>
+  </div>`;
+ dlg.querySelector('.close').onclick=()=>dlg.close();
+ dlg.showModal();
+}
 // Re-biopsy list: every sample whose Remarks column mentions a re-biopsy.
 function rebiopsyMarkup(){return `<div class="filters-inline hidden" id="rebiopsyFiltersPanel"><label class="filter-field"><span>Month</span><select id="rebiopsyMonthFilter"><option value="">All months</option></select></label><label class="filter-field"><span>Test</span><select id="rebiopsyTestFilter"><option value="">All tests</option></select></label><label class="filter-field"><span>Client</span><select id="rebiopsyClientFilter"><option value="">All clients</option></select></label><label class="filter-field"><span>Embryologist</span><select id="rebiopsyEmbryologistFilter"><option value="">All embryologists</option></select></label><button class="text-button filters-clear" id="rebiopsyClearFilters">Clear all</button></div><div class="prep-table-wrap" id="rebiopsyTableWrap"><div class="chart-empty">Loading…</div></div>`}
 function setupRebiopsyView(){
@@ -730,7 +932,7 @@ function setupRebiopsyView(){
  const draw=()=>{const needle=q.trim().toLowerCase(),base=mode==="embryo"?byEmbryo(rows):byPatient(rows),list=base.filter(r=>(!needle||[r.patient,r.sampleId,r.client,r.embryologist,r.test,r.embryos,r.remarks].join(' ').toLowerCase().includes(needle))&&(!monthSel.value||r.month===monthSel.value)&&(!testSel.value||r.test===testSel.value)&&(!clientSel.value||r.client===clientSel.value)&&(!embSel.value||r.embryologist===embSel.value));
   updateBadge();
   if(!list.length){wrap.innerHTML='<div class="chart-empty">No re-biopsy samples match.</div>';return}
-  wrap.innerHTML=`<table class="prep-table"><thead><tr><th class="num">S.No</th><th>Patient</th><th>Sample ID</th><th>Embryos</th><th>Test</th><th>Client</th><th>Embryologist</th><th>Received</th><th>Remarks</th></tr></thead><tbody>${list.map((r,i)=>`<tr data-i="${i}" tabindex="0"><td class="num muted">${i+1}</td><td class="strong">${escapeHtml(r.patient)}</td><td class="mono">${escapeHtml(r.sampleId)}</td><td title="${escapeHtml(r.embryos)}">${escapeHtml(r.embryos)}</td><td>${escapeHtml(r.test)}</td><td class="clip" title="${escapeHtml(r.client)}">${escapeHtml(r.client)}</td><td class="clip" title="${escapeHtml(r.embryologist)}">${escapeHtml(r.embryologist)}</td><td class="muted">${escapeHtml(r.received)}</td><td class="clip" title="${escapeHtml(r.remarks)}">${escapeHtml(r.remarks)}</td></tr>`).join('')}</tbody></table>`;
+  wrap.innerHTML=`<table class="prep-table"><thead><tr><th class="num">S.No</th><th>Patient</th><th>Sample ID</th><th>Embryos</th><th>Test</th><th>Client</th><th>Embryologist</th><th>Received</th><th>Remarks</th><th class="rbh-col"></th></tr></thead><tbody>${list.map((r,i)=>`<tr data-i="${i}" tabindex="0"><td class="num muted">${i+1}</td><td class="strong">${escapeHtml(r.patient)}</td><td class="mono">${escapeHtml(r.sampleId)}</td><td title="${escapeHtml(r.embryos)}">${escapeHtml(r.embryos)}</td><td>${escapeHtml(r.test)}</td><td class="clip" title="${escapeHtml(r.client)}">${escapeHtml(r.client)}</td><td class="clip" title="${escapeHtml(r.embryologist)}">${escapeHtml(r.embryologist)}</td><td class="muted">${escapeHtml(r.received)}</td><td class="clip" title="${escapeHtml(r.remarks)}">${escapeHtml(r.remarks)}</td><td class="rbh-col"><button type="button" class="rbh-btn" data-hist="${i}">History</button></td></tr>`).join('')}</tbody></table>`;
   wrap._list=list;applyColumnFreeze(wrap,frozen?3:0);
   fitTableHeight(wrap)};
  search.oninput=()=>{q=search.value;draw()};
@@ -743,7 +945,10 @@ function setupRebiopsyView(){
  filtersBtn.onclick=e=>{e.stopPropagation();filtersPanel.classList.toggle('hidden');filtersBtn.classList.toggle('active');fitTableHeight(wrap);revealFilters(filtersPanel)};
  filtersPanel.onclick=e=>e.stopPropagation();
  const open=tr=>{const r=wrap._list?.[+tr.dataset.i];if(r)openPatient(r.e._case)};
- wrap.onclick=e=>{const tr=e.target.closest('tbody tr');if(tr)open(tr)};
+ // The History button sits inside the row, so it claims the click before the row handler
+ // below opens the patient dialog behind it.
+ const histClick=e=>{const b=e.target.closest('[data-hist]');if(!b)return true;e.stopPropagation();const r=wrap._list?.[+b.dataset.hist];if(r)openRebiopsyHistory(r.e._case);return false};
+ wrap.onclick=e=>{if(!histClick(e))return;const tr=e.target.closest('tbody tr');if(tr)open(tr)};
  wrap.onkeydown=e=>{if(e.key==='Enter'){const tr=e.target.closest('tbody tr');if(tr)open(tr)}};
  draw();
 }
@@ -789,12 +994,12 @@ const FUNNEL_STAGES=[['pending','Awaiting WGA','received, no WGA date','#6b766f'
 // name are skipped rather than counted as one each - the old Math.random() key inflated the
 // total by one per nameless row. Same patientKey() as countPatients(), so the two tiles are
 // always measured on the same basis.
-const reportCount=rows=>{const s=new Set();rows.forEach(r=>{const k=patientKey(r.row||r)||patientKey({_case:r.c});if(k)s.add(k)});return s.size};
-function stageRows(inPeriod=false){const out={pending:[],wga:[],seq:[],released:[]};cases.forEach(c=>(c.embryos||[]).forEach(row=>{if(isNotReporting(row)||(inPeriod&&!inHomePeriod(row)))return;out[rowStage(row)].push({row,c,n:embryoRowsOf(row).length})}));return out}
+const reportCount=rows=>{const id=makePatientIdentity();const s=new Set();rows.forEach(r=>{const k=id(r.row||r)||id({_case:r.c});if(k)s.add(k)});return s.size};
+function stageRows(inPeriod=false){const out={pending:[],wga:[],seq:[],released:[]};cases.forEach(c=>(c.embryos||[]).forEach(row=>{if(isNotReporting(row)||isNonEmbryoSample(row)||(inPeriod&&!inHomePeriod(row)))return;out[rowStage(row)].push({row,c,n:embryoRowsOf(row).length})}));return out}
 function renderStageFunnel(){const el=$('#stageFunnel');if(!el)return;const st=stageRows(),count=k=>st[k].reduce((n,x)=>n+x.n,0),total=FUNNEL_STAGES.reduce((n,[k])=>n+count(k),0)||1;
  el.innerHTML=FUNNEL_STAGES.map(([k,label,hint,color])=>`<button type="button" class="sf-step" data-stage="${k}" style="--c:${color}" title="${escapeHtml(hint)} - click to list"><strong>${count(k).toLocaleString()}</strong><span>${label}</span><small>${hint}</small><i style="width:${Math.max(2,Math.round(count(k)/total*100))}%"></i></button>`).join('');
  el.onclick=e=>{const b=e.target.closest('[data-stage]');if(b)openStageList(b.dataset.stage)}}
-function openStageList(stage){const sr=stageRows(),def=stage==='ongoing'?['ongoing','Report ongoing','every sample whose report is not released yet']:FUNNEL_STAGES.find(x=>x[0]===stage),list=(stage==='ongoing'?[...sr.pending,...sr.wga,...sr.seq]:sr[stage]).slice().sort((a,b)=>(dmyKey(lastDmy(field(a.row,['date sample received']),a.row))||'').localeCompare(dmyKey(lastDmy(field(b.row,['date sample received']),b.row))||'')),LIMIT=400;
+function openStageList(stage){const sr=stageRows(),def=stage==='ongoing'?['ongoing','Report ongoing','every sample whose report is not released yet']:FUNNEL_STAGES.find(x=>x[0]===stage),list=(stage==='ongoing'?[...sr.pending,...sr.wga,...sr.seq].filter(x=>needsReport(x.row,x.c)):sr[stage]).slice().sort((a,b)=>(dmyKey(lastDmy(field(a.row,['date sample received']),a.row))||'').localeCompare(dmyKey(lastDmy(field(b.row,['date sample received']),b.row))||'')),LIMIT=400;
  let dlg=$('#stageDialog');if(!dlg){dlg=document.createElement('dialog');dlg.id='stageDialog';dlg.className='stage-dialog';document.body.appendChild(dlg);dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()})}
  const draw=q=>{const needle=q.trim().toLowerCase(),rows=list.filter(x=>!needle||[field(x.row,['patient name']),field(x.row,['sample id']),field(x.row,['center name','hospital clinic name']),field(x.row,['embryologist name']),field(x.row,['test name','test'])].join(' ').toLowerCase().includes(needle)),shown=rows.slice(0,LIMIT);
   dlg.querySelector('tbody').innerHTML=shown.map((x,i)=>`<tr data-i="${list.indexOf(x)}" tabindex="0"><td class="strong">${escapeHtml(field(x.row,['patient name'])||x.c.patient)}</td><td class="mono">${escapeHtml(field(x.row,['sample id'])||'—')}</td><td>${escapeHtml(canonicalTestName(field(x.row,['test name','test']))||'—')}</td><td class="clip">${escapeHtml(x.c.client||'—')}</td><td>${escapeHtml(x.c.embryologist||'—')}</td><td>${escapeHtml(field(x.row,['date sample received'])||'—')}</td><td>${escapeHtml(field(x.row,['wga done on'])||'—')}</td><td>${escapeHtml(field(x.row,['seq date'])||'—')}</td></tr>`).join('')||'<tr><td colspan="8" class="muted">No samples.</td></tr>';
@@ -810,13 +1015,16 @@ function renderHomePeriod(allRows){const el=$('#homePeriod');if(!el)return;const
 document.addEventListener('change',e=>{if(e.target.id!=='homePeriodFrom'&&e.target.id!=='homePeriodTo')return;let from=$('#homePeriodFrom').value,to=$('#homePeriodTo').value;if(from&&to&&from>to)[from,to]=[to,from];setHomePeriod(from,to)});
 document.addEventListener('click',e=>{if(e.target.id==='homePeriodClear')setHomePeriod('','')});
 function setHomePeriod(from,to){homePeriod={from,to};try{localStorage.setItem('em-home-period',JSON.stringify(homePeriod))}catch{}renderStatCards(allEmbryos());syncOverdueCard();renderHomeStats()}
-// PATIENTS, REPORT RELEASED and REPORT ONGOING are one partition of ONE population, so they
+// PATIENTS counts EVERY patient in the period - it is the headline figure and is deliberately not
+// scoped by test. REPORT RELEASED and REPORT ONGOING cover only the three reporting tests, so
+// they do NOT add up to PATIENTS: the difference is the add-on and no-report patients (PGT-A+M,
+// PGT-M, HLA, NIPGS, MaReCs, POC/AF/CVS). Within the reporting population the two
 // have to add up: released + ongoing = patients, exactly. Released is the patients in that
-// population whose report is out; ongoing is simply everyone else, so nothing can land in both
+// population whose report is out; ongoing is simply everyone else, so nothing can fall in both
 // buckets or neither. They used to be counted independently - released from stageRows(), ongoing
 // from the two-month report-prep window, patients from allEmbryos() - which let 4,200 + 270 come
 // to 4,470 against 4,465 patients.
-function renderHomeStats(){wireStageCards();const allRowsHome=allEmbryos(),rows=allRowsHome.filter(inHomePeriod),set=(id,v)=>{const el=$(id);if(el)el.textContent=v.toLocaleString()};const patientKeys=new Set();rows.forEach(r=>{const k=patientKey(r);if(k)patientKeys.add(k)});const st=stageRows(true),releasedKeys=new Set();st.released.forEach(x=>{const k=patientKey(x.row)||patientKey({_case:x.c});if(k&&patientKeys.has(k))releasedKeys.add(k)});set('#homeReleasedStat',releasedKeys.size);set('#homeReportPrepStat',patientKeys.size-releasedKeys.size);{const el=$('#homeSeqStat');if(el)el.textContent=st.wga.reduce((n,x)=>n+(homeUnit==='samples'?1:x.n),0).toLocaleString()}set('#homeBatchesStat',homeBatchKind==='wga'?homeCards().length:resultFileRuns().length);const bs=$('#homeBatchesSub');if(bs)bs.textContent=homeBatchKind==='wga'?'WGA batches in the batch record':'Runs with an uploaded result file';set('#homeEmbryosStat',homeCount(rows));renderHomePeriod(allRowsHome);set('#homePatientsStat',patientKeys.size);{const l=document.querySelector('#homeEmbryosStat')?.parentElement?.querySelector('small');if(l)l.textContent=homeUnit==='samples'?'TOTAL SAMPLES':'TOTAL EMBRYOS'}document.querySelectorAll('#homeUnitToggle [data-unit]').forEach(b=>{const on=b.dataset.unit===homeUnit;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on))});const cards=homeCards();set('#homeOngoingStat',cards.filter(c=>runStatusOf(c)!=='released').length);set('#homeCompletedStat',cards.filter(c=>runStatusOf(c)==='released').length);syncRunFilterUi()}
+function renderHomeStats(){wireStageCards();const allRowsHome=allEmbryos(),rows=allRowsHome.filter(r=>inHomePeriod(r)&&!isUnregistered(r)),set=(id,v)=>{const el=$(id);if(el)el.textContent=v.toLocaleString()};const homeId=makePatientIdentity(),reportKeys=new Set(),releasedKeys=new Set();rows.filter(r=>needsReport(r,r._case)).forEach(r=>{const k=homeId(r);if(!k)return;reportKeys.add(k);if(rowStage(r)==='released')releasedKeys.add(k)});const st=stageRows(true);set('#homeReleasedStat',releasedKeys.size);set('#homeReportPrepStat',reportKeys.size-releasedKeys.size);{const el=$('#homeSeqStat');if(el)el.textContent=st.wga.reduce((n,x)=>n+(homeUnit==='samples'?1:x.n),0).toLocaleString()}set('#homeBatchesStat',homeBatchKind==='wga'?homeCards().length:resultFileRuns().length);const bs=$('#homeBatchesSub');if(bs)bs.textContent=homeBatchKind==='wga'?'WGA batches in the batch record':'Runs with an uploaded result file';set('#homeEmbryosStat',homeCount(rows));renderHomePeriod(allRowsHome);set('#homePatientsStat',countPatients(rows));{const l=document.querySelector('#homeEmbryosStat')?.parentElement?.querySelector('small');if(l)l.textContent=homeUnit==='samples'?'TOTAL SAMPLES':'TOTAL EMBRYOS'}document.querySelectorAll('#homeUnitToggle [data-unit]').forEach(b=>{const on=b.dataset.unit===homeUnit;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on))});const cards=homeCards();set('#homeOngoingStat',cards.filter(c=>runStatusOf(c)!=='released').length);set('#homeCompletedStat',cards.filter(c=>runStatusOf(c)==='released').length);syncRunFilterUi()}
 // Home cards: live runs/batches from the batch-record sheets only. The lab's typed monthly run
 // reports (embryomatrix-run-history) are still loaded but no longer merged into Home counts.
 let runHistory=[],embInc=null;
@@ -837,13 +1045,16 @@ function lastDmy(v,row){let tab=row?recordMonth(row):'';if(!/^\d{4}-\d{2}$/.test
  return best?`${String(best.getDate()).padStart(2,'0')}-${String(best.getMonth()+1).padStart(2,'0')}-${best.getFullYear()}`:''}
 // Where one sample row stands: 'pending' (received only), 'wga' (WGA done, not sequenced), 'seq' (sequenced, report not finished), 'released'.
 function rowStage(r){const has=k=>!!field(r,[k]);if((has('ngs report')&&has('attune upload'))||isCompleteOnSeq(r,r._case))return'released';if(has('seq date'))return'seq';if(has('wga done on'))return'wga';return'pending'}
+// Placeholder rows (mostly the sheet's Pending tab): a name was typed but nothing has happened to the
+// sample yet - no received, WGA or seq date. They are not a received batch and must not pad the counts.
+const isUnregistered=r=>!lastDmy(field(r,['seq date']),r)&&!lastDmy(field(r,['wga done on']),r)&&!lastDmy(field(r,['date sample received']),r);
 let homeCardsMemo=null;
 const isEmbryoSureRow=r=>/EMBRYO\s*SURE|EMBRYOSURE/i.test(String(field(r,['test name','test'])||''));
 function homeCards(){if(homeCardsMemo&&homeCardsMemo.cases===cases&&homeCardsMemo.files===resultFilesCache)return homeCardsMemo.cards;
  const groups=new Map;
- cases.forEach(c=>(c.embryos||[]).forEach(row=>{if(isNotReporting(row))return;
+ cases.forEach(c=>(c.embryos||[]).forEach(row=>{if(isNotReporting(row)||isNonEmbryoSample(row))return;
   const seqD=lastDmy(field(row,['seq date']),row),wgaD=lastDmy(field(row,['wga done on']),row),recD=lastDmy(field(row,['date sample received']),row),plat=String(field(row,['seq platform'])||'').trim();
-  let kind,date,key;if(seqD){kind='seq';date=seqD;key=`S|${seqD}|${plat.toUpperCase()}`}else if(wgaD){kind='wga';date=wgaD;key=`W|${wgaD}|${String(field(row,['kit detail'])||'').trim().toUpperCase()}`}else{kind='rec';date=recD;key=`R|${recD}`}
+  let kind,date,key;if(seqD){kind='seq';date=seqD;key=`S|${seqD}|${plat.toUpperCase()}`}else if(wgaD){kind='wga';date=wgaD;key=`W|${wgaD}|${String(field(row,['kit detail'])||'').trim().toUpperCase()}`}else if(recD){kind='rec';date=recD;key=`R|${recD}`}else{kind='unreg';date='';key='U|'}
   let g=groups.get(key);if(!g)groups.set(key,g={key,kind,date,plat,kit:String(field(row,['kit detail'])||'').trim(),rows:[]});g.rows.push({row,c})}));
  const cards=[...groups.values()].map(g=>{
   const items=[];g.rows.forEach(({row,c})=>expandEmbryoRow(row).forEach(x=>{const label=field(x,['sample name','embryo name','embryo']);items.push({s:{patient:field(row,['patient name','patient'])||c.patient,embryo:label,received:field(row,['date sample received'])},m:{case:c,row,tag:cleanId(label),data:x},linked:[]})}));
@@ -853,8 +1064,8 @@ function homeCards(){if(homeCardsMemo&&homeCardsMemo.cases===cases&&homeCardsMem
   const runCount={};g.rows.forEach(({row})=>{const seen=new Set(runsOf(row));Object.values(row._embryoResults||{}).forEach(p=>{const f=(resultFilesCache||[]).find(x=>x.id===p._fileId),n=f&&(f.run||runNumberOf(f.fileName));if(n)seen.add(n)});seen.forEach(r=>{const k=runIdNorm(r);if(k)runCount[k]=(runCount[k]||0)+1})});const runId=Object.entries(runCount).sort((x,y)=>y[1]-x[1])[0]?.[0];
   // Embryo Sure samples sequenced on their own (per-patient files, no run number) are not a run: no batch card for them.
   if(g.kind==='seq'&&!runId&&g.rows.every(({row})=>isEmbryoSureRow(row)))return null;
-  const title=runId?`RUN ${runId}`:g.kind==='seq'?`SEQ ${g.date}`:g.kind==='wga'?`WGA ${g.date}`:`RECEIVED ${g.date||'(no date)'}`;
-  const platform=g.kind==='seq'?(g.plat||'Platform not recorded'):g.kind==='wga'?(g.kit?`Kit ${g.kit} · awaiting sequencing`:'Awaiting sequencing'):'Awaiting WGA';
+  const title=runId?`RUN ${runId}`:g.kind==='seq'?`SEQ ${g.date}`:g.kind==='wga'?`WGA ${g.date}`:g.kind==='unreg'?'Awaiting registration':`RECEIVED ${g.date}`;
+  const platform=g.kind==='seq'?(g.plat||'Platform not recorded'):g.kind==='wga'?(g.kit?`Kit ${g.kit} · awaiting sequencing`:'Awaiting sequencing'):g.kind==='unreg'?'Not received yet · only a name on the sheet':'Awaiting WGA';
   const fileIds=new Set;g.rows.forEach(({row})=>Object.values(row._embryoResults||{}).forEach(p=>{if(p._fileId)fileIds.add(p._fileId)}));
   const files=(resultFilesCache||[]).filter(f=>fileIds.has(f.id));
   const dk=dmyKey(g.date),live={kind:'seq',runId:g.key,title,runDate:g.date,platform:g.kind==='seq'?g.plat:'',items,b,files,tab:''};
@@ -937,7 +1148,7 @@ const RUN_ICON_X='<img class="ico" src="/static/assets/icons/stages-results__abn
 const RUN_ICON_Q='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>';
 let currentRun=null;
 function openRun(run){currentRun=run;showView('run')}
-const RUN_ICON_PERSON='<img class="ico" src="/static/assets/icons/run-summary__patients.png" alt="">';
+const RUN_ICON_PERSON='<img class="ico" src="/static/assets/icons/run-summary__patient-female.png" alt="">';
 const sumStrip=cards=>`<div class="run-stats">${cards.map(([label,v,tone,icon])=>`<article class="run-stat tone-${tone}${v?'':' is-zero'}"><div><small>${label}</small><strong>${v==null?'—':v.toLocaleString()}</strong></div><span class="run-stat-icon">${icon}</span></article>`).join('')}</div>`;
 const RUN_BACK_BTN=`<button type="button" class="run-back-btn" id="runBack"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>Back</button>`;
 const RESULT_ORDER=[['Normal','Euploid','pass'],['Abnormal','Aneuploid','fail'],['Mosaic','Mosaic','mosaic'],['Inconclusive','Inconclusive','inconclusive']];
@@ -958,7 +1169,7 @@ document.querySelectorAll('#batchKindToggle [data-kind]').forEach(b=>b.addEventL
 async function renderHomeCards(){await loadResultFiles();let hist;[seqRunsCache,wgaCache,hist,embInc]=await Promise.all([kvGet('embryomatrix-sequencing-runs'),kvGet('embryomatrix-wga-batches'),kvGet('embryomatrix-run-history'),kvGet('embryomatrix-embryologist-inconclusive')]);seqRunsCache=seqRunsCache||[];wgaCache=wgaCache||[];runHistory=hist?.runs||[];buildRunsView();syncBatchKindUi();renderEmbInc();renderHomeStats();renderRunList();if($('#rrBody'))setupRunReportsView()}
 function renderStatCards(allRows){
  const total=allRows.length,ongoing=allRows.filter(e=>e._importSource==='Pending').length,embryos=allRows.reduce((s,e)=>s+embryoRowsOf(e).length,0),completed=allRows.filter(e=>reportStatus(e)==='Completed').length;
- countUp($('#totalSamplesStat'),total);countUp($('#activeStat'),ongoing);countUp($('#trackedStat'),embryos);countUp($('#completedStat'),completed);const rebiopsyNav=$('#rebiopsyNavCount');if(rebiopsyNav)rebiopsyNav.textContent=allRows.filter(isRebiopsy).length.toLocaleString();/* Re-biopsy counts SAMPLES: the same unit as the nav badge beside it and as the list this tile opens. It used to sum embryoRowsOf(), so the tile read ~2.7x its own list. */{const hr=$('#homeRebiopsyStat');if(hr)hr.textContent=allRows.filter(e=>inHomePeriod(e)&&isRebiopsy(e)).length.toLocaleString()}const prepMonths=reportPrepMonths(),prep=allRows.filter(e=>isReportPrep(e,prepMonths)).length;countUp($('#reportPrepStat'),prep);/* #homeReportPrepStat is owned by renderHomeStats(), which derives it from the patient total so the tiles add up. The overview's own REPORT PREPARATION card still counts report-prep sample rows. */const prepNav=$('#reportPrepNavCount');if(prepNav)prepNav.textContent=prep.toLocaleString();const prepSub=$('#reportPrepSub');if(prepSub)prepSub.innerHTML=`In <b>${escapeHtml(monthLabel(prepMonths[0],{month:'short'}))}</b> &amp; <b>${escapeHtml(monthLabel(prepMonths[1],{month:'short'}))}</b> · Attune &amp; NGS report pending`;
+ countUp($('#totalSamplesStat'),total);countUp($('#activeStat'),ongoing);countUp($('#trackedStat'),embryos);countUp($('#completedStat'),completed);const rebiopsyNav=$('#rebiopsyNavCount');if(rebiopsyNav)rebiopsyNav.textContent=allRows.filter(isRebiopsy).length.toLocaleString();/* Re-biopsy counts SAMPLES: the same unit as the nav badge beside it and as the list this tile opens. It used to sum embryoRowsOf(), so the tile read ~2.7x its own list. */{const hr=$('#homeRebiopsyStat');if(hr)hr.textContent=allRows.filter(e=>inHomePeriod(e)&&isRebiopsy(e)).length.toLocaleString()}const prepMonths=reportPrepMonths(),prep=allRows.filter(e=>isReportPrep(e,prepMonths)).length;countUp($('#reportPrepStat'),prep);/* #homeReportPrepStat is owned by renderHomeStats(), which derives it from the patient total so the tiles add up. The overview's own REPORT PREPARATION card below still counts report-prep sample rows. */const prepNav=$('#reportPrepNavCount');if(prepNav)prepNav.textContent=prep.toLocaleString();const prepSub=$('#reportPrepSub');if(prepSub)prepSub.innerHTML=`In <b>${escapeHtml(monthLabel(prepMonths[0],{month:'short'}))}</b> &amp; <b>${escapeHtml(monthLabel(prepMonths[1],{month:'short'}))}</b> · Attune &amp; NGS report pending`;
  const months=[...new Set(allRows.map(recordMonth).filter(isDateMonth))].sort(),latest=months[months.length-1],latestCount=latest?allRows.filter(e=>recordMonth(e)===latest).length:0;
  const totalSub=$('#totalSamplesSub');if(totalSub)totalSub.innerHTML=latest?`<b>+${latestCount.toLocaleString()}</b> in ${escapeHtml(monthLabel(latest,{month:'long'}))}`:'All sample records';
 
@@ -977,11 +1188,15 @@ function embryoRowsOf(e){const nRaw=parseFloat(field(e,['number of embryos'])),n
  // (a blank count on a real multi-embryo record must still split). Team may revisit - see the count-authority note.
  if(nRaw===1&&split.length>1)return[e];
  if(split.length>=n)return split.slice(0,n);const pad=split.length===1?split[0]:e;return[...split,...Array.from({length:n-split.length},()=>pad)]}
-function overviewRows(){const rows=allEmbryos();return overviewUnit==='embryos'?rows.flatMap(embryoRowsOf):rows}
-function syncOverviewUnitUi(){document.querySelectorAll('#overviewUnitToggle [data-unit]').forEach(b=>{const on=b.dataset.unit===overviewUnit;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on))});document.querySelectorAll('[data-unit-text]').forEach(el=>{el.textContent=el.dataset.unitText.replace('{Unit}',unitWord(true)).replace('{unit}',unitWord())});document.querySelectorAll('.kpi-unit').forEach(el=>{const k=el.dataset.k;el.textContent=k==='cap'?unitWord(true):k==='sing'?unitWord(true).replace(/s$/,''):unitWord()});const kl=$('#kpiUnitLabel');if(kl)kl.textContent=unitWord(true)}
+function overviewRows(includeInternal=false){const rows=allEmbryos(includeInternal);return overviewUnit==='embryos'?rows.flatMap(embryoRowsOf):rows}
+function syncOverviewUnitUi(){document.querySelectorAll('#overviewUnitToggle [data-unit]').forEach(b=>{const on=b.dataset.unit===overviewUnit;b.classList.toggle('active',on);b.setAttribute('aria-selected',String(on))});document.querySelectorAll('[data-unit-text]').forEach(el=>{el.textContent=el.dataset.unitText.replace('{Unit}',unitWord(true)).replace('{unit}',unitWord())});document.querySelectorAll('.kpi-unit').forEach(el=>{const k=el.dataset.k;el.textContent=k==='cap'?unitWord(true):k==='sing'?unitWord(true).replace(/s$/,''):unitWord()});const kl=$('#kpiUnitLabel');if(kl)kl.textContent=unitWord(true);
+ const ki=$('#kpiUnitIcon');if(ki)ki.src=`/static/assets/icons/${overviewUnit==='embryos'?'stages-results__total-embryos':'run-summary__patients'}.png`}
 function setOverviewUnit(unit){overviewUnit=unit==='embryos'?'embryos':'samples';try{localStorage.setItem('em-overview-unit',overviewUnit)}catch{}renderAnalytics()}
 document.addEventListener('click',e=>{const b=e.target.closest('#overviewUnitToggle [data-unit]');if(b)setOverviewUnit(b.dataset.unit)});
-function renderAnalytics(){syncOverviewUnitUi();const allRows=overviewRows();renderStatCards(allEmbryos());renderHomeCards();const testTypeCountEl=$('#testTypeCount');if(testTypeCountEl)testTypeCountEl.textContent=new Set(allRows.map(testNameOf).filter(Boolean)).size;renderVolumeChart(allRows);renderTestChart(allRows);renderOutcomeChart(allRows);renderClientChart(allRows);renderRegionChart(allRows);renderPlatformChart(allRows);renderQualitySection(allRows)}
+function renderAnalytics(){syncOverviewUnitUi();
+ // Every chart counts embryo work only; the test-wise chart alone also shows the internal karyotyping.
+ const rows=overviewRows(),withInternal=overviewRows(true);
+ renderStatCards(allEmbryos());renderHomeCards();const testTypeCountEl=$('#testTypeCount');if(testTypeCountEl)testTypeCountEl.textContent=new Set(withInternal.map(testNameOf).filter(Boolean)).size;renderVolumeChart(rows);renderTestChart(withInternal);renderOutcomeChart(rows);renderClientChart(rows);renderRegionChart(rows);renderPlatformChart(rows);renderQualitySection(rows)}
 // CSS alone can't cap this list to "however tall the Quality Comparison card next to it
 // turns out to be" without a circular height dependency (height:100% of an auto-stretched
 // flex parent resolves to auto, so the legend just grows to fit every row instead of
@@ -1022,7 +1237,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show'
 const isStaff=()=>!currentUser.signedIn||['admin','senior_executive','team_lead'].includes(currentUser.role);
 const canEditResults=()=>!currentUser.signedIn||['admin','senior_executive'].includes(currentUser.role);
 const canManageUsers=()=>currentUser.signedIn&&['admin','senior_executive'].includes(currentUser.role);
-const ROLE_VIEWS={member:['samples','pgtm','cases','images','batches'],embryologist:['fuTasks','fuTrack','fuDash','trfs'],coordinator:['coord']};
+const ROLE_VIEWS={member:['samples','pgtm','cases','images','batches','trfs'],embryologist:['fuTasks','fuTrack','fuDash','trfs'],coordinator:['coord']};
 const viewAllowed=v=>{const r=currentUser.role;if(v==='users')return !currentUser.signedIn||canManageUsers();return !currentUser.signedIn||!ROLE_VIEWS[r]&&isStaff()||!!ROLE_VIEWS[r]&&ROLE_VIEWS[r].includes(v)};
 const roleHomeView=()=>(ROLE_VIEWS[currentUser.role]||[])[0]||'home';
 function applyRoleAccess(){
@@ -1067,7 +1282,7 @@ function showView(view){if(!viewAllowed(view))view=roleHomeView();
  if(view==='batches'){ $('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');const g=$('#genericView');g.classList.remove('hidden');$('#genericHeaderTitle').textContent='Batch creation';if(window.renderBatchCreationView)renderBatchCreationView(g);return }
  if(view==='calc'){ $('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');const g=$('#genericView');g.classList.remove('hidden');$('#genericHeaderTitle').textContent='NGS Calculators';if(window.renderCalculatorsView)renderCalculatorsView(g);return }
  $('#overviewView').classList.add('hidden');$('#samplesView').classList.add('hidden');const g=$('#genericView');g.classList.remove('hidden');
- const data={experiments:['Molecular tests','Every PGT run, decision, and result—linked and searchable.'],images:['Embryo image vault','Keep embryo images separate while every file remains linked to its patient and sample.'],protocols:['PGT protocols',''],runreports:['Run reports',''],overdue:['Overdue samples','Samples past their TAT date (received + 21 days for Embryo Sure / HLA tests, + 10 days for all other tests) with no NGS report date yet.'],reportprep:['Report preparation','Samples whose Attune upload and NGS report dates are both still empty, from the current and previous month tabs.'],rebiopsy:['Re-biopsy cases',''],trfs:['Digital TRFs',''],users:['User management','Add or remove logins and change what each person can do.'],activity:['Activity log','Every sign-in, upload and change: who did it, what they did and when.'],import:['',''],embryologists:['All embryologists','Embryo counts and QC per embryologist — choose a month, or All for the whole year.'],regions:['All regions',`Monthly ${unitWord()} for every region.`],clients:['All clients','Every client and their sample volume. Click a client to open their samples.'],tests:['All tests','Every test type in the current reporting period.']}[view];
+ const data={experiments:['Molecular tests','Every PGT run, decision, and result—linked and searchable.'],images:['Embryo image vault','Keep embryo images separate while every file remains linked to its patient and sample.'],protocols:['PGT protocols',''],runreports:['Run reports',''],overdue:['Overdue samples','Samples past their TAT date (received + 21 days for Embryo Sure / HLA tests, + 14 days for all other tests) with no NGS report date yet.'],reportprep:['Report preparation','Samples whose Attune upload and NGS report dates are both still empty, from the current and previous month tabs.'],rebiopsy:['Re-biopsy cases',''],trfs:['Digital TRFs',''],users:['User management','Add or remove logins and change what each person can do.'],activity:['Activity log','Every sign-in, upload and change: who did it, what they did and when.'],import:['',''],embryologists:['All embryologists','Embryo counts and QC per embryologist — choose a month, or All for the whole year.'],regions:['All regions',`Monthly ${unitWord()} for every region.`],clients:['All clients','Every client and their sample volume. Click a client to open their samples.'],tests:['All tests','Every test type in the current reporting period.']}[view];
  if(view==='overdue')$('#genericHeaderTitle').innerHTML=`${escapeHtml(data[0])}<span class="od-source" id="overdueSource" title="${escapeHtml(data[1])}">Source: PGS-NGS sheet</span>`;else if(view==='runreports')$('#genericHeaderTitle').innerHTML='<span>Run reports</span><button type="button" class="secondary compact" id="openProtocols"><img class="ico btn-ico-img" src="/static/assets/icons/navigation__protocols.png" alt="">Protocols</button>';else if(view==='import')$('#genericHeaderTitle').innerHTML='<button type="button" class="secondary compact" id="openImageVault">Image vault</button>';else $('#genericHeaderTitle').textContent=data[0];
  g.innerHTML=`<div class="generic-card${view==='tests'||view==='protocols'||view==='images'||view==='activity'||view==='users'||view==='clients'||view==='reportprep'||view==='overdue'||view==='runreports'||view==='rebiopsy'||view==='trfs'?' wide-card':view==='regions'||view==='clients'||view==='embryologists'?' rank-card':''}${view==='protocols'?' protocols-view':''}${view==='images'?' images-view':''}${view==='import'?' import-view':''}">${view==='embryologists'||view==='regions'||view==='clients'||view==='overdue'||view==='runreports'||view==='images'?'':`<p>${data[1]}</p>`}${view==='experiments'?'<div class="experiment-list" id="allExperimentList"></div><button class="primary" id="newExperimentAlt">＋ New test record</button>':view==='import'?importMarkup():view==='activity'?activityMarkup():view==='users'?usersMarkup():view==='runreports'?runReportsMarkup():view==='overdue'?overdueMarkup():view==='reportprep'?reportPrepMarkup():view==='rebiopsy'?rebiopsyMarkup():view==='trfs'?trfsMarkup():view==='protocols'?protocolsMarkup():view==='images'?'<div class="vault-groups" id="imageVaultGroups"><div class="chart-empty">Loading images…</div></div>':view==='embryologists'?'<div class="emb-rank-wrap" id="allQualityChart"><div class="chart-empty">Loading…</div></div>':view==='regions'?regionsMarkup():view==='clients'?allClientsMarkup():view==='tests'?'<div class="test-name-grid" id="allTestList"></div>':'<div class="empty-action"><h3>This workspace is ready to grow</h3><p>The core structure is in place for your lab records.</p><button class="primary" data-view="overview">Return to overview</button></div>'}</div>`;
  if(view==='experiments'){const target=$('#allExperimentList');experiments.forEach((x,i)=>{const temp=document.createElement('div');temp.className='experiment-row';temp.innerHTML=`<span class="exp-avatar ${['a','b','c','d'][i%4]}">${x.owner}</span><div><strong>${escapeHtml(x.name)}</strong><p>${escapeHtml(x.project)} · ${escapeHtml(x.next)}</p></div><small class="tag green-tag">${x.status}</small>`;target.append(temp)});$('#newExperimentAlt').onclick=()=>$('#experimentDialog').showModal()}
@@ -1079,11 +1294,11 @@ function showView(view){if(!viewAllowed(view))view=roleHomeView();
  if(view==='trfs'){setupTrfsView()}
  if(view==='protocols'){setupProtocolsView()}
  if(view==='images'){setupImageVaultView()}
- if(view==='embryologists'){const sortEl=$('#embryologistSortOrder');let order='pass';if(!embInc)kvGet('embryomatrix-embryologist-inconclusive').then(v=>{if(v){embInc=v;render()}});let month='';const mLabel=k=>{const m=/^(\d{4})-(\d{2})$/.exec(k||'');return m?`${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1]} ${m[1]}`:k};
+ if(view==='embryologists'){const sortEl=$('#embryologistSortOrder');let order='quality';if(!embInc)kvGet('embryomatrix-embryologist-inconclusive').then(v=>{if(v){embInc=v;render()}});let month='';const mLabel=k=>{const m=/^(\d{4})-(\d{2})$/.exec(k||'');return m?`${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m[2]-1]} ${m[1]}`:k};
  if(!$('#embMonthTabs')){const t=document.createElement('div');t.id='embMonthTabs';t.className='prep-segments sheet-tabs';$('#allQualityChart').parentNode.insertBefore(t,$('#allQualityChart'));t.onclick=ev=>{const b=ev.target.closest('[data-m]');if(!b)return;month=b.dataset.m;drawTabs();render()}}
  const drawTabs=()=>{const cnt={};allEmbryos().forEach(e=>{const m=recordMonth(e);if(m)cnt[m]=(cnt[m]||0)+Math.max(1,Math.round(embryoUnits(e)))});const ms=Object.keys(cnt).filter(isDateMonth).sort();$('#embMonthTabs').innerHTML=[['','All']].concat(ms.map(m=>[m,mLabel(m)])).map(([m,l])=>`<button type="button" class="prep-seg${m===month?' active':''}" data-m="${escapeHtml(m)}">${escapeHtml(l)}</button>`).join('')};
  drawTabs();
- const render=()=>{const nq=($('#embSearch')?.value||'').trim().toLowerCase(),stats=embryologistQcStats(allEmbryos().filter(e=>month?recordMonth(e)===month:isDateMonth(recordMonth(e)))).filter(q=>!nq||q.name.toLowerCase().includes(nq));stats.sort((a,b)=>(order==='asc'?a.total-b.total:b[order]-a[order])||b.total-a.total||a.name.localeCompare(b.name));renderEmbryologistRankList('#allQualityChart',stats)};{const chart=$('#allQualityChart');if(chart)chart.onclick=ev=>{const row=ev.target.closest('.emb-row:not(.emb-head)');if(!row)return;const name=row.querySelector('.emb-name')?.textContent;if(!name)return;openEmbryologistEmbryos(name,allEmbryos().filter(e=>(e._case.embryologist||'Not assigned')===name&&(month?recordMonth(e)===month:isDateMonth(recordMonth(e)))),month?mLabel(month):'All months')}}
+ const render=()=>{const nq=($('#embSearch')?.value||'').trim().toLowerCase(),stats=embryologistQcStats(allEmbryos().filter(e=>month?recordMonth(e)===month:isDateMonth(recordMonth(e)))).filter(q=>!nq||q.name.toLowerCase().includes(nq));stats.sort(order==='quality'?byQuality:(a,b)=>(order==='asc'?a.total-b.total:b[order]-a[order])||b.total-a.total||a.name.localeCompare(b.name));renderEmbryologistRankList('#allQualityChart',stats)};{const chart=$('#allQualityChart');if(chart)chart.onclick=ev=>{const row=ev.target.closest('.emb-row:not(.emb-head)');if(!row)return;const name=row.querySelector('.emb-name')?.textContent;if(!name)return;openEmbryologistEmbryos(name,allEmbryos().filter(e=>(e._case.embryologist||'Not assigned')===name&&(month?recordMonth(e)===month:isDateMonth(recordMonth(e)))),month?mLabel(month):'All months')}}
  {const si=$('#embSearch');if(si){si.value='';si.oninput=()=>render()}}render();if(sortEl)sortEl.onclick=ev=>{const b=ev.target.closest('[data-sort]');if(!b)return;order=b.dataset.sort;sortEl.querySelectorAll('.prep-seg').forEach(x=>x.classList.toggle('active',x===b));render()}}
  if(view==='regions'){setupRegionsView()}
  if(view==='tests'){const testCounts=countBy(overviewRows(true),testNameOf);const sortedTests=Object.entries(testCounts).sort((a,b)=>a[0].localeCompare(b[0]));renderTestNameGrid('#allTestList',sortedTests)}
@@ -1455,7 +1670,9 @@ function scoreTrackerRow(det,t){let sc=0;const sid=cleanId(field(det,['sample id
  const dt=normCol(field(det,['test name','test'])),tt=normCol(field(t,['test name','test']));if(dt&&dt===tt)sc+=.5;
  if(nameSim(field(det,['embryologist name']),field(t,['embryologist name']))>=2)sc+=.5;
  return{sc,ns}}
-function makeTrackerIndex(rows){const byTag=new Map;rows.forEach(r=>{if(r._stale)return;expandEmbryoTags(field(r,['embryo name','embryo id','embryo'])).forEach(tag=>{if(!byTag.has(tag))byTag.set(tag,[]);byTag.get(tag).push(r)})});return{byTag}}
+function makeTrackerIndex(rows){const byTag=new Map,noTag=[];rows.forEach(r=>{if(r._stale)return;const tags=expandEmbryoTags(embryoNameField(r));
+ if(!tags.length){noTag.push(r);return}   // POC / AF / CVS: no embryo, so no tag to index under
+ tags.forEach(tag=>{if(!byTag.has(tag))byTag.set(tag,[]);byTag.get(tag).push(r)})});return{byTag,noTag}}
 let lastMatchWhy='';
 const recvOf=t=>field(t,['date sample received']);
 // Every reading of the tracker's received date falls after the run (+7 days of slack): the sample cannot belong to this run.
@@ -1465,7 +1682,11 @@ function trustTracker(det,t,fileDate,x){const dr=field(det,['date sample receive
  if(dr&&tr&&!daysMeet(dr,tr)){const sidEq=cleanId(field(det,['sample id']))&&cleanId(field(det,['sample id']))===cleanId(field(t,['sample id'])),boxEq=normCol(field(det,['box number']))&&normCol(field(det,['box number']))===normCol(field(t,['box number']));if(!(sidEq&&boxEq&&x.ns>=2.5))return 'received date differs between this file and the PGS-NGS sheet'}
  return ''}
 function matchTrackerRow(det,tix,fileDate){const tags=expandEmbryoTags(field(det,['embryo name','embryo details','embryo id']));if(!tags.length)return null;
- const cand=new Set;tags.forEach(t=>(tix.byTag.get(t)||[]).forEach(r=>cand.add(r)));if(!cand.size)return null;
+ const cand=new Set;tags.forEach(t=>(tix.byTag.get(t)||[]).forEach(r=>cand.add(r)));
+ // A POC / AF / CVS row has no embryo tag of its own - the file writes the sample type where the tag
+ // would go. Those rows are candidates whatever the tag; the name/ID scoring below still has to clear them.
+ (tix.noTag||[]).forEach(r=>cand.add(r));
+ if(!cand.size)return null;
  const sid=cleanId(field(det,['sample id'])),box=normCol(field(det,['box number']));
  let scored=[...cand].map(t=>({t,...scoreTrackerRow(det,t),idEq:(sid&&cleanId(field(t,['sample id']))===sid)||(box&&box!=='NA'&&normCol(field(t,['box number']))===box)})).filter(x=>x.sc>=6&&(x.ns>=1||x.idEq));
  // A candidate whose patient name is nothing like det's (ns===0) is dropped when another candidate sharing the same
@@ -1578,7 +1799,17 @@ let resultFilesCache=[],rfQuery='';
 function runNumberOf(name){const m=/RUN[\s_-]*(\d+[A-Z]?)/i.exec(String(name||''));return m?`RUN${m[1].toUpperCase()}`:''}
 // One key per embryo of a sample row: patient|embryo tag|sample id (the same identity the result matching uses).
 // Rows with no sample (Anderson) ID still get keys, with an empty id part, so results can reach them.
-function rowResultKeys(row){const sampleId=field(row,['sample id']),patient=field(row,['patient name','patient']);if(!patient)return[];const sid=cleanId(sampleId),pat=cleanId(patient);return expandEmbryoTags(field(row,['embryo name','embryo id','embryo'])).map(tag=>`${pat}|${tag}|${sid}`)}
+// "number of embryos" also contains the word "embryo", so field() falls through to the COUNT when the
+// embryo-name column is blank and hands back "1" as if it were a tag - a POC/AF row then offers the key
+// "...|1|..." and can never match its own result. Read the name columns only.
+function embryoNameField(r){for(const n of ['embryo name','embryo id','sample name']){const k=Object.keys(r).find(x=>x===n||x.includes(n));if(k&&String(r[k]).trim())return String(r[k]).trim()}
+ const k=Object.keys(r).find(x=>x==='embryo');return k&&String(r[k]).trim()?String(r[k]).trim():''}
+function rowResultKeys(row){const sampleId=field(row,['sample id']),patient=field(row,['patient name','patient']);if(!patient)return[];const sid=cleanId(sampleId),pat=cleanId(patient);
+ const tags=expandEmbryoTags(embryoNameField(row));
+ // A single-sample row with no embryo tag of its own (POC, amniotic fluid) still has to be reachable:
+ // its result file names the sample type where an embryo tag would go, so accept whatever tag it carries.
+ if(!tags.length&&sid)return[`${pat}|*|${sid}`];
+ return tags.map(tag=>`${pat}|${tag}|${sid}`)}
 function resultPatchOf(r){const p={},rv=r._computedResult||field(r,['result']);if(rv)p['pgt result']=rv;RESULT_MERGE_FIELDS.forEach(f=>{const v=field(r,[f]);if(v)p[f]=v});return p}
 // Row-level result fields are the per-embryo values joined, so row-based charts keep working.
 function recomputeRowResults(row){const own=Object.entries(row._embryoResults||{}).sort((a,b)=>a[0].localeCompare(b[0],undefined,{numeric:true})).map(([,v])=>v),orig=row._resultOriginals||{},out={...row};
@@ -1709,6 +1940,8 @@ async function handleResultAttach(files,opts={}){
  const status=$('#resultAttachStatus');
  status.textContent=`Reading ${files.length} file(s)…`;
  const allRows=(await kvGet('embryomatrix-imported-cases'))||[],known=new Set(allRows.flatMap(rowResultKeys));
+ // A tagless row registers "patient|*|sampleId" - its result may arrive under any tag (POC, AF, CVS).
+ const knownHas=k=>{if(known.has(k))return true;const p=String(k).split('|');return p.length===3&&!!p[2]&&known.has(`${p[0]}|*|${p[2]}`)};
  const trackerTags=new Map([...known].map(k=>[k.split('|')[1],true]));
  const parsed=[];
  const trackerRows=allRows.filter(r=>!r._stale);
@@ -1725,7 +1958,7 @@ async function handleResultAttach(files,opts={}){
 
  // Results are matched to the PGS-NGS (tracker) rows only; the Sequencing Batch Record is not consulted here.
  // Anything that can't be tied to exactly one tracker row is left out and listed after the upload.
- parsed.forEach(p=>{[...p.byKey].forEach(([k,r])=>{if(!known.has(k)){p.unmatchedNames.push(field(r,['sample name'])||k);p.byKey.delete(k)}})});
+ parsed.forEach(p=>{[...p.byKey].forEach(([k,r])=>{if(!knownHas(k)){p.unmatchedNames.push(field(r,['sample name'])||k);p.byKey.delete(k)}})});
  // Everything that was NOT added is collected into one report (shown as a table, exportable) instead of long paragraphs.
  const report=[],listHtml=(file,kind,names)=>{names.forEach(n=>{const m=/^(.*?) — (.*?)(?: \(closest: (.*)\))?$/.exec(String(n));report.push({file,kind,sample:m?m[1]:String(n),reason:m?m[2]:'',closest:m&&m[3]||''})});return ''};
  let skippedHtml=parsed.map(p=>listHtml(p.file.name,'review',[...new Set([...(p.review||[]).map(x=>`${x.raw} — ${x.reason}${x.candidate?` (closest: ${x.candidate})`:''}`),...p.unmatchedNames.filter(n=>!(p.review||[]).some(x=>x.raw===n))])])).join('');
@@ -1737,7 +1970,7 @@ async function handleResultAttach(files,opts={}){
  // skipped and listed, so a big multi-file upload is never refused as a whole. To replace a result, delete its earlier file first.
  // The same embryo in two files of one batch (re-runs, A/B halves, copies): identical results keep the first file; DIFFERENT results
  // are never guessed - that embryo is left out of both files and listed, so you choose which file is right.
- const claims=new Map;parsed.forEach(p=>[...p.byKey].forEach(([k,r])=>{if(!known.has(k))return;const a=claims.get(k)||[];a.push({file:p.file.name,sig:JSON.stringify(resultPatchOf(r)),strong:p.strongKeys.has(k),date:p.fileDate});claims.set(k,a)}));
+ const claims=new Map;parsed.forEach(p=>[...p.byKey].forEach(([k,r])=>{if(!knownHas(k))return;const a=claims.get(k)||[];a.push({file:p.file.name,sig:JSON.stringify(resultPatchOf(r)),strong:p.strongKeys.has(k),date:p.fileDate});claims.set(k,a)}));
  // Same embryo, different results in two files = a re-test. When both files hold the SAME sample row (same sample ID / box number and
  // received date) the newer run replaces the older one; the older result is listed, not silently lost. With weaker evidence, or equal /
  // unknown run dates, nothing is guessed and the embryo is left out of both files.
@@ -1746,14 +1979,20 @@ async function handleResultAttach(files,opts={}){
  parsed.forEach(p=>{[...p.byKey].forEach(([k,r])=>{const dsp=disputed.get(k);if(!dsp||dsp.winner===p.file.name)return;const others=[...new Set(dsp.files)].filter(n=>n!==p.file.name),label=field(r,['sample name'])||k;
   if(dsp.winner)(p.supersededList=p.supersededList||[]).push(`${label} — replaced by the newer run in ${dsp.winner}`);else (p.disputedList=p.disputedList||[]).push(`${label} — also in ${others.join(', ')||'another file'}`);p.byKey.delete(k)})});
  skippedHtml+=parsed.map(p=>listHtml(p.file.name,'older',p.supersededList||[])).join('')+parsed.map(p=>listHtml(p.file.name,'disputed',p.disputedList||[])).join('');
- parsed.forEach(p=>{p.keys=[...p.byKey.keys()].filter(k=>known.has(k)).filter(k=>{const prev=owner.get(k);if(prev){conflicts.push({file:p.file.name,name:field(p.byKey.get(k),['sample name']),prev});return false}owner.set(k,{fileName:p.file.name,run:runNumberOf(p.file.name)});return true})});
+ parsed.forEach(p=>{p.keys=[...p.byKey.keys()].filter(k=>knownHas(k)).filter(k=>{const prev=owner.get(k);if(prev){conflicts.push({file:p.file.name,name:field(p.byKey.get(k),['sample name']),prev});return false}owner.set(k,{fileName:p.file.name,run:runNumberOf(p.file.name)});return true})});
  if(conflicts.length){conflicts.forEach(c=>report.push({file:c.file,kind:'already',sample:c.name,reason:`already has a result from ${c.prev.fileName} - kept; delete that file first to replace it`,closest:''}))}
  const mergedAt=new Date().toISOString(),entries=parsed.filter(p=>p.keys.length).map(p=>({id:`rf-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,file:p.file,byKey:p.byKey,keys:p.keys}));
  if(!entries.length){renderUploadReport(status,'None of the result rows matched a sample in the tracker.'+skippedNote,report);return}
  const fileOfKey=new Map;entries.forEach(e=>e.keys.forEach(k=>fileOfKey.set(k,e)));
+ // A tagless row (POC / AF / CVS) registers "patient|*|sampleId"; its result arrives under whatever tag
+ // the file used, so reach it by patient + sample ID instead of by tag.
+ const byPatientSample=new Map;
+ fileOfKey.forEach((_,k)=>{const p=k.split('|');const ps=`${p[0]}|${p[2]}`;if(!byPatientSample.has(ps))byPatientSample.set(ps,[]);byPatientSample.get(ps).push(k)});
  let matchedRows=0;
  const updated=allRows.map(row=>{
-  const keys=rowResultKeys(row).filter(k=>fileOfKey.has(k));if(!keys.length)return row;matchedRows++;
+  const own0=rowResultKeys(row),keys=own0.filter(k=>fileOfKey.has(k));
+  own0.filter(k=>k.split('|')[1]==='*').forEach(w=>{const p=w.split('|');(byPatientSample.get(`${p[0]}|${p[2]}`)||[]).forEach(k=>{if(!keys.includes(k))keys.push(k)})});
+  if(!keys.length)return row;matchedRows++;
   const originals=row._resultOriginals||Object.fromEntries(RESULT_FIELDS.map(f=>[f,f in row?row[f]:null])),own={...(row._embryoResults||{})};
   keys.forEach(k=>{const e=fileOfKey.get(k);own[k.split('|')[1]]={...resultPatchOf(e.byKey.get(k)),_fileId:e.id}});
   return recomputeRowResults({...row,_embryoResults:own,_resultOriginals:originals,_resultMergedAt:mergedAt});
@@ -1854,7 +2093,7 @@ function setupOverdueView(){
  // Run(s) of each sample: the tracker's Run ID, the Sequencing Batch Record run it sits in, and the run of any result file merged into it.
  const rowRuns=new Map,addRun=(k,r)=>{const l=`RUN ${runIdNorm(r)}`,a=rowRuns.get(k)||[];if(!a.includes(l))a.push(l);rowRuns.set(k,a)};
  seqRunsView.forEach(r=>r.items.forEach(x=>{if(x.m)addRun(odRowKey(x.m.row),r.runId)}));
- const rows=allEmbryos().filter(e=>isOverdue(e,e._case)).map(e=>{runsOf(e).forEach(r=>addRun(odRowKey(e),r));Object.values(e._embryoResults||{}).forEach(p=>{const f=(resultFilesCache||[]).find(x=>x.id===p._fileId),n=f&&(f.run||runNumberOf(f.fileName));if(n)addRun(odRowKey(e),n)});const tat=tatDate(e,e._case),test=canonicalTestName(field(e,['test','test name']))||e._case.test||'';return{e,patient:e._case.patient||field(e,['patient name'])||'—',sampleId:field(e,['sample id'])||e._case.id||'',embryos:field(e,['embryo name']),test:blank(test),long:/embryo\s*sure|hla/i.test(test),client:blank(e._case.client),embryologist:blank(e._case.embryologist),received:field(e,['date sample received']),tat,stage:stageOf(e),late:Math.round((today-parseSheetDate(tat))/864e5),bucket:runTestBucket(test),seqDate:field(e,['seq date']),wgaBy:blank(field(e,['wga done by'])),reportBy:blank(field(e,['report assigned','report assigned to','analysed by','analyzed by'])),runs:rowRuns.get(odRowKey(e))||[],monthKey:odMonthKey(field(e,['date sample received']))}}).sort((a,b)=>b.late-a.late);
+ const rows=allEmbryos().filter(e=>isOverdue(e,e._case)).map(e=>{runsOf(e).forEach(r=>addRun(odRowKey(e),r));Object.values(e._embryoResults||{}).forEach(p=>{const f=(resultFilesCache||[]).find(x=>x.id===p._fileId),n=f&&(f.run||runNumberOf(f.fileName));if(n)addRun(odRowKey(e),n)});const tat=tatDate(e,e._case),test=canonicalTestName(field(e,['test','test name']))||e._case.test||'';return{e,patient:e._case.patient||field(e,['patient name'])||'—',sampleId:field(e,['sample id'])||field(e,['sample no'])||(field(e,['box number'])?`Box ${field(e,['box number'])}`:'')||e._case.id||'',embryos:field(e,['embryo name']),test:blank(test),long:/embryo\s*sure|hla/i.test(test),client:blank(e._case.client),embryologist:blank(e._case.embryologist),received:field(e,['date sample received']),tat,stage:stageOf(e),late:Math.round((today-parseSheetDate(tat))/864e5),bucket:runTestBucket(test),seqDate:field(e,['seq date']),wgaBy:blank(field(e,['wga done by'])),reportBy:blank(field(e,['report assigned','report assigned to','analysed by','analyzed by'])),runs:rowRuns.get(odRowKey(e))||[],monthKey:odMonthKey(field(e,['date sample received']))}}).sort((a,b)=>b.late-a.late);
  let seg='',band='all',q='';
  const flt={run:'',month:'',embryologist:'',wgaBy:'',reportBy:'',test:'',client:''},FLT=[['run','Run'],['month','Month'],['embryologist','Embryologist'],['wgaBy','WGA done by'],['reportBy','Report assigned'],['test','Test'],['client','Client']];
  const fval=(r,k)=>k==='run'?r.runs:k==='month'?[r.monthKey]:[r[k]];
@@ -1870,7 +2109,7 @@ function setupOverdueView(){
  const currentList=()=>{const fn=OD_BANDS.find(b=>b[0]===band)[2],needle=q.trim().toLowerCase();return rows.filter(r=>inSeg(r)&&fn(r)&&(!needle||[r.patient,r.sampleId,r.client,r.embryologist,r.test,r.embryos,r.wgaBy,r.reportBy,r.runs.join(' ')].join(' ').toLowerCase().includes(needle)))};
  const draw=()=>{const list=currentList();
   if(!list.length){wrap.innerHTML=`<div class="chart-empty">${rows.length?'No overdue samples match these filters.':'No overdue samples — everything is within TAT.'}</div>`;return}
-  wrap.innerHTML=`<table class="prep-table od-table"><colgroup><col style="width:52px"><col style="width:112px"><col style="width:20%"><col style="width:175px"><col><col style="width:160px"><col><col><col style="width:140px"></colgroup><thead><tr><th class="num">#</th><th>Late by</th><th>Patient</th><th>Sample ID</th><th>Test</th><th>Stage</th><th>Client</th><th>Embryologist</th><th>TAT date</th></tr></thead><tbody>${list.map((r,i)=>`<tr data-i="${rows.indexOf(r)}" tabindex="0" title="Open patient record"><td class="num muted">${i+1}</td><td><span class="od-pill ${odBandClass(r.late)}">${r.late} day${r.late===1?'':'s'}</span></td><td class="od-patient"><strong>${escapeHtml(r.patient)}</strong>${r.embryos?`<small>${escapeHtml(r.embryos)}</small>`:''}</td>${cell(r.sampleId,'mono')}${cell(r.test)}<td><span class="prep-stage ${r.stage[1]}">${r.stage[0]}</span></td>${cell(r.client)}${cell(r.embryologist)}<td class="od-dates"><strong>${escapeHtml(r.tat)}</strong><small>Recd ${escapeHtml(r.received)}</small></td></tr>`).join('')}</tbody></table>`};
+  wrap.innerHTML=`<table class="prep-table od-table"><colgroup><col style="width:74px"><col style="width:112px"><col style="width:20%"><col style="width:175px"><col><col style="width:160px"><col><col><col style="width:140px"></colgroup><thead><tr><th class="num">#</th><th>Late by</th><th>Patient</th><th>Sample ID</th><th>Test</th><th>Stage</th><th>Client</th><th>Embryologist</th><th>TAT date</th></tr></thead><tbody>${list.map((r,i)=>`<tr data-i="${rows.indexOf(r)}" tabindex="0" title="Open patient record"><td class="num muted">${i+1}</td><td><span class="od-pill ${odBandClass(r.late)}">${r.late} day${r.late===1?'':'s'}</span></td><td class="od-patient"><strong>${escapeHtml(r.patient)}</strong>${r.embryos?`<small>${escapeHtml(r.embryos)}</small>`:''}</td>${cell(r.sampleId,'mono')}${cell(r.test)}<td><span class="prep-stage ${r.stage[1]}">${r.stage[0]}</span></td>${cell(r.client)}${cell(r.embryologist)}<td class="od-dates"><strong>${escapeHtml(r.tat)}</strong><small>Recd ${escapeHtml(r.received)}</small></td></tr>`).join('')}</tbody></table>`};
  const redraw=()=>{drawFilters();drawSummary();draw();syncToggle()};
  const toggleBtn=$('#overdueFilterToggle'),badge=$('#overdueFilterBadge');
  let fOpen=true;try{fOpen=localStorage.getItem('em-od-filters')!=='closed'}catch{}
@@ -1902,20 +2141,42 @@ function overdueTatStats(){
  // A report cannot have gone out after today: a future NGS report date is a typed
  // date, so those rows are left out rather than drawn as a month that hasn't happened.
  const today=new Date();today.setHours(23,59,59,999);
- allEmbryos().forEach(e=>{if(isNotReporting(e))return;const tatStr=tatDate(e,e._case);if(!tatStr)return;const tat=parseSheetDate(tatStr);if(!tat)return;const rep=parseSheetDate(field(e,['ngs report']));if(!rep||rep>today)return;const delta=Math.round((rep-tat)/864e5),mk=`${rep.getFullYear()}-${String(rep.getMonth()+1).padStart(2,'0')}`;released.push({delta,mk});if(delta<0)before++;else if(delta===0)on++;else after++});
+ // Only the three reporting tests carry a TAT (isReportPrepTest): PGT-A, PGT-SR and Embryo Sure.
+ // Add-ons, NIPGS, MaReCs and karyotyping finish without a report date, so including them was
+ // measuring tests that have no target against a target.
+ // A handful of rows have a typed date that makes the turnaround impossible - a report dated
+ // before the sample arrived, or a received year of "206" giving a 664,000-day gap. They are
+ // counted as date errors rather than averaged in, which otherwise wrecks "days late".
+ let badDates=0;
+ allEmbryos().forEach(e=>{if(isNotReporting(e)||!isReportPrepTest(e))return;const tatStr=tatDate(e,e._case);if(!tatStr)return;const tat=parseSheetDate(tatStr);if(!tat)return;const rec=parseSheetDate(field(e,['date sample received']));const rep=parseSheetDate(field(e,['ngs report']));if(!rep||rep>today)return;const turnaround=rec?Math.round((rep-rec)/864e5):0;if(turnaround<0||turnaround>365){badDates++;return}const delta=Math.round((rep-tat)/864e5),mk=`${rep.getFullYear()}-${String(rep.getMonth()+1).padStart(2,'0')}`;released.push({delta,mk,turnaround});if(delta<0)before++;else if(delta===0)on++;else after++});
  const byMonth=new Map();released.forEach(r=>{const m=byMonth.get(r.mk)||{key:r.mk,before:0,on:0,after:0,total:0};if(r.delta<0)m.before++;else if(r.delta===0)m.on++;else m.after++;m.total++;byMonth.set(r.mk,m)});
  let months=[...byMonth.values()].sort((a,b)=>a.key.localeCompare(b.key));if(months.length>12)months=months.slice(-12);
  const avg=a=>a.length?Math.round(a.reduce((s,x)=>s+x,0)/a.length):0;
- return{total:released.length,before,on,after,months,avgLate:avg(released.filter(r=>r.delta>0).map(r=>r.delta)),avgEarly:avg(released.filter(r=>r.delta<0).map(r=>-r.delta)),pending:allEmbryos().filter(e=>isOverdue(e,e._case)).length};
+ const tas=released.map(r=>r.turnaround).filter(n=>n>0).sort((a,b)=>a-b);
+ const medianTurnaround=tas.length?tas[Math.floor(tas.length/2)]:0;
+ return{badDates,medianTurnaround,total:released.length,before,on,after,months,avgLate:avg(released.filter(r=>r.delta>0).map(r=>r.delta)),avgEarly:avg(released.filter(r=>r.delta<0).map(r=>-r.delta)),pending:allEmbryos().filter(e=>isOverdue(e,e._case)).length};
 }
-// One line, one number per month: the share of that month's reports that met TAT.
-// (Stacked 100% bars made the reader compare three shifting segments at once; the
-// question is only ever "did it go out in time?", so plot that rate directly.)
+// Share of reports that met a day-count goal, by month - for the two "TAT trends" charts shown
+// as a percentage (Received/WGA -> Report sent). These are in-house GOALS, always a different
+// number from and clearly labelled apart from the real 14-day contractual TAT that tatDate()/
+// isOverdue() use everywhere else (see tests/tat-target.test.js for why that distinction matters).
 const TAT_THIN=20; // months with fewer reports than this are too small to read a rate from
+function daysMetStats(startKey,targetDays,longTargetDays){
+ const released=[];let before=0,on=0,after=0;
+ const today=new Date();today.setHours(23,59,59,999);
+ allEmbryos().forEach(e=>{if(isNotReporting(e)||!isReportPrepTest(e))return;const start=parseSheetDate(field(e,[startKey]));if(!start)return;const rep=parseSheetDate(field(e,['ngs report']));if(!rep||rep>today)return;
+  const test=canonicalTestName(field(e,['test','test name']))||e._case?.test||'',target=longTargetDays&&/embryo\s*sure|hla/i.test(test)?longTargetDays:targetDays,due=new Date(start);due.setDate(due.getDate()+target);
+  const delta=Math.round((rep-due)/864e5),mk=`${rep.getFullYear()}-${String(rep.getMonth()+1).padStart(2,'0')}`;released.push({delta,mk});if(delta<0)before++;else if(delta===0)on++;else after++});
+ const byMonth=new Map();released.forEach(r=>{const m=byMonth.get(r.mk)||{key:r.mk,before:0,on:0,after:0,total:0};if(r.delta<0)m.before++;else if(r.delta===0)m.on++;else m.after++;m.total++;byMonth.set(r.mk,m)});
+ let months=[...byMonth.values()].sort((a,b)=>a.key.localeCompare(b.key));if(months.length>12)months=months.slice(-12);
+ const avg=a=>a.length?Math.round(a.reduce((s,x)=>s+x,0)/a.length):0;
+ return{total:released.length,before,on,after,months,avgLate:avg(released.filter(r=>r.delta>0).map(r=>r.delta))};
+}
+// One line, one number per month: the share of that month's reports that met the goal.
 function tatPoints(months){const multiYear=new Set(months.map(m=>m.key.slice(0,4))).size>1;
  return months.map(m=>{const met=m.before+m.on;return{...m,met,pct:m.total?met/m.total*100:0,thin:m.total<TAT_THIN,label:monthLabel(m.key,multiYear?{month:'short',year:'2-digit'}:{month:'short'})}})}
 function tatMetTrend(months,overallPct){
- if(!months.length)return'<div class="chart-empty">No released samples with a TAT date yet.</div>';
+ if(!months.length)return'<div class="chart-empty">No released samples with a goal date yet.</div>';
  const pts=tatPoints(months);
  const w=Math.max(520,pts.length*78+70),h=280,padL=46,padR=24,padT=28,padB=60,innerH=h-padT-padB,innerW=w-padL-padR;
  const n=pts.length,stepX=n>1?innerW/(n-1):0,X=i=>n>1?padL+stepX*i:padL+innerW/2,Y=p=>padT+innerH-(p/100)*innerH,base=padT+innerH;
@@ -1935,31 +2196,80 @@ function tatMetTrend(months,overallPct){
  const vals=pts.map((p,i)=>{const cx=X(i),cy=Y(p.pct),ty=p.pct<=86?cy-13:cy+19,anchor=i===0?'start':i===n-1?'end':'middle',dx=i===0?-5:i===n-1?5:0,key=marked.has(i);
   return `<text x="${(cx+dx).toFixed(1)}" y="${ty.toFixed(1)}" font-size="${key?11:10}" font-weight="${key?700:600}" fill="${key?'#102432':'#5c7378'}" text-anchor="${anchor}" ${halo}>${Math.round(p.pct)}%</text>`}).join('');
  const xlab=pts.map((p,i)=>{const cx=X(i);return `<text x="${cx.toFixed(1)}" y="${(h-32).toFixed(1)}" font-size="10" font-weight="600" fill="${p.thin?'#9aa6a0':'#5c6a63'}" text-anchor="middle">${escapeHtml(p.label)}</text><text x="${cx.toFixed(1)}" y="${(h-19).toFixed(1)}" font-size="8.5" fill="#9aa6a0" text-anchor="middle">${p.total} report${p.total===1?'':'s'}</text>`}).join('');
- const hits=pts.map((p,i)=>{const cx=X(i),hw=n>1?stepX:innerW;return `<rect x="${(cx-hw/2).toFixed(1)}" y="${padT}" width="${hw.toFixed(1)}" height="${innerH.toFixed(1)}" fill="transparent"><title>${escapeHtml(monthLabel(p.key))} · ${Math.round(p.pct)}% met TAT (${p.met} of ${p.total} reports) · ${p.after} late${p.thin?' · too few reports to read a rate from':''}</title></rect>`}).join('');
+ const hits=pts.map((p,i)=>{const cx=X(i),hw=n>1?stepX:innerW;return `<rect x="${(cx-hw/2).toFixed(1)}" y="${padT}" width="${hw.toFixed(1)}" height="${innerH.toFixed(1)}" fill="transparent"><title>${escapeHtml(monthLabel(p.key))} · ${Math.round(p.pct)}% met goal (${p.met} of ${p.total} reports) · ${p.after} late${p.thin?' · too few reports to read a rate from':''}</title></rect>`}).join('');
  return `<svg viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet" class="tat-line-svg">
   <defs><linearGradient id="tatFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a7180" stop-opacity=".92"/><stop offset=".4" stop-color="#23a79c" stop-opacity=".58"/><stop offset="1" stop-color="#9ddcd4" stop-opacity=".07"/></linearGradient></defs>
   ${grid}
-  <text x="${padL-8}" y="14" font-size="9.5" fill="#8a9a97" text-anchor="start">% of reports that met TAT</text>
+  <text x="${padL-8}" y="14" font-size="9.5" fill="#8a9a97" text-anchor="start">% of reports that met the goal <tspan font-weight="700" fill="#2f5a5f">· lab average ${Math.round(overallPct)}%</tspan></text>
   <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${w-padR}" y2="${avgY.toFixed(1)}" stroke="#4f7b80" stroke-width="1.2" stroke-dasharray="5 4"/>
   ${area}<path d="${line}" fill="none" stroke="${LINE}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
-  <text x="${w-padR-2}" y="${(avgY+13).toFixed(1)}" font-size="9.5" fill="#2f5a5f" text-anchor="end" ${halo}>lab average ${Math.round(overallPct)}%</text>
-  ${dots}${vals}
+    ${dots}${vals}
   <line x1="${padL}" y1="${base.toFixed(1)}" x2="${w-padR}" y2="${base.toFixed(1)}" stroke="#c9d3ce" stroke-width="1"/>
   ${xlab}${hits}</svg>`;
 }
+// Plain average-duration trend (no target, just "how many days did this stretch usually take"),
+// for the WGA->report and sequencing->report charts. Same reporting-test scope as the TAT charts
+// above, since add-on/NIPGS/MaReCs/validation tests never carry a report-released date either.
+function avgDaysTrend(startKey){
+ const rows=[];const today=new Date();today.setHours(23,59,59,999);
+ allEmbryos().forEach(e=>{if(isNotReporting(e)||!isReportPrepTest(e))return;const rep=parseSheetDate(field(e,['ngs report']));if(!rep||rep>today)return;const start=parseSheetDate(field(e,[startKey]));if(!start)return;const days=Math.round((rep-start)/864e5);if(days<0||days>365)return;const mk=`${rep.getFullYear()}-${String(rep.getMonth()+1).padStart(2,'0')}`;rows.push({mk,days})});
+ const byMonth=new Map();rows.forEach(r=>{const m=byMonth.get(r.mk)||{key:r.mk,days:[],total:0};m.days.push(r.days);m.total++;byMonth.set(r.mk,m)});
+ let months=[...byMonth.values()].sort((a,b)=>a.key.localeCompare(b.key));if(months.length>12)months=months.slice(-12);
+ months.forEach(m=>{m.avg=m.days.length?Math.round(m.days.reduce((s,x)=>s+x,0)/m.days.length):0});
+ const overallDays=rows.length?Math.round(rows.reduce((s,x)=>s+x.days,0)/rows.length):0;
+ return{months,overallDays,total:rows.length};
+}
+function avgDaysTrendChart(months,overallDays,title){
+ if(!months.length)return'<div class="chart-empty">No released samples with both dates yet.</div>';
+ const multiYear=new Set(months.map(m=>m.key.slice(0,4))).size>1;
+ const pts=months.map(m=>({...m,label:monthLabel(m.key,multiYear?{month:'short',year:'2-digit'}:{month:'short'})}));
+ const maxVal=Math.max(1,...pts.map(p=>p.avg))*1.15;
+ const w=Math.max(520,pts.length*78+70),h=280,padL=46,padR=24,padT=28,padB=60,innerH=h-padT-padB,innerW=w-padL-padR;
+ const n=pts.length,stepX=n>1?innerW/(n-1):0,X=i=>n>1?padL+stepX*i:padL+innerW/2,Y=v=>padT+innerH-(v/maxVal)*innerH,base=padT+innerH;
+ const LINE='#07606b',RING='#0a7180',halo='paint-order="stroke" stroke="#fff" stroke-width="3.5" stroke-linejoin="round"';
+ const ticks=4,grid=Array.from({length:ticks+1},(_,i)=>Math.round(maxVal/ticks*i)).map(t=>{const gy=Y(t);return `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${w-padR}" y2="${gy.toFixed(1)}" stroke="#edf1ee" stroke-width="1"/><text x="${padL-8}" y="${(gy+3.5).toFixed(1)}" font-size="9" fill="#9aa6a0" text-anchor="end">${t}d</text>`}).join('');
+ const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p.avg).toFixed(1)}`).join(' ');
+ const area=n>1?`<path d="${line} L${X(n-1).toFixed(1)} ${base.toFixed(1)} L${X(0).toFixed(1)} ${base.toFixed(1)} Z" fill="url(#tatFadeAvg)"/>`:'';
+ const avgY=Y(overallDays);
+ const dots=pts.map((p,i)=>{const cx=X(i),cy=Y(p.avg),last=i===n-1;return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${last?6:5}" fill="#fff" stroke="${RING}" stroke-width="${last?3:2.4}"/>`}).join('');
+ const vals=pts.map((p,i)=>{const cx=X(i),cy=Y(p.avg),ty=cy-13,anchor=i===0?'start':i===n-1?'end':'middle',dx=i===0?-5:i===n-1?5:0;return `<text x="${(cx+dx).toFixed(1)}" y="${ty.toFixed(1)}" font-size="10.5" font-weight="700" fill="#102432" text-anchor="${anchor}" ${halo}>${p.avg}d</text>`}).join('');
+ const xlab=pts.map((p,i)=>{const cx=X(i);return `<text x="${cx.toFixed(1)}" y="${(h-32).toFixed(1)}" font-size="10" font-weight="600" fill="#5c6a63" text-anchor="middle">${escapeHtml(p.label)}</text><text x="${cx.toFixed(1)}" y="${(h-19).toFixed(1)}" font-size="8.5" fill="#9aa6a0" text-anchor="middle">${p.total} report${p.total===1?'':'s'}</text>`}).join('');
+ const hits=pts.map((p,i)=>{const cx=X(i),hw=n>1?stepX:innerW;return `<rect x="${(cx-hw/2).toFixed(1)}" y="${padT}" width="${hw.toFixed(1)}" height="${innerH.toFixed(1)}" fill="transparent"><title>${escapeHtml(monthLabel(p.key))} · average ${p.avg} days (${p.total} reports)</title></rect>`}).join('');
+ return `<svg viewBox="0 0 ${w} ${h}" width="100%" preserveAspectRatio="xMidYMid meet" class="tat-line-svg">
+  <defs><linearGradient id="tatFadeAvg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a7180" stop-opacity=".92"/><stop offset=".4" stop-color="#23a79c" stop-opacity=".58"/><stop offset="1" stop-color="#9ddcd4" stop-opacity=".07"/></linearGradient></defs>
+  ${grid}
+  <text x="${padL-8}" y="14" font-size="9.5" fill="#8a9a97" text-anchor="start">${escapeHtml(title)} <tspan font-weight="700" fill="#2f5a5f">· average ${overallDays}d</tspan></text>
+  <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${w-padR}" y2="${avgY.toFixed(1)}" stroke="#4f7b80" stroke-width="1.2" stroke-dasharray="5 4"/>
+  ${area}<path d="${line}" fill="none" stroke="${LINE}" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}${vals}
+  <line x1="${padL}" y1="${base.toFixed(1)}" x2="${w-padR}" y2="${base.toFixed(1)}" stroke="#c9d3ce" stroke-width="1"/>
+  ${xlab}${hits}</svg>`;
+}
+const ordinal=n=>{const s=['th','st','nd','rd'],v=n%100;return `${n}${s[(v-20)%10]||s[v]||s[0]}`};
+function tatGoalBlock(stats,title,goalDays,fromLabel){
+ const pct=v=>stats.total?Math.round(v/stats.total*100):0,met=stats.before+stats.on,metPct=pct(met),latePct=pct(stats.after);
+ return `<h4 class="tatx-chart-title">${title} <small>goal: ${goalDays} days (Embryo Sure 21)</small></h4>
+  <div class="tatx-verdict">
+   <div class="tatx-big tatx-good"><strong>${metPct}%</strong><span>met goal<small>${stats.before.toLocaleString()} early · ${stats.on.toLocaleString()} on the ${ordinal(goalDays)} day from ${fromLabel}</small></span></div>
+   <div class="tatx-big tatx-bad"><strong>${latePct}%</strong><span>were late<small>${stats.after?`${stats.after.toLocaleString()} reports · sent ${stats.avgLate} day${stats.avgLate===1?'':'s'} after the goal date, on average`:'after the goal date'}</small></span></div>
+  </div>
+  <div class="tatx-chart">${tatMetTrend(stats.months,metPct)}</div>`;
+}
 function openOverdueTatChart(){
  let dlg=$('#odTatDialog');
- if(!dlg){dlg=document.createElement('dialog');dlg.id='odTatDialog';dlg.className='vu-dialog vu-dialog-wide';document.body.append(dlg);dlg.addEventListener('click',e=>{if(e.target===dlg||e.target.closest('[data-close]'))dlg.close()})}
- const s=overdueTatStats(),pct=v=>s.total?Math.round(v/s.total*100):0,propW=v=>s.total?(v/s.total*100).toFixed(1):0;
- const met=s.before+s.on,metPct=pct(met),latePct=pct(s.after);
- dlg.innerHTML=`<div class="vu-dhead"><div><h3>TAT performance</h3></div><button class="secondary compact" data-close>Close</button></div>
+ if(!dlg){dlg=document.createElement('dialog');dlg.id='odTatDialog';dlg.className='vu-dialog vu-dialog-wide vu-dialog-tat';document.body.append(dlg);dlg.addEventListener('click',e=>{if(e.target===dlg||e.target.closest('[data-close]'))dlg.close()})}
+ // Received->Report and WGA->Report are both shown as % met a 10/21-day goal (Embryo Sure
+ // gets 21). Sequencing->Report has no agreed goal, so it stays a plain average-days line.
+ // The goal here is intentionally a different number from, and always labelled apart from,
+ // the real 14-day contractual TAT that tatDate()/isOverdue() use everywhere else - see
+ // tests/tat-target.test.js for the incident that makes this distinction matter.
+ const recv=daysMetStats('date sample received',10,21),wga=daysMetStats('wga done on',10,21),seqd=avgDaysTrend('seq date');
+ dlg.innerHTML=`<div class="vu-dhead"><div><h3>TAT trends</h3><small class="tatx-scope">PGT-A, PGT-SR and Embryo Sure only</small></div><button class="secondary compact" data-close>Close</button></div>
   <div class="tatx-body">
-   <div class="tatx-verdict">
-    <div class="tatx-big tatx-good"><strong>${metPct}%</strong><span>met TAT<small>${s.before.toLocaleString()} early · ${s.on.toLocaleString()} on the day</small></span></div>
-    <div class="tatx-big tatx-bad"><strong>${latePct}%</strong><span>were late<small>${s.after?`${s.after.toLocaleString()} reports · ${s.avgLate} day${s.avgLate===1?'':'s'} over on average`:'after the due date'}</small></span></div>
-    <div class="tatx-big tatx-wait"><strong>${s.pending.toLocaleString()}</strong><span>still overdue<small>not yet released</small></span></div>
-   </div>
-   <div class="tatx-chart">${tatMetTrend(s.months,metPct)}</div>
+   ${tatGoalBlock(recv,'Received → Report sent',10,'received date')}
+   ${tatGoalBlock(wga,'WGA done → Report sent',10,'WGA date')}
+   <h4 class="tatx-chart-title">Sequencing → Report sent</h4>
+   <div class="tatx-chart">${avgDaysTrendChart(seqd.months,seqd.overallDays,'Average days: Sequencing → Report sent')}</div>
   </div>`;
  if(!dlg.open)dlg.showModal();
 }
@@ -2208,13 +2518,22 @@ async function setupUsersView(){
  const branchOpts=(brand,sel)=>{const c=(data.clients||[]).find(x=>x.brand===brand);return `<option value="">All branches</option>`+((c&&c.branches)||[]).map(b=>`<option${b===sel?' selected':''}>${escapeHtml(b)}</option>`).join('')};
  const roleOpts=sel=>data.roles.map(r=>`<option value="${r}"${r===sel?' selected':''}>${ROLE_LABELS[r]||r}</option>`).join('');
  const api=async(url,method,body)=>{const r=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||'Request failed');return j};
+ // Role colour pill, so a role is recognisable down the column without reading every word.
+ const rolePill=r=>`user-role-sel role-pill role-${String(r||'').replace(/[^a-z_]/g,'')}`;
+ // Edits are held in the row and committed by its Save button. They used to PATCH on every
+ // change and reload the whole table underneath the cursor, so a two-field edit (client, then
+ // branch) fired two saves and redrew twice - the second dropdown often lost its value.
  const draw=()=>{const q=($('#usersSearch')?.value||'').trim().toLowerCase(),shown=data.users.filter(u=>!q||u.username.includes(q)||(ROLE_LABELS[u.role]||'').toLowerCase().includes(q)),linked=data.users.some(u=>u.name||u.client||u.role==='embryologist');$('#usersCount').textContent=`${data.users.length} ${data.users.length===1?'person':'people'}`;
-  listEl.innerHTML=`<div class="users-table-wrap"><table class="users-table"><thead><tr><th>User</th><th>Role</th>${linked?'<th>Linked to</th>':''}<th></th></tr></thead><tbody>${shown.map(u=>{const me=u.username===currentUser.username;return `<tr data-u="${escapeHtml(u.username)}"><td class="user-col"><div class="user-cell"><span class="user-avatar">${escapeHtml(u.username.slice(0,2).toUpperCase())}</span><strong>${escapeHtml(u.username)}</strong>${me?'<em class="user-you">you</em>':''}</div></td><td><div class="user-role"><select class="user-role-sel" aria-label="Role of ${escapeHtml(u.username)}">${roleOpts(u.role)}</select><span class="user-role-note">${escapeHtml(ROLE_NOTES[u.role]||'')}</span></div></td>${linked?(u.role==='embryologist'?`<td class="user-link"><select class="user-client-sel" aria-label="Client of ${escapeHtml(u.username)}">${clientOpts(u.client)}</select> <select class="user-branch-sel" aria-label="Branch of ${escapeHtml(u.username)}"${u.client?'':' hidden'}>${branchOpts(u.client,u.branch)}</select>${u.name?`<small class="user-note">${escapeHtml('embryologist: '+u.name)}</small>`:''}</td>`:`<td class="user-link"><span class="user-dash">—</span></td>`):''}<td class="user-actions"><button type="button" class="user-act user-pw">Reset password</button><button type="button" class="user-act user-del"${me?' disabled title="You cannot remove your own login"':''}>Remove</button></td></tr>`}).join('')||'<tr><td colspan="4" class="chart-empty">No users match.</td></tr>'}</tbody></table></div>`;
+  listEl.innerHTML=`<div class="users-table-wrap"><table class="users-table"><thead><tr><th>User</th><th>Role</th>${linked?'<th>Linked to</th>':''}<th></th></tr></thead><tbody>${shown.map(u=>{const me=u.username===currentUser.username;return `<tr data-u="${escapeHtml(u.username)}" data-role0="${escapeHtml(u.role||'')}" data-client0="${escapeHtml(u.client||'')}" data-branch0="${escapeHtml(u.branch||'')}"><td class="user-col"><div class="user-cell"><span class="user-avatar">${escapeHtml(u.username.slice(0,2).toUpperCase())}</span><strong>${escapeHtml(u.username)}</strong>${me?'<em class="user-you">you</em>':''}</div></td><td><div class="user-role"><select class="${rolePill(u.role)}" aria-label="Role of ${escapeHtml(u.username)}">${roleOpts(u.role)}</select><span class="user-role-note">${escapeHtml(ROLE_NOTES[u.role]||'')}</span></div></td>${linked?(u.role==='embryologist'?`<td class="user-link"><div class="user-link-fields"><select class="user-client-sel" aria-label="Client of ${escapeHtml(u.username)}">${clientOpts(u.client)}</select><select class="user-branch-sel" aria-label="Branch of ${escapeHtml(u.username)}"${u.client?'':' hidden'}>${branchOpts(u.client,u.branch)}</select></div>${u.name?`<small class="user-note">${escapeHtml('embryologist: '+u.name)}</small>`:''}</td>`:`<td class="user-link"><span class="user-dash">—</span></td>`):''}<td class="user-actions"><button type="button" class="user-act user-save" disabled>Save</button><button type="button" class="user-act user-pw">Reset password</button><button type="button" class="user-act user-del"${me?' disabled title="You cannot remove your own login"':''}>Remove</button></td></tr>`}).join('')||'<tr><td colspan="4" class="chart-empty">No users match.</td></tr>'}</tbody></table></div>`;
   listEl.querySelectorAll('tr[data-u]').forEach(tr=>{const name=tr.dataset.u;
-   tr.querySelector('.user-role-sel').onchange=async e=>{try{await api('/api/users/'+encodeURIComponent(name),'PATCH',{role:e.target.value});toast(`${name} is now ${ROLE_LABELS[e.target.value]}`);await load()}catch(err){toast(err.message);await load()}};
-   const cs=tr.querySelector('.user-client-sel'),bs=tr.querySelector('.user-branch-sel');
-   if(cs){cs.onchange=async()=>{try{await api('/api/users/'+encodeURIComponent(name),'PATCH',{client:cs.value,branch:''});toast(cs.value?`${name} now sees only ${cs.value}`:`${name} is no longer linked to a client`);await load()}catch(err){toast(err.message);await load()}};
-    bs.onchange=async()=>{try{await api('/api/users/'+encodeURIComponent(name),'PATCH',{client:cs.value,branch:bs.value});toast(bs.value?`${name} now sees only the ${bs.value} branch`:`${name} sees every branch`);await load()}catch(err){toast(err.message);await load()}}}
+   const rs=tr.querySelector('.user-role-sel'),cs=tr.querySelector('.user-client-sel'),bs=tr.querySelector('.user-branch-sel'),save=tr.querySelector('.user-save');
+   const changed=()=>{const d={};if(rs&&rs.value!==tr.dataset.role0)d.role=rs.value;if(cs&&cs.value!==tr.dataset.client0)d.client=cs.value;if(bs&&(bs.value||'')!==tr.dataset.branch0)d.branch=bs.value;return d};
+   // Changing the client invalidates whatever branch was picked, so both go in the same save.
+   const sync=()=>{const d=changed();if(cs&&d.client!==undefined)d.branch=bs?bs.value:'';save.disabled=!Object.keys(d).length;tr.classList.toggle('user-dirty',!save.disabled)};
+   if(rs)rs.onchange=()=>{rs.className=rolePill(rs.value);const note=tr.querySelector('.user-role-note');if(note)note.textContent=ROLE_NOTES[rs.value]||'';sync()};
+   if(cs){cs.onchange=()=>{if(bs){bs.innerHTML=branchOpts(cs.value,'');bs.hidden=!cs.value||bs.options.length<2}sync()};if(bs)bs.onchange=sync}
+   save.onclick=async()=>{const d=changed();if(cs&&d.client!==undefined)d.branch=bs?bs.value:'';if(!Object.keys(d).length)return;save.disabled=true;save.textContent='Saving…';
+    try{await api('/api/users/'+encodeURIComponent(name),'PATCH',d);toast(`${name} updated`);await load()}catch(err){toast(err.message);save.textContent='Save';save.disabled=false}};
    tr.querySelector('.user-pw').onclick=async()=>{const pw=prompt(`New password for ${name} (min 6 characters):`);if(!pw)return;try{await api('/api/users/'+encodeURIComponent(name),'PATCH',{password:pw});toast('Password updated')}catch(err){toast(err.message)}};
    tr.querySelector('.user-del').onclick=async()=>{if(!confirm(`Remove ${name}? They will no longer be able to sign in.`))return;try{await api('/api/users/'+encodeURIComponent(name),'DELETE');toast('User removed');await load()}catch(err){toast(err.message)}}})};
  const load=async()=>{try{data=await api('/api/users','GET');draw()}catch(err){listEl.innerHTML=`<div class="chart-empty">${escapeHtml(err.message||'Could not load users.')}</div>`}};

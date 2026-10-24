@@ -11,7 +11,7 @@ const grabFn=name=>{const i=src.indexOf(`function ${name}(`);assert.ok(i>=0,`${n
 const grabConst=name=>{const m=src.match(new RegExp(`\\n(const ${name}=[^\\n]*)`));assert.ok(m,`${name} not found in app.js`);return m[1]};
 
 const code='const CANONICAL_TESTS={};let lastMatchWhy="";const recvOf=t=>field(t,["date sample received"]);\n'
- +['cleanId','field','fieldKey','embryoUnits','embryoNameParts','expandEmbryoTags','nameSim','scoreTrackerRow',
+ +['cleanId','field','fieldKey','embryoUnits','embryoNameParts','expandEmbryoTags','embryoNameField','nameSim','scoreTrackerRow',
    'matchTrackerRow','makeTrackerIndex','trustTracker','dayKeys','receivedAfterRun'].map(grabFn).join('\n')+'\n'
  +['nameKey','normCol','daysMeet','wordsOf'].map(grabConst).join('\n');
 const {matchTrackerRow,makeTrackerIndex}=new Function(code+'\nreturn{matchTrackerRow,makeTrackerIndex}')();

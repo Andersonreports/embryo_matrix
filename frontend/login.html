@@ -6,7 +6,7 @@
 :root{color-scheme:light;--bg:#f3f7f6;--card:#fff;--ink:#17302f;--mut:#6b7f7d;--line:#d6e2e0;--brand:#0a7180;--err:#b3261e}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);font:15px/1.4 Inter,system-ui,sans-serif;padding:16px}
 form{width:100%;max-width:360px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px}
-h1{margin:0 0 4px;font-size:21px}p{margin:0 0 20px;color:var(--mut);font-size:13px}
+h1{margin:0;font-size:21px}p{margin:0 0 20px;color:var(--mut);font-size:13px;font-weight:700;text-align:center}.em-brand{display:flex;align-items:center;justify-content:center;gap:9px;padding-top:14px;margin-top:2px;border-top:1px solid var(--line)}
 label{display:block;font-size:12px;font-weight:600;margin:12px 0 5px}
 input{width:100%;padding:11px 14px;border:1px solid var(--line);border-radius:999px;background:transparent;color:inherit;font:inherit}
 input:focus{outline:2px solid var(--brand);outline-offset:1px}
@@ -14,9 +14,9 @@ button{margin-top:20px;width:100%;padding:12px;border:0;border-radius:999px;back
 button:disabled{opacity:.6}#err{color:var(--err);font-size:13px;min-height:18px;margin-top:12px}
 /* Brand watermark. Unlike the app shell this one sits BEHIND the card - the page is
    mostly open space, so it can be bigger and stronger without crowding the form. */
-body::before{content:"";position:fixed;top:50%;left:50%;width:min(72vmin,560px);height:min(72vmin,560px);translate:-50% -50%;background:url("/static/assets/logos/watermark.png") center/contain no-repeat;opacity:.1;pointer-events:none;z-index:-1}
+body::before{content:"";position:fixed;top:50%;left:50%;width:min(98vmin,780px);height:calc(min(98vmin,780px)/3.18);translate:-50% -50%;background:url("/static/assets/logos/anderson-diagnostics-labs.png") center/contain no-repeat;opacity:.13;pointer-events:none;z-index:-1}
 </style></head><body>
-<form id="f"><img src="/static/assets/logos/logo.png" alt="" width="52" height="52" style="display:block;margin:0 0 12px"><h1>EmbryoMatrix</h1><p>Sign in to continue</p>
+<form id="f"><img src="/static/assets/logos/anderson-diagnostics-labs.png" alt="Anderson Diagnostics &amp; Labs" width="290" height="91" style="display:block;margin:0 0 20px"><div class="em-brand"><img src="/static/assets/logos/logo.png" alt="" width="30" height="30"><h1>EmbryoMatrix</h1></div><p>Sign in to continue</p>
 <label for="u">Username</label><input id="u" autocomplete="username" autocapitalize="none" required autofocus>
 <label for="p">Password</label><input id="p" type="password" autocomplete="current-password" required>
 <div id="err" role="alert"></div><button id="b">Sign in</button></form>

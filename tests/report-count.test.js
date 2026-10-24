@@ -19,7 +19,7 @@ const grabFn=name=>{
  for(let k=src.indexOf('{',i);k<src.length;k++){if(src[k]==='{')depth++;else if(src[k]==='}'&&!--depth)return src.slice(i,k+1)}
 };
 const{reportCount,countPatients}=new Function(
- `${grabFn('field')}\n${grabConst('patientKey')}\n${grabFn('countPatients')}\n${grabConst('reportCount')}\nreturn{reportCount,countPatients}`
+ `${grabFn('field')}\n${grabConst('patientKey')}\n${grabFn('levDistance')}\n${grabFn('namesLikelySamePatient')}\n${grabConst('sampleIdOf')}\n${grabConst('rowFallbackKey')}\n${grabFn('makePatientIdentity')}\n${grabFn('countPatients')}\n${grabConst('reportCount')}\nreturn{reportCount,countPatients}`
 )();
 
 // A released-stage entry as stageRows() builds it: the sheet row, its case, its embryo count.
@@ -27,14 +27,22 @@ const staged=(patient,sampleId,n=1)=>({row:{'patient name':patient,'sample id':s
 // A plain embryo row as allEmbryos() builds it: the row with its case attached.
 const plain=(patient,sampleId)=>({'patient name':patient,'sample id':sampleId,_case:{patient}});
 
-test('one patient across several sample IDs is one report, not one per sample', () => {
- // Re-biopsy, a second cycle and a batch split across runs all give the same patient new
- // sample IDs. Each used to count as its own released report.
- const rows=[staged('KOMAL RAMPELLI','DCC0000008547'),staged('KOMAL RAMPELLI','483P9S26'),staged('KOMAL RAMPELLI','174P6J26')];
+test('one patient across several rows sharing a Sample ID is one report', () => {
+ // A re-biopsy, a second cycle, a batch split across runs - all billed and entered again under
+ // the SAME Anderson ID (team confirmed 23-10-2026). Each used to count as its own report.
+ const rows=[staged('KOMAL RAMPELLI','DCC0000008547'),staged('KOMAL RAMPELLI','DCC0000008547'),staged('KOMAL RAMPELLI','DCC0000008547')];
  assert.strictEqual(reportCount(rows),1);
 });
 
-test('one patient across several embryo rows is still one report', () => {
+test('a typo in the name does not split a Sample ID into two patients', () => {
+ // A second entry's name is often typed slightly differently - a dropped middle name, a
+ // one-letter slip (real sheet examples: "SHRINIDHI RAMESH"/"SHRINIDHI",
+ // "PARAMJEET"/"PARANJEET KHANDPUR", both confirmed by the team as one patient each).
+ const rows=[staged('Shrinidhi Ramesh','ADK0000006102'),staged('Shrinidhi','ADK0000006102')];
+ assert.strictEqual(reportCount(rows),1);
+});
+
+test('one patient across several embryo rows, same Sample ID, is still one report', () => {
  const rows=[staged('DIVYA MALAIYA','AN-1'),staged('DIVYA MALAIYA','AN-1'),staged('DIVYA MALAIYA','AN-1',5)];
  assert.strictEqual(reportCount(rows),1);
 });
@@ -44,9 +52,27 @@ test('different patients each count once', () => {
  assert.strictEqual(reportCount(rows),3);
 });
 
-test('the same name spelled with different case or spacing is one patient', () => {
- const rows=[staged('Ruby  Mangala','A1'),staged('RUBY MANGALA','B2'),staged('ruby mangala','C3')];
+test('the SAME Sample ID with different case or spacing in the name is one patient', () => {
+ const rows=[staged('Ruby  Mangala','A1'),staged('RUBY MANGALA','A1'),staged('ruby mangala','A1')];
  assert.strictEqual(reportCount(rows),1);
+});
+
+test('an identical name on DIFFERENT Sample IDs is never merged', () => {
+ // The real finding behind this rule: common first names ("priyanka", "kavitha", "saranya")
+ // recur across the sheet as different women. Without a shared Sample ID there is no evidence
+ // they are the same patient, so the name alone - however exactly it matches - must not merge
+ // them. (This is also why patient mode on the overview charts tallies rows directly rather
+ // than deduping by name - see tests/chart-units.test.js.)
+ const rows=[staged('Ruby Mangala','A1'),staged('Ruby Mangala','B2'),staged('Ruby Mangala','C3')];
+ assert.strictEqual(reportCount(rows),3);
+});
+
+test('an ID shared by names with no resemblance is never merged', () => {
+ // The sheet's day-based registration numbers ("REG12022026") are reused across unrelated
+ // patients booked the same day. Merging on the ID alone here would attach one patient's
+ // results to a stranger's.
+ const rows=[staged('Jyoti Pawandeep','REG31122025'),staged('Divya K','REG31122025')];
+ assert.strictEqual(reportCount(rows),2);
 });
 
 test('rows with no patient name are skipped, not counted one each', () => {
@@ -56,23 +82,60 @@ test('rows with no patient name are skipped, not counted one each', () => {
 });
 
 test('a row carrying the name only on its case still counts', () => {
- const rows=[{row:{'sample id':'X1'},c:{patient:'ARUNA'},n:1},{row:{'sample id':'X2'},c:{patient:'ARUNA'},n:1}];
+ const rows=[{row:{'sample id':'X1'},c:{patient:'ARUNA'},n:1},{row:{'sample id':'X1'},c:{patient:'ARUNA'},n:1}];
  assert.strictEqual(reportCount(rows),1);
 });
 
 test('plain embryo rows (the coordinator view) count per patient too', () => {
- const rows=[plain('ARUNA','AP1'),plain('ARUNA','AP2'),plain('HARIKA AKULA','HS1')];
+ const rows=[plain('ARUNA','AP1'),plain('ARUNA','AP1'),plain('HARIKA AKULA','HS1')];
  assert.strictEqual(reportCount(rows),2);
 });
 
 test('released reports can never outnumber the patients they belong to', () => {
  // The invariant the dashboard broke: every released row belongs to a patient in the total,
  // so counting the two on the same basis must leave released <= patients.
- const everyone=[plain('ARUNA','AP1'),plain('ARUNA','AP2'),plain('AKANKSHA KUMARI','AN1'),
-                 plain('AKANKSHA KUMARI','AN2'),plain('DIVYA MALAIYA','DN1'),plain('HARIKA AKULA','HS1')];
+ const everyone=[plain('ARUNA','AP1'),plain('ARUNA','AP1'),plain('AKANKSHA KUMARI','AN1'),
+                 plain('AKANKSHA KUMARI','AN1'),plain('DIVYA MALAIYA','DN1'),plain('HARIKA AKULA','HS1')];
  const released=everyone.filter(r=>r['patient name']!=='HARIKA AKULA');
  assert.ok(reportCount(released)<=countPatients(everyone),
   `released ${reportCount(released)} must not exceed patients ${countPatients(everyone)}`);
  assert.strictEqual(countPatients(everyone),4);
  assert.strictEqual(reportCount(released),3);
+});
+
+// --- Report-preparation scope (team's call, 23-10-2026) ------------------------------------
+// Report prep is PGT-A, PGT-SR, NIPGT/NIPGS and Embryo Sure. PGT-A+M, PGT-M, HLA-C typing and
+// Embryology validation are add-on tests and must never be counted as awaiting a report; MaReCs,
+// NOT REPORTING and non-embryo material (POC, AF, CVS, karyotyping) are in neither bucket.
+// canonicalTestName() is a big lookup table over the sheet's spellings; the scope rule only needs
+// the raw name, so it is stubbed to the identity here and the three real predicates are pulled in.
+const {isReportPrepTest}=new Function(
+ `const canonicalTestName=t=>String(t||'');
+  const field=(r,names)=>{for(const n of names){const k=Object.keys(r).find(x=>x===n||x.includes(n));if(k&&r[k])return String(r[k]).trim()}return''};
+  const testNameOf=e=>field(e,['test','test name'])||e._case.test;
+  ${grabConst('REPORT_PREP_TESTS')}
+  ${grabConst('reportTestKey')}
+  ${grabConst('isReportPrepTest')}
+  return{isReportPrepTest}`
+)();
+const t=name=>isReportPrepTest({'test name':name,_case:{}});
+
+test('the three reporting tests are in scope', () => {
+ for(const name of ['PGT-A','PGTA','PGT_A','PGT-SR','PGTSR','EMBRYO SURE','EmbryoSure','PGT-A/EmbryoSure'])
+  assert.strictEqual(t(name),true,`${name} should count in REPORT RELEASED and OVERDUE`);
+});
+
+test('NIPGS, karyotyping and validation are out of released and overdue', () => {
+ for(const name of ['NIPGT','NIPGS','Express molecular karyotyping NGS','POC','AF','CVS','Embryo validation','VALIDATION'])
+  assert.strictEqual(t(name),false,`${name} must not count in REPORT RELEASED or OVERDUE`);
+});
+
+test('add-on tests are never counted as awaiting a report', () => {
+ for(const name of ['PGT-A+M','PGTA+M','PGT-M','PGTM','PGT-M only','HLA C typing','PGT-A+HLA C','PGT-A  HLA C TYPING'])
+  assert.strictEqual(t(name),false,`${name} is an add-on test, not report preparation`);
+});
+
+test('MaReCs and non-embryo material are in neither bucket', () => {
+ for(const name of ['MaReCs','MARECS','POC','AF','CVS','Express Molecular Karyotyping by NGS','NGS KARYOTYPING',''])
+  assert.strictEqual(t(name),false,`${name} must not be counted as awaiting a report`);
 });

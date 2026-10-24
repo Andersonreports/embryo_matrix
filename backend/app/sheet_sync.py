@@ -473,7 +473,18 @@ def sync_sources(db: Session, sheet_ids: list[str]) -> dict:
                 merged_rows[index_by_key[key]] = row
             else:
                 merged_rows.append(row)
+        # ...but only for the workbooks that actually failed. A tab we DID read in full this round is
+        # authoritative for its own rows, so one that has gone from it was deleted upstream and must
+        # still go stale - otherwise one unreachable workbook freezes deletions across all of them,
+        # and cleared rows linger for good (they surface later as phantom overdue samples).
+        fetched_labels = set(tab_labels)
         stale_rows = []
+        for i, row in enumerate(merged_rows):
+            if row.get("_stale") or _record_key(row) in fresh_rows:
+                continue
+            if str(row.get("_importSource") or "") in fetched_labels:
+                merged_rows[i] = {**row, "_stale": True}
+                stale_rows.append(merged_rows[i])
     else:
         # Every configured workbook fetched cleanly, so this run's tab/row order
         # is a complete, trustworthy picture of the live sheet - use it as the

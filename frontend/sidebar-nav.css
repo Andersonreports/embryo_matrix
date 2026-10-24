@@ -3,18 +3,23 @@
    sidebar-nav.js to restore. Desktop only; narrow screens keep the top bar. */
 .sb-collapse,.sb-open{display:none}
 @media(min-width:901px){
- body.sidebar-nav main{padding-left:254px}
+ /* The account strip and the rail are both position:fixed, so neither reserves real
+    document space - "padding-left" alone leaves the vertical 50px the strip occupies
+    unclaimed. Without this, content starts its NORMAL (unscrolled) flow at y:0, right
+    under the strip, and only reaches the correct y:50 once sticky engages on scroll -
+    so anything sitting right at the top of a short, unscrolled page (e.g. the
+    Patients/Embryos toggle on Overview) renders half-hidden behind the strip. */
+ body.sidebar-nav main{padding-left:254px;padding-top:50px}
  /* The top bar is now a full-height rail, so its measured height (--topbar-h) is
-    ~100vh. Zero it for the rail subtree so every "top:var(--topbar-h)" sticky
-    element — the page header AND the Run-status stats block (.home-fixed) — pins
-    to the top, not the bottom. (Both then show together.) */
- body.sidebar-nav{--topbar-h:0px}
- body.sidebar-nav #mainHeader,body.sidebar-nav .home-fixed{top:0!important}
+    ~100vh, not a usable offset. Fix it at the height of the account strip below
+    instead of zeroing it, so every "top:var(--topbar-h)" sticky element - the page
+    header and the Run-status stats block (.home-fixed) - sticks just under that
+    strip rather than under it. */
+ body.sidebar-nav{--topbar-h:50px}
  body.sidebar-nav .topbar{display:flex!important;grid-template-areas:none!important;grid-template-columns:none!important;position:fixed;left:0;top:0;bottom:0;width:254px;height:100vh;flex-direction:column;align-items:stretch;gap:2px;padding:16px 12px 14px;overflow-y:auto;border-right:1px solid #d8ded5;border-bottom:none;z-index:40;flex-wrap:nowrap}
- /* Brand row: wordmark left, collapse button pinned to its right - one row, not two */
- body.sidebar-nav .brand{padding:2px 42px 13px 8px;margin:0 0 6px;border-bottom:1px solid #e3e8df;font-size:19px;gap:9px}
- body.sidebar-nav .brand-logo{width:32px;height:32px}
- body.sidebar-nav .brand small{font-size:7.5px;letter-spacing:1.5px}
+ body.sidebar-nav .brand{justify-content:center;padding:4px 8px 16px;margin:0 0 8px;border-bottom:1px solid #e3e8df;font-size:21px;gap:10px}
+ body.sidebar-nav .brand-logo{width:38px;height:38px}
+ body.sidebar-nav .brand small{font-size:9.5px;letter-spacing:.1px;max-width:150px;text-align:center}
  body.sidebar-nav .topnav{flex-direction:column;align-items:stretch;gap:1px;width:100%}
  body.sidebar-nav .nav-item{width:100%;justify-content:flex-start;border-radius:10px;padding:6px 12px;font-size:13px;gap:8px;white-space:nowrap}
  body.sidebar-nav .nav-item .ico{width:21px;height:21px}
@@ -37,6 +42,8 @@
  body.sidebar-nav .nav-subitem b{margin-left:auto}
  /* Notifications at the top; account block (menu above the username) at the bottom */
  body.sidebar-nav .topbar{justify-content:flex-start}
+ /* Moved down from the rail's top edge to clear the Anderson Clinical Genetics logo now
+    sitting above the EmbryoMatrix row, which this button is meant to align with. */
  body.sidebar-nav .sb-collapse{position:absolute;top:20px;right:12px;display:grid;place-items:center;width:28px;height:28px;border-radius:8px;border:0;background:transparent;color:#8a9a97;cursor:pointer;padding:0}
  body.sidebar-nav .sb-collapse:hover{background:#e7efe6;color:#1f513c}
  body.sidebar-nav .brand{order:0}
@@ -51,14 +58,22 @@
  /* Only the nav list scrolls, so the bell (top) and account block (bottom) stay visible */
  body.sidebar-nav .topbar{overflow:hidden}
  body.sidebar-nav .topnav{order:2;flex:1 1 auto;min-height:0;overflow-y:auto;flex-wrap:nowrap;scrollbar-width:thin}
- body.sidebar-nav .session-info{order:9;flex:0 0 auto;display:flex;flex-direction:column;align-items:stretch;gap:2px;margin:6px 0 0;border-top:1px solid #e3e8df;padding-top:8px}
- body.sidebar-nav .session-menu{order:1;position:static;box-shadow:none;border:0;padding:0;background:transparent;display:flex!important;flex-direction:column;gap:1px;min-width:0}
- body.sidebar-nav .session-menu-item{width:100%;justify-content:flex-start;border-radius:8px;padding:8px 12px;color:#4f6369}
- body.sidebar-nav .session-menu-item:hover{background:#e7efe6}
- body.sidebar-nav #sessionUsername{order:2;width:100%;text-align:left;justify-content:flex-start;margin-top:5px}
- /* Collapsible rail (default open) */
- body.sidebar-nav .topbar{transition:transform .2s ease}
- body.sidebar-nav.sidebar-collapsed .topbar{transform:translateX(-100%)}
+ /* The username moved out of the rail and into its own strip across the top of the
+    content area, matching the original top bar's layout - it reads as account
+    status, not as a nav item, and it should stay put regardless of what page is
+    open underneath. Un-does the sidebar's own .session-menu/#sessionUsername
+    overrides below so the ordinary popup menu from styles.css (position:absolute,
+    opened by the existing click handler) takes over unchanged, just anchored to a
+    button that now lives top-right instead of in the topbar's flex row. */
+ body.sidebar-nav .session-info{position:fixed;top:0;left:254px;right:0;height:50px;z-index:41;display:flex;align-items:center;justify-content:flex-end;padding:0 20px;background:#eef3f4;border-bottom:1px solid #d8ded5;margin:0}
+ body.sidebar-nav.sidebar-collapsed .session-info{left:0}
+ /* Collapsible rail (default open). Hidden via `left`, not `transform` - a transform
+    on this ancestor would become the containing block for the account strip above
+    (position:fixed resolves against the nearest transformed ancestor, not always
+    the viewport), so collapsing the rail would have dragged the strip off-screen
+    with it. */
+ body.sidebar-nav .topbar{transition:left .2s ease}
+ body.sidebar-nav.sidebar-collapsed .topbar{left:-254px}
  body.sidebar-nav.sidebar-collapsed main{padding-left:0}
  /* leave room for the floating menu button so it never covers the page title */
  body.sidebar-nav.sidebar-collapsed #mainHeader{padding-left:72px}

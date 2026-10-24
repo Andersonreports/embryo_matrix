@@ -104,6 +104,10 @@ _ROLE_RULES = {
         ("GET", r"/api/(store/.+|cases|cases/[^/]+/images|images|case-runs|dashboard|cell-edits|edits-sheet|result-file-months|sync-sheet/status)"),
         ("GET", r"/uploads/.+"), ("POST", r"/api/sync-sheet"), ("POST", r"/api/cases/[^/]+/images"),
         ("GET", r"/api/batches(/[^/]+/xlsx)?"), ("POST", r"/api/batches(/results)?"), ("DELETE", r"/api/batches/[^/]+"),
+        # Files the clinic signs on paper arrive at the lab as a hard copy, so staff file the
+        # scan here. Read and attach only - approving, editing and deleting stay with the leads.
+        ("GET", r"/api/trf"), ("GET", r"/api/trf/\d+"), ("GET", r"/api/trf/\d+/pdf"),
+        ("POST", r"/api/trf/\d+/signed"), ("GET", r"/api/trf/\d+/signed"),
     ],
     # Coordinator: read-only home page (same data the member role can read).
     "coordinator": [
@@ -113,11 +117,18 @@ _ROLE_RULES = {
     "embryologist": [
         ("POST", r"/api/(trf|trf-image|trf/preview-pdf)"), ("GET", r"/api/trf-image/[^/]+"),
         ("GET", r"/api/followups"), ("POST", r"/api/followups/save"), ("GET", r"/api/my-embryos"),
-        ("GET", r"/api/my-trfs"), ("POST", r"/api/trf/\d+/signed"), ("GET", r"/api/trf/\d+/signed"),
+        ("GET", r"/api/my-trfs"), ("GET", r"/api/trf/\d+/signed"),
         ("POST", r"/api/new-samples(/trf)?"),
     ],
 }
-_ALWAYS_OK = {("GET", "/api/whoami"), ("POST", "/api/logout")}
+# Logging in must always be reachable, whatever role a STALE cookie in the browser belongs to.
+# The role-check in the middleware below re-reads a cookie's role on every request, including
+# the POST to /api/login itself - so a left-over session from an earlier member/coordinator/
+# embryologist login (none of which list /api/login in their own rules) blocked every later
+# login attempt in that browser with "Your role does not have access to this", before the new
+# credentials were ever checked. Confirmed 2026-10-24: a senior_executive account (full access
+# once actually signed in) couldn't sign in at all because of someone else's stale cookie.
+_ALWAYS_OK = {("GET", "/api/whoami"), ("POST", "/api/logout"), ("POST", "/api/login")}
 
 def role_allows(role: str, method: str, path: str) -> bool:
     if (method, path) in _ALWAYS_OK:
@@ -133,7 +144,7 @@ async def identify_user(request: Request, call_next):
     # Same key covers every "pull files down to the lab PC" endpoint, not just images —
     # it only ever grants read/list access, never write, so widening its scope is safe.
     SYNC_PATHS = {"/api/images", "/api/protocols", "/api/result-files", "/api/trf-files", "/api/sample-trf-files", "/api/case-runs"}
-    if sync_key and path in SYNC_PATHS and request.method == "GET":
+    if sync_key and (path in SYNC_PATHS or path.startswith("/uploads/")) and request.method == "GET":
         if settings.image_sync_token and secrets.compare_digest(sync_key.encode(), settings.image_sync_token.encode()):
             request.state.user = {"username": "File sync", "role": "sync"}
             return await call_next(request)
@@ -146,8 +157,12 @@ async def identify_user(request: Request, call_next):
                 _u = _db.query(User.role).filter(User.username == sess["username"]).first()
             sess = {"username": sess["username"], "role": _u[0]} if _u else None
         request.state.user = sess or {}
+        # /uploads/ holds patient files. Lab-PC sync still pulls them anonymously over the LAN,
+        # but a request relayed by a tunnel/reverse proxy (these headers) must sign in, so
+        # publishing the app can't hand result files and TRFs to anyone holding a URL.
+        proxied = "x-forwarded-for" in request.headers or "cf-connecting-ip" in request.headers
         if not sess and path not in ("/login", "/api/login", "/api/health") and not path.startswith("/static/login"):
-            if path.startswith("/api/"):
+            if path.startswith("/api/") or (proxied and path.startswith("/uploads/")):
                 return JSONResponse({"detail": "Sign in required"}, status_code=401)
             if path == "/":
                 return RedirectResponse("/login")

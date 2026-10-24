@@ -41,12 +41,21 @@ def fmt_date(v) -> str:
     return f"{m.group(3)} / {m.group(2)} / {m.group(1)}" if m else esc(v)
 
 
-def _line(d: dict, label: str, key: str, date=False) -> str:
+def _fit_value(v, ch: int) -> str:
+    """A long value on a full-width rule gets a smaller font so it keeps to one line
+    (used on Form G, whose bottom block must not grow into the footer artwork)."""
+    n = len(str(v or ""))
+    p = 100 if n <= ch else max(62, int(ch / n * 100))
+    return f' style="font-size:{p}%"' if p < 100 else ""
+
+
+def _line(d: dict, label: str, key: str, date=False, fit: int = 0) -> str:
     val = d.get(key)
     shown = fmt_date(val) if (val and date) else (esc(val) if val else "&nbsp;")
     cls = " td-email" if key.lower().endswith("email") or "email" in key.lower() else ""
     wrap = " td-line-wrap" if key == "hospital" else ""
-    return f'<div class="td-line{wrap}"><span class="td-label">{label}</span><span class="td-value{cls}">{shown}</span></div>'
+    style = _fit_value(val, fit) if fit else ""
+    return f'<div class="td-line{wrap}"><span class="td-label">{label}</span><span class="td-value{cls}"{style}>{shown}</span></div>'
 
 
 def _para(d: dict, key: str) -> str:
@@ -237,11 +246,11 @@ def _page3(d: dict) -> str:
         f'(Name {_blank(d, "companionName")} Address {_blank(d, "companionAddress")} Relationship with patient {_blank(d, "companionRelation")}) '
         "in a language she/they understand.</p>"
         '<p class="td-legal-label">Name, Signature and/Registration number of Gynaecologist</p>'
-        f'<div class="td-grid td-grid-tight">{_line(d, "Name:", "gynaecologistName")}{_line(d, "Registration No.:", "gynaecologistRegNo")}</div>'
+        f'<div class="td-grid td-grid-tight">{_line(d, "Name:", "gynaecologistName", fit=30)}{_line(d, "Registration No.:", "gynaecologistRegNo", fit=22)}</div>'
         + _line(d, "Date:", "explanationDate", date=True)
         + '<p class="td-legal-label">Name, Address and Registration number of Genetic Clinic</p>'
-        f'<div class="td-grid td-grid-tight">{_line(d, "Name:", "geneticClinicName")}{_line(d, "Registration No.:", "geneticClinicRegNo")}</div>'
-        + _line(d, "Address:", "geneticClinicAddress")
+        f'<div class="td-grid td-grid-tight">{_line(d, "Name:", "geneticClinicName", fit=30)}{_line(d, "Registration No.:", "geneticClinicRegNo", fit=22)}</div>'
+        + _line(d, "Address:", "geneticClinicAddress", fit=62)
         + _footer(3)
         + "</div>"
     )
