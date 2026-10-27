@@ -2673,7 +2673,7 @@ dialog.vu-dialog-tat{width:min(1500px,97vw)!important;max-width:min(1500px,97vw)
 :root{--wm-width:min(88vmin,880px);--wm-height:calc(var(--wm-width)/3.18);--wm-opacity:.05}
 /* Fainter for a client login specifically - the embryo tracker is a dense table of their
    own data, and the mark reads as clutter there more than it does on the lab's own screens. */
-body.role-embryologist{--wm-opacity:.02}
+body.role-embryologist{--wm-opacity:.035}
 body::after{content:"";position:fixed;top:50%;left:50%;width:var(--wm-width);height:var(--wm-height);margin:calc(var(--wm-height)/-2) 0 0 calc(var(--wm-width)/-2);background:url("/static/assets/logos/anderson-diagnostics-labs.png") center/contain no-repeat;opacity:var(--wm-opacity);pointer-events:none;z-index:300}
 @media print{body::after{display:none}}
 
