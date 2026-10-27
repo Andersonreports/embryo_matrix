@@ -164,12 +164,12 @@ const IC=n=>`<img class="ico" src="/static/assets/icons/${n}.png" alt="">`;
 const SVG={heart:'<svg viewBox="0 0 24 24" width="30" height="30" fill="#e0457b"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.7 5 6 5c2 0 3.4 1 4 2.2h4C14.600 6 16 5 18 5c3.300 0 5.100 3.400 3.600 6.800C19.500 16.400 12 21 12 21z"/></svg>'};
 const relDue=(due)=>{if(!due)return'';const d=Math.round((new Date(due+'T00:00:00')-new Date(today()+'T00:00:00'))/864e5);return d<0?`Overdue by ${-d} day${d===-1?'':'s'}`:d===0?'Due today':d===1?'Due tomorrow':`Due in ${d} days`};
 const TILES=[
- ['all','Total embryos','stages-results__total-embryos','Every embryo in your list','slate'],
- ['consent','With consent','navigation__notifications','Patient agreed to follow-up','amber'],
- ['recorded','Outcomes recorded','stages-results__qc-pass','Embryos with a status entered','green'],
- ['pending','Still to record','navigation__internal-transfer','No outcome entered yet','blue'],
- ['completed','Completed','stages-results__normal','Final outcome known','teal'],
- ['na','No consent','stages-results__na-result','Not followed up','grey']];
+ ['all','Total embryos','followup__total-embryos','Every embryo in your list','slate'],
+ ['consent','With consent','followup__with-consent','Patient agreed to follow-up','amber'],
+ ['recorded','Outcomes recorded','followup__outcomes-recorded','Embryos with a status entered','green'],
+ ['pending','Still to record','followup__still-to-record','No outcome entered yet','blue'],
+ ['completed','Completed','followup__completed','Final outcome known','teal'],
+ ['na','No consent','followup__no-consent','Not followed up','grey']];
 let bkQ='',bkKey='n',bkDir=-1,bkAll=false,clQ='',clAll=false,filtersOpen=false,dashHome=false,taskSort='patient',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
 
 // ---------------- Tasks (card queue) ----------------
@@ -439,13 +439,34 @@ window.renderFollowupView=async function(g,view){
 // ---------------- Embryo tracking (client login): where each embryo is until its report is sent ----------------
 const TRK_STAGES=[[0,'Awaiting sample','Not received yet'],[1,'Sample received','WGA is next'],[2,'WGA done','Sequencing is next'],[3,'Report being prepared','Sequencing is done'],[4,'Report sent','Outcome can be recorded']];
 const TRK_NOW={0:'Awaiting sample',1:'Sample received',2:'WGA done',3:'Sequenced \u00b7 report being prepared',4:'Report sent'};
-const TRK_COLS=[['Patient',i=>`<strong>${esc(i.patient)}</strong>`],['Embryo',i=>`<b>${esc(i.embryo)}</b>`],['Status',i=>`<span class="trk-pill s${i.stage}">${esc(TRK_NOW[i.stage])}</span>`],
+// Plain-language "what happens next", shown under the status pill so the client never has to guess.
+// The same 4-step pipeline bar the staff Run status page uses (PIPE_STEPS/.ptrack, app.js) -
+// reused here per embryo so a client sees exactly where their own sample sits, at a glance.
+// Client stage 0 (not yet received) has no equivalent step on that bar, so it gets its own line.
+function trkTrack(i){
+ if(i.stage===0)return '<div class="ptrack ptrack-pending"><span class="trk-awaiting-note">Awaiting sample</span></div>';
+ const idx=i.stage-1,released=i.stage>=4,statusKey=['pending','wga','seq'][idx]||'released';
+ return `<div class="ptrack ptrack-${released?'released':statusKey}">${PIPE_STEPS.map(([label,icon],k)=>{const done=released||k<idx,state=done?'done':k===idx?'active':'pending';return `${k?`<div class="ptrack-line ${(released||k<=idx)?'done':''}"></div>`:''}<div class="ptrack-step ${state}"><span class="ptrack-dot"><img src="/static/assets/icons/${icon}.png" alt=""></span><span class="ptrack-steplabel">${esc(label)}</span></div>`}).join('')}</div>`;
+}
+// Same contractual turnaround the lab itself tracks on the Overdue samples page: 21 days for
+// Embryo Sure/HLA, 14 days for everything else, counted from the day the sample was received.
+function trkDueDate(i){const rec=parseSheetDate(i.received);if(!rec)return null;const d=new Date(rec);d.setDate(d.getDate()+(/embryo\s*sure|hla/i.test(i.test||'')?21:14));return d}
+function trkDateText(d){return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`}
+function trkEta(i){
+ if(i.stage>=4)return{text:i.reported?`Sent ${i.reported}`:'Sent',tone:'done'};
+ const d=trkDueDate(i);if(!d)return{text:'\u2014',tone:'muted'};
+ const today=new Date();today.setHours(0,0,0,0);const days=Math.round((d-today)/864e5);
+ return{text:trkDateText(d),tone:days<0?'late':days<=2?'soon':'ontrack'};
+}
+function trkEtaBadge(i){const e=trkEta(i);return `<span class="trk-eta ${e.tone}">${esc(e.text)}</span>`}
+const TRK_COLS=[['Patient',i=>`<strong>${esc(i.patient)}</strong>`],['Embryo',i=>`<b>${esc(i.embryo)}</b>`],
+ ['Progress',i=>trkTrack(i)],['Report ETA',i=>trkEtaBadge(i)],
  ['Sample ID',i=>i.sampleId],['Test',i=>i.test],['Sequencer',i=>i.sequencer],['Date of biopsy',i=>i.biopsy],['Sample received',i=>i.received],['TRF received',i=>i.trfReceived],
  ['WGA done',i=>i.wga],['Sequencing',i=>i.sequenced],['Report released',i=>i.reported],['Kit',i=>i.kit],['Stored in',i=>i.box||i.sampleBox],['Stored on',i=>i.stored],['Transferred on',i=>i.transferredOn],['Transferred to',i=>i.transferredTo]];
 const trkHistory=(list,title)=>{const d=document.getElementById('patientDialog'),box=document.getElementById('patientDetail');if(!d||!box)return;
  const one=(i,multi)=>{
   const row={'date sample received':i.received,'wga done on':i.wga,'seq date':i.sequenced,'attune upload':'','ngs report':i.reported};
-  const info=[['Patient',i.patient],['Embryo',i.embryo],['Sample ID',i.sampleId],['Test',i.test],['Sequencer',i.sequencer],['Kit',i.kit],['Date of biopsy',i.biopsy],['TRF received',i.trfReceived],['Stored in',i.box||i.sampleBox],['Stored on',i.stored],['Transferred on',i.transferredOn],['Transferred to',i.transferredTo]].filter(([,v])=>v);
+  const info=[['Patient',i.patient],['Embryo',i.embryo],['Sample ID',i.sampleId],['Test',i.test],['Expected report date',i.stage<4?trkEta(i).text:''],['Sequencer',i.sequencer],['Kit',i.kit],['Date of biopsy',i.biopsy],['TRF received',i.trfReceived],['Stored in',i.box||i.sampleBox],['Stored on',i.stored],['Transferred on',i.transferredOn],['Transferred to',i.transferredTo]].filter(([,v])=>v);
   const events=[['Biopsy taken',i.biopsy],['TRF received',i.trfReceived],['Sample received',i.received],['WGA done',i.wga],['Sequencing',i.sequenced],['Report released',i.reported],['Stored',i.stored],['Transferred'+(i.transferredTo?' to '+i.transferredTo:''),i.transferredOn]].filter(([,v])=>v).map((e,n)=>{const m=String(e[1]).match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/);return{e,n,t:m?Date.UTC(+m[3]<100?2000+ +m[3]:+m[3],+m[2]-1,+m[1]):Infinity}}).sort((a,b)=>a.t-b.t||a.n-b.n).map(x=>x.e);
   return `<section class="trk-emb">${multi?`<div class="trk-emb-head"><h3>${esc(i.embryo)}</h3><span class="trk-pill s${i.stage}">${esc(TRK_NOW[i.stage])}</span></div>`:''}${progressStepper(i.stage,row)}
   <div class="detail-grid" style="margin-top:22px"><div class="detail-card"><h3>Embryo history</h3>${events.length?events.map(([l,v])=>`<div class="sample-item"><strong>${esc(l)}</strong><span>${esc(v)}</span></div>`).join(''):'<div class="sample-item"><span>No dates recorded yet.</span></div>'}</div>
@@ -453,6 +474,40 @@ const trkHistory=(list,title)=>{const d=document.getElementById('patientDialog')
  const multi=list.length>1,f=list[0];
  box.innerHTML=`<div class="patient-detail trk-hist"><div class="patient-top"><div><h2>${esc(title||`${f.patient} \u00b7 ${f.embryo}`)}</h2><div class="patient-meta">${multi?`${list.length} embryos`:`<span class="trk-pill s${f.stage}">${esc(TRK_NOW[f.stage])}</span>`}</div></div><button class="icon-btn" id="trkHistClose" aria-label="Close">\u00d7</button></div>${list.map(i=>one(i,multi)).join('')}</div>`;
  box.querySelector('#trkHistClose').onclick=()=>d.close();if(!d.open)d.showModal()};
+// ---------------- Client home page ----------------
+// Landing page for a client login: a bigger welcome, the same live counts the tracker uses,
+// big buttons to the other client pages (so the thin sidebar isn't the only way in), and a
+// plain-language walk-through of the PGT-A pipeline - the transparency this app exists to give.
+const HOME_TILES=[
+ ['fuTrack','Embryo tracking','Live status for every embryo - from arrival to the day your report is sent.','stages-results__total-embryos'],
+ ['fuTasks','Follow-up tasks','Share the pregnancy outcome for each embryo once you know it.','navigation__notifications'],
+ ['fuDash','Outcomes','See your clinic’s overall outcome trends across every embryo.','stages-results__qc-pass'],
+ ['trfs','Digital TRF','Submit or review a test requisition form for a new sample.','navigation__embryo-results']];
+const HOME_STEPS=[
+ ['stages__received','Sample received','Your embryo biopsy arrives at our lab and is logged against your patient.'],
+ ['stages__wga','WGA','Whole-genome amplification prepares the sample’s DNA for sequencing.'],
+ ['stages__sequencing','Sequencing','Next-generation sequencing reads the embryo’s chromosomes.'],
+ ['stages__report-preparation','Report preparation','Our team reviews the results and writes up your report.'],
+ ['stages__report-send','Report sent','Your report is sent to your clinic - the same moment it shows here.']];
+window.renderClientHome=async function(g){
+ const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent='';
+ const mh=document.getElementById('mainHeader');if(mh)mh.classList.add('hidden');
+ g.innerHTML='<div class="generic-card wide-card fu-view home-view"><div class="chart-empty">Loading…</div></div>';
+ const card=g.querySelector('.home-view');
+ let items=[];
+ try{const r=await fetch('/api/my-embryos');if(r.ok)items=(await r.json()).items||[]}catch(e){}
+ const clinic=(typeof currentUser!=='undefined'&&currentUser.clientLabel)||'';
+ const patientCount=new Set(items.map(i=>i.patient.trim().toUpperCase())).size,processed=items.filter(i=>i.stage>=2).length,released=items.filter(i=>i.stage===4).length;
+ const statCard=(label,v,tone,icon)=>`<article class="run-stat tone-${tone}${v?'':' is-zero'}"><div><small>${esc(label)}</small><strong>${v.toLocaleString()}</strong></div><span class="run-stat-icon">${icon}</span></article>`;
+ const stats=items.length?`<div class="run-stats trk-stats">${statCard('Patients',patientCount,'blue',RUN_ICON_PERSON)}${statCard('Embryos',items.length,'teal',RUN_ICON_TOTAL)}${statCard('Processed',processed,'amber','<img class="ico" src="/static/assets/icons/stages__sequencing.png" alt="">')}${statCard('Reports released',released,'green','<img class="ico" src="/static/assets/icons/stages__report-send.png" alt="">')}</div>`:'';
+ const tiles=HOME_TILES.map(([view,title,desc,icon])=>`<button type="button" class="home-tile" data-go="${view}"><span class="home-tile-icon"><img src="/static/assets/icons/${icon}.png" alt=""></span><span class="home-tile-text"><strong>${esc(title)}</strong><small>${esc(desc)}</small></span><span class="home-tile-arrow">→</span></button>`).join('');
+ const steps=HOME_STEPS.map(([icon,label,desc])=>`<div class="home-step"><img src="/static/assets/icons/${icon}.png" alt=""><strong>${esc(label)}</strong><small>${esc(desc)}</small></div>`).join('');
+ card.innerHTML=`<div class="home-hero"><h1>${clinic?`Welcome, ${esc(clinic)}`:'Welcome'}</h1><p>Complete transparency, every step of the way - track every embryo you've sent us from the moment it arrives to the day your report is sent, with no phone calls needed.</p></div>
+ ${stats}
+ <div class="home-tiles">${tiles}</div>
+ <div class="home-steps-card"><h3>How a PGT-A sample moves through our lab</h3><div class="home-steps">${steps}</div></div>`;
+ card.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>showView(b.dataset.go));
+};
 window.renderEmbryoTracker=async function(g){
  const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent='Embryo tracking';
  const mh=document.getElementById('mainHeader');if(mh)mh.classList.add('hidden');
@@ -470,18 +525,22 @@ window.renderEmbryoTracker=async function(g){
    const by=new Map();list.forEach(i=>{const k=i.patient.trim().toUpperCase();if(!by.has(k))by.set(k,[]);by.get(k).push(i)});
    const pats=[...by.values()].sort((x,y)=>(Math.min(...x.map(i=>i.stage))===4)-(Math.min(...y.map(i=>i.stage))===4)||x[0].patient.localeCompare(y[0].patient));
    const pills=g=>TRK_STAGES.map(([k])=>[k,g.filter(i=>i.stage===k).length]).filter(([,n])=>n).map(([k,n])=>`<span class="trk-pill s${k}">${n} \u00b7 ${esc(TRK_NOW[k])}</span>`).join(' ');
-   const rows=pats.map(g=>`<tr class="trk-prow" data-p="${esc(g[0].patient)}" title="Open this patient's embryo history"><td><strong>${esc(g[0].patient)}</strong></td><td><b>${g.length}</b></td><td>${pills(g)}</td><td>${esc(uniq(g.map(i=>i.sampleId)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.test)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.sequencer)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.biopsy)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.received)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.reported)))||'\u2014'}</td></tr>`).join('');
+   // The soonest report still outstanding for this patient - once every embryo has been reported, say so plainly instead of a date.
+   const nextEta=g=>{const open=g.filter(i=>i.stage<4).map(trkDueDate).filter(Boolean);if(!open.length)return{text:'All reports sent',tone:'done'};const d=new Date(Math.min(...open)),today=new Date();today.setHours(0,0,0,0);const days=Math.round((d-today)/864e5);return{text:trkDateText(d),tone:days<0?'late':days<=2?'soon':'ontrack'}};
+   const rows=pats.map(g=>{const eta=nextEta(g);return `<tr class="trk-prow" data-p="${esc(g[0].patient)}" title="Open this patient's embryo history"><td><strong>${esc(g[0].patient)}</strong></td><td><b>${g.length}</b></td><td>${pills(g)}</td><td><span class="trk-eta ${eta.tone}">${esc(eta.text)}</span></td><td>${esc(uniq(g.map(i=>i.sampleId)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.test)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.sequencer)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.biopsy)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.received)))||'\u2014'}</td><td>${esc(uniq(g.map(i=>i.reported)))||'\u2014'}</td></tr>`}).join('');
    const mob=window.matchMedia('(max-width:700px)').matches;
-   if(mob)table=pats.length?`<div class="trk-mlist">${pats.map(g=>`<div class="trk-mcard trk-prow" data-p="${esc(g[0].patient)}"><div class="trk-mtop"><strong>${esc(g[0].patient)}</strong><b>${g.length} embryo${g.length===1?'':'s'}</b></div><div class="trk-mpills">${pills(g)}</div><div class="trk-mgrid"><span>Sample ID</span><b>${esc(uniq(g.map(i=>i.sampleId)))||'\u2014'}</b><span>Test</span><b>${esc(uniq(g.map(i=>i.test)))||'\u2014'}</b><span>Biopsy</span><b>${esc(uniq(g.map(i=>i.biopsy)))||'\u2014'}</b><span>Report released</span><b>${esc(uniq(g.map(i=>i.reported)))||'\u2014'}</b></div></div>`).join('')}</div>`:'';
-   else table=pats.length?`<div class="fu-table-wrap trk-wrap"><table class="fu-table trk-table"><thead><tr><th>Patient</th><th>Embryos</th><th>Status</th><th>Sample ID</th><th>Test</th><th>Sequencer</th><th>Date of biopsy</th><th>Sample received</th><th>Report released</th></tr></thead><tbody>${rows}</tbody></table></div>`:'';
+   if(mob)table=pats.length?`<div class="trk-mlist">${pats.map(g=>{const eta=nextEta(g);return `<div class="trk-mcard trk-prow" data-p="${esc(g[0].patient)}"><div class="trk-mtop"><strong>${esc(g[0].patient)}</strong><b>${g.length} embryo${g.length===1?'':'s'}</b></div><div class="trk-mpills">${pills(g)}<span class="trk-eta ${eta.tone}">${esc(eta.text)}</span></div><div class="trk-mgrid"><span>Sample ID</span><b>${esc(uniq(g.map(i=>i.sampleId)))||'\u2014'}</b><span>Test</span><b>${esc(uniq(g.map(i=>i.test)))||'\u2014'}</b><span>Biopsy</span><b>${esc(uniq(g.map(i=>i.biopsy)))||'\u2014'}</b><span>Report released</span><b>${esc(uniq(g.map(i=>i.reported)))||'\u2014'}</b></div></div>`}).join('')}</div>`:'';
+   else table=pats.length?`<div class="fu-table-wrap trk-wrap"><table class="fu-table trk-table"><thead><tr><th>Patient</th><th>Embryos</th><th>Status</th><th>Next report</th><th>Sample ID</th><th>Test</th><th>Sequencer</th><th>Date of biopsy</th><th>Sample received</th><th>Report released</th></tr></thead><tbody>${rows}</tbody></table></div>`:'';
   }else{
-   const head=TRK_COLS.map(([h])=>`<th>${h}</th>`).join(''),rows=list.map((i,n)=>`<tr class="trk-erow" data-n="${n}" title="Open this embryo's history">${TRK_COLS.map(([,f],k)=>{const v=f(i);return `<td>${k<3?v:(esc(v)||'\u2014')}</td>`}).join('')}</tr>`).join('');
-   table=!list.length?'':window.matchMedia('(max-width:700px)').matches?`<div class="trk-mlist">${list.map((i,n)=>`<div class="trk-mcard trk-erow" data-n="${n}"><div class="trk-mtop"><strong>${esc(i.patient)}</strong><b>${esc(i.embryo)}</b></div><div class="trk-mpills"><span class="trk-pill s${i.stage}">${esc(TRK_NOW[i.stage])}</span></div><div class="trk-mgrid"><span>Sample ID</span><b>${esc(i.sampleId)||'\u2014'}</b><span>Test</span><b>${esc(i.test)||'\u2014'}</b><span>Sample received</span><b>${esc(i.received)||'\u2014'}</b><span>WGA done</span><b>${esc(i.wga)||'\u2014'}</b><span>Sequencing</span><b>${esc(i.sequenced)||'\u2014'}</b><span>Report released</span><b>${esc(i.reported)||'\u2014'}</b></div></div>`).join('')}</div>`:`<div class="fu-table-wrap trk-wrap"><table class="fu-table trk-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+   const head=TRK_COLS.map(([h])=>`<th>${h}</th>`).join(''),rows=list.map((i,n)=>`<tr class="trk-erow" data-n="${n}" title="Open this embryo's history">${TRK_COLS.map(([,f],k)=>{const v=f(i);return `<td>${k<4?v:(esc(v)||'\u2014')}</td>`}).join('')}</tr>`).join('');
+   table=!list.length?'':window.matchMedia('(max-width:700px)').matches?`<div class="trk-mlist">${list.map((i,n)=>`<div class="trk-mcard trk-erow" data-n="${n}"><div class="trk-mtop"><strong>${esc(i.patient)}</strong><b>${esc(i.embryo)}</b><span class="trk-eta ${trkEta(i).tone}">${esc(trkEta(i).text)}</span></div>${trkTrack(i)}<div class="trk-mgrid"><span>Sample ID</span><b>${esc(i.sampleId)||'\u2014'}</b><span>Test</span><b>${esc(i.test)||'\u2014'}</b><span>Sample received</span><b>${esc(i.received)||'\u2014'}</b><span>WGA done</span><b>${esc(i.wga)||'\u2014'}</b><span>Sequencing</span><b>${esc(i.sequenced)||'\u2014'}</b><span>Report released</span><b>${esc(i.reported)||'\u2014'}</b></div></div>`).join('')}</div>`:`<div class="fu-table-wrap trk-wrap"><table class="fu-table trk-table"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
   }
   const patientCount=new Set(items.map(i=>i.patient.trim().toUpperCase())).size,processed=items.filter(i=>i.stage>=2).length,released=items.filter(i=>i.stage===4).length;
   const statCard=(key,label,v,tone,icon,clickable)=>`<article class="run-stat tone-${tone}${v?'':' is-zero'}${clickable?' trk-stat-click':''}${clickable&&stage===key?' is-active':''}"${clickable?` data-filter="${key}" role="button" tabindex="0" title="${stage===key?'Click to clear this filter':'Show only these'}"`:''}><div><small>${label}</small><strong>${v.toLocaleString()}</strong></div><span class="run-stat-icon">${icon}</span></article>`;
-  const statsHtml=items.length?`<div class="run-stats trk-stats">${statCard('','Patients',patientCount,'blue',RUN_ICON_PERSON,false)}${statCard('','Samples',items.length,'teal',RUN_ICON_TOTAL,false)}${statCard('processed','Processed',processed,'amber','<img class="ico" src="/static/assets/icons/stages__sequencing.png" alt="">',true)}${statCard('released','Reports released',released,'green','<img class="ico" src="/static/assets/icons/stages__report-send.png" alt="">',true)}</div>`:'';
-  card.innerHTML=`${statsHtml}<div class="trk-tools"><div class="prep-segments"><button type="button" class="prep-seg${view==='embryo'?' active':''}" data-v="embryo">Embryo view</button><button type="button" class="prep-seg${view==='patient'?' active':''}" data-v="patient">Patient view</button></div><div class="search-wrap"><span>\u2315</span><input id="trkQ" type="search" placeholder="Search patient, embryo or sample ID\u2026" value="${esc(q)}" autocomplete="off"></div></div>
+  const statsHtml=items.length?`<div class="run-stats trk-stats">${statCard('','Patients',patientCount,'blue',RUN_ICON_PERSON,false)}${statCard('','Embryos',items.length,'teal',RUN_ICON_TOTAL,false)}${statCard('processed','Processed',processed,'amber','<img class="ico" src="/static/assets/icons/stages__sequencing.png" alt="">',true)}${statCard('released','Reports released',released,'green','<img class="ico" src="/static/assets/icons/stages__report-send.png" alt="">',true)}</div>`:'';
+  const clinic=(typeof currentUser!=='undefined'&&currentUser.clientLabel)||'';
+  const welcome=`<div class="trk-welcome"><h2>${clinic?`Welcome, ${esc(clinic)}`:'Your embryo tracker'}</h2><p>Live status for every sample you've sent us, from arrival to the day your report goes out - click any row for its full timeline.</p></div>`;
+  card.innerHTML=`${welcome}${statsHtml}<div class="trk-tools">`+`<div class="prep-segments"><button type="button" class="prep-seg${view==='embryo'?' active':''}" data-v="embryo">Embryo view</button><button type="button" class="prep-seg${view==='patient'?' active':''}" data-v="patient">Patient view</button></div><div class="search-wrap"><span>\u2315</span><input id="trkQ" type="search" placeholder="Search patient, embryo or sample ID\u2026" value="${esc(q)}" autocomplete="off"></div></div>
   ${stage?`<div class="trk-filter-chip">Showing ${stage==='processed'?'processed':'reports released'} only <button type="button" id="trkClearFilter">\u00d7 Clear</button></div>`:''}
   ${table||`<div class="tk-empty"><h3>${items.length?'Nothing here':'No embryos yet'}</h3><p>${items.length?'Try another search.':'Embryos appear here once your samples are in our sheet.'}</p></div>`}`;
   card.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{view=b.dataset.v;draw()});
