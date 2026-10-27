@@ -2681,7 +2681,7 @@ body.role-embryologist{--wm-opacity:.035}
 body.role-embryologist .topbar{padding-bottom:0;row-gap:0}
 body.role-embryologist .topbar .brand{flex:1 1 auto}
 body.role-embryologist .topbar .qc-alerts,body.role-embryologist .topbar .session-info{flex-shrink:0}
-body.role-embryologist .topbar .topnav{order:10;width:100%;padding:8px 0 10px;border-top:1px solid rgba(0,0,0,.08);justify-content:flex-start;gap:4px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+body.role-embryologist .topbar .topnav{order:10;width:100%;padding:8px 0 10px;border-top:1px solid rgba(0,0,0,.08);justify-content:center;gap:4px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
 body.role-embryologist .topbar .topnav::-webkit-scrollbar{display:none}
 body.role-embryologist .topbar .topnav .nav-item{font-size:14px;padding:7px 16px}
 body::after{content:"";position:fixed;top:50%;left:50%;width:var(--wm-width);height:var(--wm-height);margin:calc(var(--wm-height)/-2) 0 0 calc(var(--wm-width)/-2);background:url("/static/assets/logos/anderson-diagnostics-labs.png") center/contain no-repeat;opacity:var(--wm-opacity);pointer-events:none;z-index:300}
