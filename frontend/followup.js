@@ -479,14 +479,14 @@ const trkHistory=(list,title)=>{const d=document.getElementById('patientDialog')
 // big buttons to the other client pages (so the thin sidebar isn't the only way in), and a
 // plain-language walk-through of the PGT-A pipeline - the transparency this app exists to give.
 const HOME_TILES=[
- [‘fuTrack’,’Embryo tracking’,’Live status for every embryo - from arrival to the day your report is sent.’,’nav-client__embryo-tracking’],
- [‘fuTasks’,’Follow-up tasks’,’Share the pregnancy outcome for each embryo once you know it.’,’nav-client__followup’],
- [‘fuDash’,’Outcomes’,’See your center’s overall outcome trends across every embryo.’,’nav-client__outcomes’],
- [‘trfs’,’Digital TRF’,’Submit or review a test requisition form for a new sample.’,’nav-client__trf’]];
+ ['fuTrack','Embryo tracking','Live status for every embryo - from arrival to the day your report is sent.','nav-client__embryo-tracking'],
+ ['fuTasks','Follow-up tasks','Share the pregnancy outcome for each embryo once you know it.','nav-client__followup'],
+ ['fuDash','Outcomes','See your center\'s overall outcome trends across every embryo.','nav-client__outcomes'],
+ ['trfs','Digital TRF','Submit or review a test requisition form for a new sample.','nav-client__trf']];
 const HOME_STEPS=[
  ['stages__received','Sample received','Your embryo biopsy arrives at our lab and is logged against your patient.'],
- ['stages__wga','WGA','Whole-genome amplification prepares the sample’s DNA for sequencing.'],
- ['stages__sequencing','Sequencing','Next-generation sequencing reads the embryo’s chromosomes.'],
+ ['stages__wga','WGA','Whole-genome amplification prepares the sample\'s DNA for sequencing.'],
+ ['stages__sequencing','Sequencing','Next-generation sequencing reads the embryo\'s chromosomes.'],
  ['stages__report-preparation','Report preparation','Our team reviews the results and writes up your report.'],
  ['stages__report-send','Report sent','Your report is sent to your clinic - the same moment it shows here.']];
 window.renderClientHome=async function(g){

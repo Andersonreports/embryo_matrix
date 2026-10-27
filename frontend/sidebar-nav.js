@@ -8,7 +8,6 @@
 (function(){
  const NAV_LAYOUT='sidebar'; // 'topbar' = original top navigation
  if(NAV_LAYOUT!=='sidebar')return;
- try{if(sessionStorage.getItem('em-role')==='embryologist')return}catch{}
  document.body.classList.add('sidebar-nav');
  const nav=document.querySelector('.topnav'),topbar=document.querySelector('.topbar');
  if(!nav||!topbar||nav._hier)return;
