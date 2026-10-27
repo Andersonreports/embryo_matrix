@@ -14,7 +14,7 @@ async function loadWhoAmI(){
   // attaches server-side; this just reflects back what the backend saw.
   try{
     const r=await fetch('/api/whoami');
-    if(r.ok)currentUser=await r.json();
+    if(r.ok){currentUser=await r.json();try{sessionStorage.setItem('em-role',currentUser.role||'')}catch{}}
   }catch(e){}
   renderSessionUser(currentUser.username,currentUser.role);
   const lo=document.getElementById('logoutBtn');if(lo&&currentUser.username&&currentUser.signedIn){lo.hidden=false;lo.onclick=async()=>{await fetch('/api/logout',{method:'POST'});location.href='/login'}}
