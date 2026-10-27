@@ -1253,7 +1253,7 @@ function applyRoleAccess(){
   // Home page - keeping them in the sidebar too would just be the same four links twice.
   // Client: hide only the Home nav button (they land there and navigate via tiles); keep the
   // other four visible so the second-row bar works. Always drop the sidebar rail for clients.
-  if(r==='embryologist'){['fuHome'].forEach(v=>document.querySelectorAll(`.nav-item[data-view="${v}"]`).forEach(n=>n.hidden=true));document.body.classList.remove('sidebar-nav');}
+  if(r==='embryologist'){document.body.classList.remove('sidebar-nav');}
   document.querySelectorAll('.session-menu-item[data-view],#qcAlerts,.import-data-btn').forEach(n=>{if(!ROLE_VIEWS[r].includes(n.dataset.view))n.style.display='none'});
   // Non-client: drop the sidebar rail when only one top-level item is visible.
   if(r!=='embryologist'){const topItems=[...document.querySelectorAll('.topnav > .nav-item')].filter(n=>!n.hidden);if(topItems.length<=1)document.body.classList.remove('sidebar-nav');}
