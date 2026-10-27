@@ -1649,7 +1649,7 @@ body.role-member .vault-del-btn,body.role-member .vg-actions,body.role-member .v
 .sum-card .sum-icon:has(>.ico),.summary-strip.summary-cards .sum-card .sum-icon:has(>.ico){background:transparent!important;box-shadow:none!important;width:40px!important;height:40px!important}
 .sum-icon>.ico,.run-stat-icon>.ico{width:100%;height:100%}
 .sum-card.is-zero .sum-icon .ico,.run-stat.is-zero .run-stat-icon .ico{opacity:.4;filter:grayscale(.7)}
-.run-stat-icon:has(>.ico){background:transparent!important;box-shadow:none!important;width:54px;height:54px}
+.run-stat-icon:has(>.ico){background:transparent!important;box-shadow:none!important;width:72px;height:72px}
 .test-ico{width:22px;height:22px;display:inline-block;vertical-align:middle}.test-cell{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 .case-test-badge{display:inline-flex;align-items:center;gap:6px}.case-test-badge .test-ico{width:20px;height:20px}
 .rc-test-stat{display:flex!important;align-items:center;gap:10px}.rc-test-stat>.ico{width:34px;height:34px}.rc-test-stat>div{display:flex;flex-direction:column;align-items:flex-start;gap:0}
@@ -2346,7 +2346,7 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .progress-step.active .progress-dot{box-shadow:0 0 0 6px rgba(8,127,131,.14)!important}
 
 /* Journey cards: count top-left, illustration bottom-right flush, label below */
-.jy{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr;grid-template-areas:"n i" "l i";align-items:start;text-align:left;padding:18px 0 0 20px;overflow:hidden}
+.jy{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr;grid-template-areas:"n i" "l i";align-items:start;text-align:left;padding:18px 0 0 20px;overflow:hidden;min-height:180px}
 .jy strong{grid-area:n;font:600 46px "Lora",serif;color:var(--c);line-height:1;padding-top:4px}
 .jy-ic{grid-area:i;margin:0;align-self:stretch;display:flex;align-items:flex-end;justify-content:flex-end}
 .jy-ic .ico{width:190px!important;height:190px!important;object-fit:contain;object-position:right bottom;display:block}
@@ -2403,7 +2403,7 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .trk-eta.done{background:#dff3e7;color:#1f8a52}
 .trk-eta.muted{background:#eef2f2;color:#8b968f}
 .trk-awaiting-note{font-size:12px;font-weight:600;color:#8b968f}
-.trk-table td .ptrack{min-width:360px}
+.trk-table td .ptrack{min-width:460px}
 @media(max-width:700px){.trk-mtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.trk-mtop .trk-eta{margin-left:auto}}
 /* Client home page */
 .home-hero{margin:0 0 20px}
