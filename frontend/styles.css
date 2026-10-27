@@ -2348,7 +2348,7 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 /* Journey cards: count top-left, illustration bottom-right flush, label below */
 .jy{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr;grid-template-areas:"n i" "l i";align-items:start;text-align:left;padding:18px 0 0 20px;overflow:hidden;min-height:180px}
 .jy strong{grid-area:n;font:600 46px "Lora",serif;color:var(--c);line-height:1;padding-top:4px}
-.jy-ic{grid-area:i;margin:0;align-self:stretch;display:flex;align-items:flex-end;justify-content:flex-end}
+.jy-ic{grid-area:i;margin:0;align-self:stretch;height:auto;display:flex;align-items:flex-end;justify-content:flex-end}
 .jy-ic .ico{width:190px!important;height:190px!important;object-fit:contain;object-position:right bottom;display:block}
 .jy span{grid-area:l;margin-top:10px;padding-bottom:18px}.jy em{display:none}
 .fu-sc-ico{width:48px!important;height:48px!important}.fu-sc{padding-right:66px}
