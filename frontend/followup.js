@@ -473,7 +473,8 @@ const trkHistory=(list,title)=>{const d=document.getElementById('patientDialog')
   <div class="detail-card"><h3>Details</h3>${info.map(([l,v])=>`<div class="sample-item"><strong>${esc(l)}</strong><span>${esc(v)}</span></div>`).join('')}</div></div></section>`};
  const multi=list.length>1,f=list[0];
  box.innerHTML=`<div class="patient-detail trk-hist"><div class="patient-top"><div><h2>${esc(title||`${f.patient} \u00b7 ${f.embryo}`)}</h2><div class="patient-meta">${multi?`${list.length} embryos`:`<span class="trk-pill s${f.stage}">${esc(TRK_NOW[f.stage])}</span>`}</div></div><button class="icon-btn" id="trkHistClose" aria-label="Close">\u00d7</button></div>${list.map(i=>one(i,multi)).join('')}</div>`;
- box.querySelector('#trkHistClose').onclick=()=>d.close();if(!d.open)d.showModal()};
+ box.querySelector('#trkHistClose').onclick=()=>d.close();if(!d.open)d.showModal();
+ (async()=>{const sections=[...box.querySelectorAll('.trk-emb')];for(let idx=0;idx<list.length;idx++){const i=list[idx];if(!i.caseId)continue;try{const r=await fetch(`/api/cases/${encodeURIComponent(i.caseId)}/images`);if(!r.ok)continue;const all=await r.json();const imgs=all.filter(x=>!x.embryo||x.embryo===i.embryo);if(!imgs.length)continue;const sec=sections[idx];if(!sec)continue;const div=document.createElement('div');div.className='trk-charts';div.innerHTML=`<h4 class="vault-charts-title">Charts</h4><div class="trk-img-grid">${imgs.map(x=>`<figure><a href="${esc(x.url)}" target="_blank" rel="noopener"><img src="${esc(x.url)}" alt="Chart" loading="lazy"></a><figcaption>${esc(x.embryo||'General')}</figcaption></figure>`).join('')}</div>`;sec.appendChild(div)}catch(e){}}})()};
 // ---------------- Client home page ----------------
 // Landing page for a client login: a bigger welcome, the same live counts the tracker uses,
 // big buttons to the other client pages (so the thin sidebar isn't the only way in), and a

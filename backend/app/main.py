@@ -121,6 +121,7 @@ _ROLE_RULES = {
         ("GET", r"/api/followups"), ("POST", r"/api/followups/save"), ("GET", r"/api/my-embryos"),
         ("GET", r"/api/my-trfs"), ("GET", r"/api/trf/\d+/signed"),
         ("POST", r"/api/new-samples(/trf)?"),
+        ("GET", r"/api/cases/[^/]+/images"), ("GET", r"/uploads/.+"),
     ],
 }
 # Logging in must always be reachable, whatever role a STALE cookie in the browser belongs to.
@@ -1615,8 +1616,9 @@ def my_embryos(request: Request, db: Session = Depends(get_db)):
         tr_on, tr_dept = "", ""
         if str(r.get("transferred") or "").strip().upper() == "YES" or _field(r, "transferred on"):
             tr_on, tr_dept = _field(r, "transferred on"), _field(r, "transferred department")
+        case_id = _field(r, "case id") or _field(r, "sample id", "sample no")
         for lab in labels:
-            items.append({"patient": patient, "embryo": lab, "sampleId": _field(r, "sample id", "sample no"), "test": _field(r, "test name", "test"),
+            items.append({"patient": patient, "embryo": lab, "sampleId": _field(r, "sample id", "sample no"), "caseId": case_id, "test": _field(r, "test name", "test"),
                           "clinic": _field(r, "center name", "hospital clinic name", "client"), "sequencer": _field(r, "seq platform") if stage >= 3 else "",
                           "stage": stage, "status": _STAGE_TEXT[stage], "biopsy": _field(r, "date of biopsy"), "received": _field(r, "date sample received"),
                           "trfReceived": _field(r, "date trf received"), "wga": _field(r, "wga done on") if stage >= 2 else "",
