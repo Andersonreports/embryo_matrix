@@ -17,7 +17,7 @@ from sqlalchemy import func
 from .config import settings
 from .database import Base, engine, get_db, SessionLocal
 from .placement import Placement, safe as _safe_name
-from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, SampleTrf, CaseRunAssignment, User, Followup, EmbryoOutcome, OutcomeHistory
+from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, SampleTrf, CaseRunAssignment, User, Followup, EmbryoOutcome, OutcomeHistory, SampleRemark
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn, NewSampleIn
 from .sheet_sync import parse_sources, sync_sources
 from . import auth, batches, cell_edits, edits_sheet, mailer, new_samples, storage, trf_fill, trf_pdf
@@ -101,17 +101,19 @@ ALL_ROLES = ["admin", "senior_executive", "team_lead", "member", "coordinator", 
 # a role not listed here can only sign in/out and ask who it is.
 _ROLE_RULES = {
     "member": [
-        ("GET", r"/api/(store/.+|cases|cases/[^/]+/images|images|case-runs|dashboard|cell-edits|edits-sheet|result-file-months|sync-sheet/status)"),
+        ("GET", r"/api/(store/.+|cases|cases/[^/]+/images|images|case-runs|dashboard|cell-edits|edits-sheet|result-file-months|sync-sheet/status|sample-remarks)"),
         ("GET", r"/uploads/.+"), ("POST", r"/api/sync-sheet"), ("POST", r"/api/cases/[^/]+/images"),
         ("GET", r"/api/batches(/[^/]+/xlsx)?"), ("POST", r"/api/batches(/results)?"), ("DELETE", r"/api/batches/[^/]+"),
         # Files the clinic signs on paper arrive at the lab as a hard copy, so staff file the
         # scan here. Read and attach only - approving, editing and deleting stay with the leads.
         ("GET", r"/api/trf"), ("GET", r"/api/trf/\d+"), ("GET", r"/api/trf/\d+/pdf"),
         ("POST", r"/api/trf/\d+/signed"), ("GET", r"/api/trf/\d+/signed"),
+        # Noting why an overdue sample is late is an everyday task for anyone working the list.
+        ("PATCH", r"/api/sample-remarks/[^/]+"),
     ],
     # Coordinator: read-only home page (same data the member role can read).
     "coordinator": [
-        ("GET", r"/api/(store/.+|cases|cases/[^/]+/images|images|case-runs|dashboard|cell-edits|edits-sheet|result-file-months|sync-sheet/status)"),
+        ("GET", r"/api/(store/.+|cases|cases/[^/]+/images|images|case-runs|dashboard|cell-edits|edits-sheet|result-file-months|sync-sheet/status|sample-remarks)"),
         ("GET", r"/uploads/.+"), ("POST", r"/api/sync-sheet"),
     ],
     "embryologist": [
@@ -783,6 +785,28 @@ def list_case_runs(db: Session = Depends(get_db)):
     which cases' staged files need to move into a run folder."""
     rows = db.query(CaseRunAssignment).all()
     return [{"caseCode": r.case_code, "runId": r.run_id, "assignedAt": r.assigned_at.isoformat()} for r in rows]
+
+# --- Sample remarks: a free-text reason-for-delay note per overdue-table row
+# (patient+sample+embryo key - see odRowKey in app.js). ---
+
+@app.patch("/api/sample-remarks/{row_key}")
+def set_sample_remark(row_key: str, payload: KVValue, request: Request, db: Session = Depends(get_db)):
+    remark = str((payload.value or {}).get("remark", "")).strip() if isinstance(payload.value, dict) else ""
+    user = request.state.user or {}
+    row = db.get(SampleRemark, row_key)
+    if row:
+        row.remark = remark
+        row.updated_by = user.get("username") or ""
+    else:
+        db.add(SampleRemark(row_key=row_key, remark=remark, updated_by=user.get("username") or ""))
+    db.commit()
+    log_activity(db, "sample_remark", f"{row_key}: {remark[:140]}", request=request)
+    return {"rowKey": row_key, "remark": remark}
+
+@app.get("/api/sample-remarks")
+def list_sample_remarks(db: Session = Depends(get_db)):
+    rows = db.query(SampleRemark).filter(SampleRemark.remark != "").all()
+    return [{"rowKey": r.row_key, "remark": r.remark, "updatedBy": r.updated_by, "updatedAt": r.updated_at.isoformat()} for r in rows]
 
 # --- Protocol documents: lab-uploaded SOPs shown as separate cards in the Protocols tab ---
 

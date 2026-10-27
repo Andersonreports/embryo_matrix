@@ -81,6 +81,17 @@ class CaseRunAssignment(Base):
     assigned_by: Mapped[str] = mapped_column(String(120), default="")
     assigned_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class SampleRemark(Base):
+    """Free-text reason-for-delay note on one overdue-table row. row_key is the loose
+    patient|sampleId|embryo string the overdue page keys rows by (odRowKey in app.js) -
+    same spirit as CaseRunAssignment.case_code: identity lives in the sheet-synced data,
+    this table just attaches a note to it."""
+    __tablename__ = "sample_remarks"
+    row_key: Mapped[str] = mapped_column(String(300), primary_key=True)
+    remark: Mapped[str] = mapped_column(Text, default="")
+    updated_by: Mapped[str] = mapped_column(String(120), default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class CaseImage(Base):
     __tablename__ = "case_images"
     id: Mapped[int] = mapped_column(primary_key=True)
