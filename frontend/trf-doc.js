@@ -108,10 +108,10 @@ function trfPagesHtml(d,meta={},opts={}){
  const fuPeriod=edit?`<select class="td-input td-inline" data-f="followupExpected"><option value=""></option>${FU_PERIODS.map(x=>`<option${d.followupExpected===x?' selected':''}>${x}</option>`).join('')}</select>`:`<span class="td-blank">${d.followupExpected?esc(d.followupExpected.toLowerCase()):''}</span>`;
  const page4=`<div class="td-page td-page-g td-page-fu">${curves}
   <div class="td-formg-title"><h2>OUTCOME FOLLOW-UP CONSENT</h2></div>
-  <p class="td-legal">I, ${mirror('patientName')}, hereby give my consent to Anderson Diagnostics &amp; Labs to obtain information on the embryo transfer and the pregnancy outcome following this Preimplantation Genetic Testing from my treating clinic.</p>
-  <p class="td-legal">I understand that only my consent and the clinic's contact details are recorded in this form. The outcome itself will be collected later by the laboratory and will be kept confidential.</p>
+  <p class="td-legal">I, ${mirror('patientName')}, hereby give my consent to Anderson Diagnostics &amp; Labs to obtain information on the embryo transfer and the pregnancy outcome following this Preimplantation Genetic Testing from my treating center.</p>
+  <p class="td-legal">I understand that only my consent and the center's contact details are recorded in this form. The outcome itself will be collected later by the laboratory and will be kept confidential.</p>
   <p class="td-legal td-fu-opts">${box('followupConsent','Yes','I agree',d.followupConsent==='Yes',true)}${box('followupConsent','No','I do not agree',d.followupConsent==='No',true)} to this outcome follow-up.</p>
-  <p class="td-legal">The clinic may be contacted through ${blank('followupContact',22)} at ${blank('followupPhoneEmail',26)}. The expected period of embryo transfer, if known, is ${fuPeriod}.</p>
+  <p class="td-legal">The center may be contacted through ${blank('followupContact',22)} at ${blank('followupPhoneEmail',26)}. The expected period of embryo transfer, if known, is ${fuPeriod}.</p>
   <div class="td-grid td-grid-tight"><div>Patient Signature: <span class="td-signline"></span></div><div>Date: <span class="td-signline"></span></div></div>
   ${footer(3)}<span class="td-fu-pg">Pg.4</span></div>`;
  // The consent page goes into the preview / PDF only when the patient agreed (Yes); the editable template always has it.
@@ -172,13 +172,13 @@ function trfFormHtml(d={}){
   ${f('gynaecologistName',"Gynaecologist's name")}
   ${f('gynaecologistRegNo',"Gynaecologist's registration no.")}
   ${f('explanationDate','Date explained to patient','date')}
-  ${f('geneticClinicName','Genetic clinic name')}
-  ${f('geneticClinicRegNo','Genetic clinic registration no.')}
-  <label class="tf-field tf-wide"><span>Genetic clinic address</span><textarea data-f="geneticClinicAddress" rows="2">${esc(d.geneticClinicAddress)}</textarea></label>
+  ${f('geneticClinicName','Genetic center name')}
+  ${f('geneticClinicRegNo','Genetic center registration no.')}
+  <label class="tf-field tf-wide"><span>Genetic center address</span><textarea data-f="geneticClinicAddress" rows="2">${esc(d.geneticClinicAddress)}</textarea></label>
  </div>`,'Statutory PNDT Act consent (Form G). Signatures are still signed on the printed copy.')}
  ${card(8,'Outcome follow-up consent <b class="td-req">*</b>',`<div class="tf-grid tf-grid-2">
-  <div class="tf-field tf-wide"><span>Patient consent for outcome follow-up (transfer / pregnancy outcome will be requested from the clinic later)</span><div class="tf-opts">${opt('followupConsent','Yes','Yes',d.followupConsent==='Yes',true)}${opt('followupConsent','No','No',d.followupConsent==='No',true)}</div></div>
-  ${f('followupContact','Clinic contact person')}
+  <div class="tf-field tf-wide"><span>Patient consent for outcome follow-up (transfer / pregnancy outcome will be requested from the center later)</span><div class="tf-opts">${opt('followupConsent','Yes','Yes',d.followupConsent==='Yes',true)}${opt('followupConsent','No','No',d.followupConsent==='No',true)}</div></div>
+  ${f('followupContact','Center contact person')}
   ${f('followupPhoneEmail','Follow-up email / phone')}
   <label class="tf-field"><span>Expected transfer period, if known</span><select data-f="followupExpected"><option value="">—</option>${['Within 1 month','1–3 months','3–6 months','6–12 months','Not known'].map(x=>`<option${d.followupExpected===x?' selected':''}>${x}</option>`).join('')}</select></label>
  </div>`,'Only permission and contact details are collected here. Pregnancy results are recorded later by the lab, not in this form.')}

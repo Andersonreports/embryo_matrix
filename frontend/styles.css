@@ -1724,9 +1724,9 @@ body.role-member .vault-del-btn,body.role-member .vg-actions,body.role-member .v
 .fu-hero h2{margin:0 0 4px;font:600 24px "Lora",serif}.fu-hero p{margin:0;opacity:.92;font-size:14px}.fu-hero b{color:#fff}
 .db-hero-stats{display:flex;gap:24px}.db-hero-stats div{text-align:center}.db-hero-stats strong{display:block;font:600 32px "Lora",serif}.db-hero-stats small{opacity:.9;font-size:12px}.db-on{background:rgba(255,255,255,.2);border-radius:999px;padding:2px 10px;font-size:12px}
 /* task status tiles */
-.st-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:16px}
-.st-tile{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-areas:"ic n" "l l" "h h";align-items:center;column-gap:10px;text-align:left;padding:14px 16px;border:2px solid var(--line);border-radius:16px;background:#fff;cursor:pointer;transition:.15s;font:inherit;color:inherit}
-.st-tile .ico{grid-area:ic;width:34px;height:34px}.st-n{grid-area:n;font:600 32px "Lora",serif;text-align:right;line-height:1}.st-l{grid-area:l;font-weight:700;font-size:13.5px;margin-top:8px}.st-tile small{grid-area:h;color:#8a9a97;font-size:11.5px}
+.st-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+.st-tile{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-areas:"ic n" "l l" "h h";align-items:center;column-gap:12px;text-align:left;padding:18px 20px;border:2px solid var(--line);border-radius:16px;background:#fff;cursor:pointer;transition:.15s;font:inherit;color:inherit}
+.st-tile .ico{grid-area:ic;width:44px;height:44px}.st-n{grid-area:n;font:600 32px "Lora",serif;text-align:right;line-height:1}.st-l{grid-area:l;font-weight:700;font-size:13.5px;margin-top:8px}.st-tile small{grid-area:h;color:#8a9a97;font-size:11.5px}
 .st-tile:hover{transform:translateY(-2px);box-shadow:0 8px 18px -10px rgba(0,0,0,.35)}
 .st-tile.on{border-color:var(--sc);background:var(--sb);box-shadow:0 8px 20px -10px var(--sc)}
 .st-slate{--sc:#0a7180;--sb:#eaf7f6}.st-amber{--sc:#e0a100;--sb:#fff8e3}.st-red{--sc:#d12f2f;--sb:#fdeeee}.st-blue{--sc:#2f6fb5;--sb:#eaf2fc}.st-green{--sc:#1f8a52;--sb:#e8f6ee}.st-grey{--sc:#78837d;--sb:#f1f3f2}
@@ -2677,6 +2677,13 @@ dialog.vu-dialog-tat{width:min(1500px,97vw)!important;max-width:min(1500px,97vw)
 /* Fainter for a client login specifically - the embryo tracker is a dense table of their
    own data, and the mark reads as clutter there more than it does on the lab's own screens. */
 body.role-embryologist{--wm-opacity:.035}
+/* Client login: nav items move to a second row below the brand bar */
+body.role-embryologist .topbar{padding-bottom:0;row-gap:0}
+body.role-embryologist .topbar .brand{flex:1 1 auto}
+body.role-embryologist .topbar .qc-alerts,body.role-embryologist .topbar .session-info{flex-shrink:0}
+body.role-embryologist .topbar .topnav{order:10;width:100%;padding:8px 0 10px;border-top:1px solid rgba(0,0,0,.08);justify-content:flex-start;gap:4px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+body.role-embryologist .topbar .topnav::-webkit-scrollbar{display:none}
+body.role-embryologist .topbar .topnav .nav-item{font-size:14px;padding:7px 16px}
 body::after{content:"";position:fixed;top:50%;left:50%;width:var(--wm-width);height:var(--wm-height);margin:calc(var(--wm-height)/-2) 0 0 calc(var(--wm-width)/-2);background:url("/static/assets/logos/anderson-diagnostics-labs.png") center/contain no-repeat;opacity:var(--wm-opacity);pointer-events:none;z-index:300}
 @media print{body::after{display:none}}
 
