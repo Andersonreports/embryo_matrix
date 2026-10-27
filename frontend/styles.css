@@ -1725,8 +1725,8 @@ body.role-member .vault-del-btn,body.role-member .vg-actions,body.role-member .v
 .db-hero-stats{display:flex;gap:24px}.db-hero-stats div{text-align:center}.db-hero-stats strong{display:block;font:600 32px "Lora",serif}.db-hero-stats small{opacity:.9;font-size:12px}.db-on{background:rgba(255,255,255,.2);border-radius:999px;padding:2px 10px;font-size:12px}
 /* task status tiles */
 .st-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
-.st-tile{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-areas:"ic n" "l l" "h h";align-items:center;column-gap:12px;text-align:left;padding:18px 20px;border:2px solid var(--line);border-radius:16px;background:#fff;cursor:pointer;transition:.15s;font:inherit;color:inherit}
-.st-tile .ico{grid-area:ic;width:44px;height:44px}.st-n{grid-area:n;font:600 32px "Lora",serif;text-align:right;line-height:1}.st-l{grid-area:l;font-weight:700;font-size:13.5px;margin-top:8px}.st-tile small{grid-area:h;color:#8a9a97;font-size:11.5px}
+.st-tile{position:relative;display:grid;grid-template-columns:1fr auto;grid-template-areas:"n ic" "l l" "h h";align-items:start;column-gap:12px;text-align:left;padding:18px 20px;border:2px solid var(--line);border-radius:16px;background:#fff;cursor:pointer;transition:.15s;font:inherit;color:inherit}
+.st-tile .ico{grid-area:ic;width:44px;height:44px;align-self:start}.st-n{grid-area:n;font:600 32px "Lora",serif;text-align:left;line-height:1;align-self:start}.st-l{grid-area:l;font-weight:700;font-size:13.5px;margin-top:8px}.st-tile small{grid-area:h;color:#8a9a97;font-size:11.5px}
 .st-tile:hover{transform:translateY(-2px);box-shadow:0 8px 18px -10px rgba(0,0,0,.35)}
 .st-tile.on{border-color:var(--sc);background:var(--sb);box-shadow:0 8px 20px -10px var(--sc)}
 .st-slate{--sc:#0a7180;--sb:#eaf7f6}.st-amber{--sc:#e0a100;--sb:#fff8e3}.st-red{--sc:#d12f2f;--sb:#fdeeee}.st-blue{--sc:#2f6fb5;--sb:#eaf2fc}.st-green{--sc:#1f8a52;--sb:#e8f6ee}.st-grey{--sc:#78837d;--sb:#f1f3f2}
