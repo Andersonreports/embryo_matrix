@@ -1251,7 +1251,7 @@ function applyRoleAccess(){
   document.querySelectorAll('.nav-item').forEach(n=>{n.hidden=!ROLE_VIEWS[r].includes(n.dataset.view)});
   // A client's own destinations (tracker, follow-up, outcomes, TRF) live as big tiles on their
   // Home page - keeping them in the sidebar too would just be the same four links twice.
-  if(r==='embryologist')['fuTrack','fuTasks','fuDash','trfs'].forEach(v=>document.querySelectorAll(`.nav-item[data-view="${v}"]`).forEach(n=>n.hidden=true));
+  if(r==='embryologist')['fuHome','fuTrack','fuTasks','fuDash','trfs'].forEach(v=>document.querySelectorAll(`.nav-item[data-view="${v}"]`).forEach(n=>n.hidden=true));
   document.querySelectorAll('.session-menu-item[data-view],#qcAlerts,.import-data-btn').forEach(n=>{if(!ROLE_VIEWS[r].includes(n.dataset.view))n.style.display='none'});
   // A one-item rail (e.g. the client's lone Home link, or the coordinator's lone Home link) is
   // dead weight - drop back to the plain top bar instead of a near-empty 254px sidebar.
