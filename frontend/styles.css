@@ -1726,7 +1726,7 @@ body.role-member .vault-del-btn,body.role-member .vg-actions,body.role-member .v
 /* task status tiles */
 .st-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
 .st-tile{position:relative;display:grid;grid-template-columns:1fr auto;grid-template-areas:"n ic" "l l" "h h";align-items:start;column-gap:12px;text-align:left;padding:18px 20px;border:2px solid var(--line);border-radius:16px;background:#fff;cursor:pointer;transition:.15s;font:inherit;color:inherit}
-.st-tile .ico{grid-area:ic;width:44px;height:44px;align-self:start}.st-n{grid-area:n;font:600 32px "Lora",serif;text-align:left;line-height:1;align-self:start}.st-l{grid-area:l;font-weight:700;font-size:13.5px;margin-top:8px}.st-tile small{grid-area:h;color:#8a9a97;font-size:11.5px}
+.st-tile .ico{grid-area:ic;width:56px;height:56px;align-self:start}.st-n{grid-area:n;font:600 32px "Lora",serif;text-align:left;line-height:1;align-self:start}.st-l{grid-area:l;font-weight:700;font-size:13.5px;margin-top:8px}.st-tile small{grid-area:h;color:#8a9a97;font-size:11.5px}
 .st-tile:hover{transform:translateY(-2px);box-shadow:0 8px 18px -10px rgba(0,0,0,.35)}
 .st-tile.on{border-color:var(--sc);background:var(--sb);box-shadow:0 8px 20px -10px var(--sc)}
 .st-slate{--sc:#0a7180;--sb:#eaf7f6}.st-amber{--sc:#e0a100;--sb:#fff8e3}.st-red{--sc:#d12f2f;--sb:#fdeeee}.st-blue{--sc:#2f6fb5;--sb:#eaf2fc}.st-green{--sc:#1f8a52;--sb:#e8f6ee}.st-grey{--sc:#78837d;--sb:#f1f3f2}
@@ -2345,11 +2345,12 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .progress-label{font-size:14px!important;margin-top:4px}.progress-date{font-size:11px!important}
 .progress-step.active .progress-dot{box-shadow:0 0 0 6px rgba(8,127,131,.14)!important}
 
-/* Journey cards: count on the left, icon on the right */
-.jy{display:grid;grid-template-columns:1fr auto;grid-template-areas:"n i" "l l" "e e";align-items:center;column-gap:10px;text-align:left;padding:16px 18px}
-.jy strong{grid-area:n}.jy-ic{grid-area:i;height:auto;margin:0}.jy-ic .ico{width:56px;height:56px}
-.jy span{grid-area:l;margin-top:8px}.jy em{grid-area:e}
-.jy-ic .ico{width:72px!important;height:72px!important}
+/* Journey cards: count top-left, illustration top-right, label + sub below */
+.jy{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr auto;grid-template-areas:"n i" "l l" "e e";align-items:start;text-align:left;padding:18px 0 18px 20px;overflow:hidden}
+.jy strong{grid-area:n;font:600 46px "Lora",serif;color:var(--c);line-height:1;padding-top:4px}
+.jy-ic{grid-area:i;margin:0;align-self:start}
+.jy-ic .ico{width:110px!important;height:110px!important;object-fit:contain;display:block}
+.jy span{grid-area:l;margin-top:10px}.jy em{grid-area:e}
 .fu-sc-ico{width:48px!important;height:48px!important}.fu-sc{padding-right:66px}
 
 /* Overdue patients card: larger alarm icon */
