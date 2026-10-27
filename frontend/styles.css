@@ -1749,7 +1749,7 @@ body.role-member .vault-del-btn,body.role-member .vg-actions,body.role-member .v
 .db-h{margin:22px 0 10px;font:600 17px "Lora",serif}
 .journey{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}.jy{flex:1 1 150px;position:relative;text-align:center;padding:18px 12px;border-radius:18px;background:#fff;border:2px solid color-mix(in srgb,var(--c) 35%,white);box-shadow:0 8px 18px -14px var(--c)}
 .jy-ic{height:44px;display:grid;place-items:center;margin-bottom:6px}.jy-ic .ico{width:44px;height:44px}.jy strong{display:block;font:600 36px "Lora",serif;color:var(--c);line-height:1.05}.jy span{display:block;font-weight:700;font-size:13.5px;margin-top:4px}.jy em{display:block;font-style:normal;font-size:12px;color:#76868a;margin-top:4px}
-.jy-arrow{flex:0 0 28px;display:grid;place-items:center;font-size:30px;color:#b6c4c1}@media(max-width:760px){.jy-arrow{display:none}.journey{gap:10px}}
+.jy-arrow{flex:0 0 clamp(14px,1.5vw,28px);display:grid;place-items:center;font-size:clamp(18px,2vw,30px);color:#b6c4c1}@media(max-width:760px){.jy-arrow{display:none}.journey{gap:10px}}
 .db-rates{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
 .db-rate{display:flex;align-items:center;gap:14px;padding:16px;border:1px solid var(--line);border-radius:16px;background:#fff}.db-rate h4{margin:0 0 3px;font-size:14px}.db-rate p{margin:0;font-size:12.5px;color:#4d6361}.db-rate small{display:block;margin-top:4px;color:#9aa6a0;font-size:11px}.ring{flex:none}
 .db-two{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:14px;margin-top:18px}.db-two-eq{grid-template-columns:1fr 1fr}@media(max-width:1100px){.db-two{grid-template-columns:1fr}}
@@ -1945,7 +1945,7 @@ body.view-overview #mainHeader{height:56px}
 .db-sub{font-weight:400;font-size:12.5px;color:#8a9a97;margin-left:8px;font-family:"Inter",sans-serif}
 
 /* rates: one shared panel of half-circle gauges */
-.gg-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));border:1px solid var(--line);border-radius:18px;background:#fff;margin:12px 0 14px;overflow:hidden}
+.gg-row{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);border-radius:18px;background:#fff;margin:12px 0 14px;overflow:hidden}@media(max-width:900px){.gg-row{grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))}}
 .gg{padding:14px 12px 14px;text-align:center;border-right:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:2px}.gg:last-child{border-right:0}
 .gg-svg{max-width:170px}.gg b{font-size:13.5px;margin-top:-4px}.gg span{font-size:12px;color:#76868a}.gg .dl{margin-top:2px}
 /* Run status toolbar: no search bar; the three page links are centred */
@@ -2346,11 +2346,11 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .progress-step.active .progress-dot{box-shadow:0 0 0 6px rgba(8,127,131,.14)!important}
 
 /* Journey cards: count top-left, illustration bottom-right flush, label below */
-.jy{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr;grid-template-areas:"n i" "l i";align-items:start;text-align:left;padding:18px 0 0 20px;overflow:hidden;min-height:180px}
-.jy strong{grid-area:n;font:600 46px "Lora",serif;color:var(--c);line-height:1;padding-top:4px}
+.jy{display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr;grid-template-areas:"n i" "l i";align-items:start;text-align:left;padding:clamp(12px,1.2vw,18px) 0 0 clamp(12px,1.4vw,20px);overflow:hidden;min-height:clamp(140px,13vw,180px)}
+.jy strong{grid-area:n;font-size:clamp(28px,3.2vw,46px);font-family:"Lora",serif;font-weight:600;color:var(--c);line-height:1;padding-top:4px}
 .jy-ic{grid-area:i;margin:0;align-self:stretch;height:auto;display:flex;align-items:flex-end;justify-content:flex-end}
-.jy-ic .ico{width:190px!important;height:190px!important;object-fit:contain;object-position:right bottom;display:block}
-.jy span{grid-area:l;margin-top:10px;padding-bottom:18px}.jy em{display:none}
+.jy-ic .ico{width:clamp(90px,11vw,185px)!important;height:clamp(90px,11vw,185px)!important;object-fit:contain;object-position:right bottom;display:block}
+.jy span{grid-area:l;margin-top:8px;padding-bottom:clamp(12px,1.2vw,18px);font-size:clamp(11px,1vw,13.5px)}.jy em{display:none}
 .fu-sc-ico{width:48px!important;height:48px!important}.fu-sc{padding-right:66px}
 
 /* Overdue patients card: larger alarm icon */
