@@ -1141,14 +1141,14 @@ function renderEmbInc(target='#embIncTable'){const el=$(target);if(!el)return;co
  const keys=Object.keys(rows[0].months||{}).sort(),pctv=r=>r.total?r.inconclusive/r.total*100:0,tone=v=>v>=10?'high':v>=5?'mid':v>0?'low':'zero',sorted=[...rows].sort((a,b)=>pctv(b)-pctv(a)||b.total-a.total);
  const p=$('#embIncPeriod');if(p)p.textContent=embInc.period||'';
  el.innerHTML=`<table class="prep-table emb-inc-table"><thead><tr><th class="num">S.No</th><th>Embryologist</th><th>Client / Centre</th><th>Location</th><th class="num">Embryos</th><th class="num">Inconclusive</th><th class="num">Overall %</th>${keys.map(k=>`<th class="num">${escapeHtml(monthLabel(k,{month:'short'}))}</th><th class="num">${escapeHtml(monthLabel(k,{month:'short'}))} inc.</th>`).join('')}</tr></thead><tbody>${sorted.map((r,i)=>`<tr><td class="num muted">${i+1}</td><td class="strong">${escapeHtml(r.name)}</td><td>${escapeHtml(r.client)}</td><td class="clip" title="${escapeHtml(r.location)}">${escapeHtml(r.location)}</td><td class="num">${r.total}</td><td class="num">${r.inconclusive}</td><td class="num"><span class="inc-pct ${tone(pctv(r))}">${pctv(r).toFixed(2)}%</span></td>${keys.map(k=>{const [n,inc]=r.months[k]||[0,0];return `<td class="num">${n}</td><td class="num">${inc}</td>`}).join('')}</tr>`).join('')}</tbody></table>`}
-const RUN_ICON_TOTAL='<img class="ico" src="/static/assets/icons/stages-results__total-embryos.png" alt="">';
+const RUN_ICON_TOTAL='<img class="ico" src="/static/assets/icons/trk-stat__embryos.png" alt="">';
 const RUN_ICON_CHECK='<img class="ico" src="/static/assets/icons/stages-results__normal.png" alt="">';
 const RUN_ICON_MOSAIC='<img class="ico" src="/static/assets/icons/stages-results__mosaic.png" alt="">';const RUN_ICON_INC='<img class="ico" src="/static/assets/icons/stages-results__inconclusive.png" alt="">';
 const RUN_ICON_X='<img class="ico" src="/static/assets/icons/stages-results__abnormal.png" alt="">';
 const RUN_ICON_Q='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>';
 let currentRun=null;
 function openRun(run){currentRun=run;showView('run')}
-const RUN_ICON_PERSON='<img class="ico" src="/static/assets/icons/run-summary__patient-female.png" alt="">';
+const RUN_ICON_PERSON='<img class="ico" src="/static/assets/icons/trk-stat__patients.png" alt="">';
 const sumStrip=cards=>`<div class="run-stats">${cards.map(([label,v,tone,icon])=>`<article class="run-stat tone-${tone}${v?'':' is-zero'}"><div><small>${label}</small><strong>${v==null?'—':v.toLocaleString()}</strong></div><span class="run-stat-icon">${icon}</span></article>`).join('')}</div>`;
 const RUN_BACK_BTN=`<button type="button" class="run-back-btn" id="runBack"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>Back</button>`;
 const RESULT_ORDER=[['Normal','Euploid','pass'],['Abnormal','Aneuploid','fail'],['Mosaic','Mosaic','mosaic'],['Inconclusive','Inconclusive','inconclusive']];
