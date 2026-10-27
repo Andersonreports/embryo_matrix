@@ -492,18 +492,12 @@ const HOME_STEPS=[
 window.renderClientHome=async function(g){
  const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent='';
  const mh=document.getElementById('mainHeader');if(mh)mh.classList.add('hidden');
- g.innerHTML='<div class="generic-card wide-card fu-view home-view"><div class="chart-empty">Loading…</div></div>';
+ g.innerHTML='<div class="generic-card wide-card fu-view home-view"></div>';
  const card=g.querySelector('.home-view');
- let items=[];
- try{const r=await fetch('/api/my-embryos');if(r.ok)items=(await r.json()).items||[]}catch(e){}
  const clinic=(typeof currentUser!=='undefined'&&currentUser.clientLabel)||'';
- const patientCount=new Set(items.map(i=>i.patient.trim().toUpperCase())).size,processed=items.filter(i=>i.stage>=2).length,released=items.filter(i=>i.stage===4).length;
- const statCard=(label,v,tone,icon)=>`<article class="run-stat tone-${tone}${v?'':' is-zero'}"><div><small>${esc(label)}</small><strong>${v.toLocaleString()}</strong></div><span class="run-stat-icon">${icon}</span></article>`;
- const stats=items.length?`<div class="run-stats trk-stats">${statCard('Patients',patientCount,'blue',RUN_ICON_PERSON)}${statCard('Embryos',items.length,'teal',RUN_ICON_TOTAL)}${statCard('Processed',processed,'amber','<img class="ico" src="/static/assets/icons/stages__sequencing.png" alt="">')}${statCard('Reports released',released,'green','<img class="ico" src="/static/assets/icons/stages__report-send.png" alt="">')}</div>`:'';
  const tiles=HOME_TILES.map(([view,title,desc,icon])=>`<button type="button" class="home-tile" data-go="${view}"><span class="home-tile-icon"><img src="/static/assets/icons/${icon}.png" alt=""></span><span class="home-tile-text"><strong>${esc(title)}</strong><small>${esc(desc)}</small></span><span class="home-tile-arrow">→</span></button>`).join('');
  const steps=HOME_STEPS.map(([icon,label,desc])=>`<div class="home-step"><img src="/static/assets/icons/${icon}.png" alt=""><strong>${esc(label)}</strong><small>${esc(desc)}</small></div>`).join('');
  card.innerHTML=`<div class="home-hero"><h1>${clinic?`Welcome, ${esc(clinic)}`:'Welcome'}</h1><p>Complete transparency, every step of the way - track every embryo you've sent us from the moment it arrives to the day your report is sent, with no phone calls needed.</p></div>
- ${stats}
  <div class="home-tiles">${tiles}</div>
  <div class="home-steps-card"><h3>How a PGT-A sample moves through our lab</h3><div class="home-steps">${steps}</div></div>`;
  card.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>showView(b.dataset.go));
@@ -538,9 +532,7 @@ window.renderEmbryoTracker=async function(g){
   const patientCount=new Set(items.map(i=>i.patient.trim().toUpperCase())).size,processed=items.filter(i=>i.stage>=2).length,released=items.filter(i=>i.stage===4).length;
   const statCard=(key,label,v,tone,icon,clickable)=>`<article class="run-stat tone-${tone}${v?'':' is-zero'}${clickable?' trk-stat-click':''}${clickable&&stage===key?' is-active':''}"${clickable?` data-filter="${key}" role="button" tabindex="0" title="${stage===key?'Click to clear this filter':'Show only these'}"`:''}><div><small>${label}</small><strong>${v.toLocaleString()}</strong></div><span class="run-stat-icon">${icon}</span></article>`;
   const statsHtml=items.length?`<div class="run-stats trk-stats">${statCard('','Patients',patientCount,'blue',RUN_ICON_PERSON,false)}${statCard('','Embryos',items.length,'teal',RUN_ICON_TOTAL,false)}${statCard('processed','Processed',processed,'amber','<img class="ico" src="/static/assets/icons/stages__sequencing.png" alt="">',true)}${statCard('released','Reports released',released,'green','<img class="ico" src="/static/assets/icons/stages__report-send.png" alt="">',true)}</div>`:'';
-  const clinic=(typeof currentUser!=='undefined'&&currentUser.clientLabel)||'';
-  const welcome=`<div class="trk-welcome"><h2>${clinic?`Welcome, ${esc(clinic)}`:'Your embryo tracker'}</h2><p>Live status for every sample you've sent us, from arrival to the day your report goes out - click any row for its full timeline.</p></div>`;
-  card.innerHTML=`${welcome}${statsHtml}<div class="trk-tools">`+`<div class="prep-segments"><button type="button" class="prep-seg${view==='embryo'?' active':''}" data-v="embryo">Embryo view</button><button type="button" class="prep-seg${view==='patient'?' active':''}" data-v="patient">Patient view</button></div><div class="search-wrap"><span>\u2315</span><input id="trkQ" type="search" placeholder="Search patient, embryo or sample ID\u2026" value="${esc(q)}" autocomplete="off"></div></div>
+  card.innerHTML=`${statsHtml}<div class="trk-tools">`+`<div class="prep-segments"><button type="button" class="prep-seg${view==='embryo'?' active':''}" data-v="embryo">Embryo view</button><button type="button" class="prep-seg${view==='patient'?' active':''}" data-v="patient">Patient view</button></div><div class="search-wrap"><span>\u2315</span><input id="trkQ" type="search" placeholder="Search patient, embryo or sample ID\u2026" value="${esc(q)}" autocomplete="off"></div></div>
   ${stage?`<div class="trk-filter-chip">Showing ${stage==='processed'?'processed':'reports released'} only <button type="button" id="trkClearFilter">\u00d7 Clear</button></div>`:''}
   ${table||`<div class="tk-empty"><h3>${items.length?'Nothing here':'No embryos yet'}</h3><p>${items.length?'Try another search.':'Embryos appear here once your samples are in our sheet.'}</p></div>`}`;
   card.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{view=b.dataset.v;draw()});
