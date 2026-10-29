@@ -489,7 +489,7 @@ const HOME_STEPS=[
  ['stages__wga','WGA','Whole-genome amplification prepares the sample\'s DNA for sequencing.'],
  ['stages__sequencing','Sequencing','Next-generation sequencing reads the embryo\'s chromosomes.'],
  ['stages__report-preparation','Report preparation','Our team reviews the results and writes up your report.'],
- ['stages__report-send','Report sent','Your report is sent to your clinic - the same moment it shows here.']];
+ ['stages__report-send','Report sent','Your report is sent to your center - the same moment it shows here.']];
 const HOME_TESTS=[
  {icon:'tests-transfers__pgt-a',name:'PGT-A',q:'Are there chromosome gains or losses?',desc:'NGS assesses chromosome copy number in the embryo biopsy.',note:'Chromosome screening; suitability is individualised.'},
  {icon:'tests-transfers__pgt-sr',name:'PGT-SR',q:'Has the embryo inherited an unbalanced rearrangement?',desc:'Checks for extra or missing chromosome material linked to the known rearrangement.',note:'Parental karyotype review comes first.'},
