@@ -520,13 +520,13 @@ window.renderEmbryoTracker=async function(g){
  const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent='Embryo tracking';
  const mh=document.getElementById('mainHeader');if(mh)mh.classList.add('hidden');
  g.innerHTML='<div class="generic-card wide-card fu-view trk"><div class="chart-empty">Loading your embryos\u2026</div></div>';
- const card=g.querySelector('.trk');let items=[],stage='',q='',view='embryo';
+ const card=g.querySelector('.trk');let items=[],stage='',q='',view='embryo',filterTest='',filterSeq='';
  try{const r=await fetch('/api/my-embryos');if(!r.ok)throw 0;items=(await r.json()).items||[]}catch(e){card.innerHTML='<div class="chart-empty">Could not load your embryos. Please try again.</div>';return}
  const draw=()=>{
   const needle=q.trim().toLowerCase();
   // with no stage chosen the list shows every embryo, the ones still waiting for their report first
   const stageMatch=i=>stage===''||(stage==='processed'?i.stage>=2:stage==='released'?i.stage===4:i.stage===+stage);
-  const list=items.filter(i=>stageMatch(i)&&(!needle||`${i.patient} ${i.embryo} ${i.sampleId} ${i.test}`.toLowerCase().includes(needle))).sort((a,b)=>(a.stage===4)-(b.stage===4));
+  const list=items.filter(i=>stageMatch(i)&&(!filterTest||i.test===filterTest)&&(!filterSeq||i.sequencer===filterSeq)&&(!needle||`${i.patient} ${i.embryo} ${i.sampleId} ${i.test}`.toLowerCase().includes(needle))).sort((a,b)=>(a.stage===4)-(b.stage===4));
   const uniq=a=>[...new Set(a.filter(Boolean))].join(', ');
   let table;
   if(view==='patient'){
@@ -546,7 +546,10 @@ window.renderEmbryoTracker=async function(g){
   const patientCount=new Set(items.map(i=>i.patient.trim().toUpperCase())).size,processed=items.filter(i=>i.stage>=2).length,released=items.filter(i=>i.stage===4).length;
   const statCard=(key,label,v,tone,icon,clickable)=>`<article class="run-stat tone-${tone}${v?'':' is-zero'}${clickable?' trk-stat-click':''}${clickable&&stage===key?' is-active':''}"${clickable?` data-filter="${key}" role="button" tabindex="0" title="${stage===key?'Click to clear this filter':'Show only these'}"`:''}><div><small>${label}</small><strong>${v.toLocaleString()}</strong></div><span class="run-stat-icon">${icon}</span></article>`;
   const statsHtml=items.length?`<div class="run-stats trk-stats">${statCard('','Patients',patientCount,'blue',RUN_ICON_PERSON,false)}${statCard('','Embryos',items.length,'teal',RUN_ICON_TOTAL,false)}${statCard('processed','Processed',processed,'amber','<img class="ico" src="/static/assets/icons/trk-stat__processed.png" alt="">',true)}${statCard('released','Reports released',released,'green','<img class="ico" src="/static/assets/icons/trk-stat__reports-released.png" alt="">',true)}</div>`:'';
-  card.innerHTML=`${statsHtml}<div class="trk-tools">`+`<div class="prep-segments"><button type="button" class="prep-seg${view==='embryo'?' active':''}" data-v="embryo">Embryo view</button><button type="button" class="prep-seg${view==='patient'?' active':''}" data-v="patient">Patient view</button></div><div class="search-wrap"><span>\u2315</span><input id="trkQ" type="search" placeholder="Search patient, embryo or sample ID\u2026" value="${esc(q)}" autocomplete="off"></div></div>
+  const tests=[...new Set(items.map(i=>i.test).filter(Boolean))].sort();
+  const seqs=[...new Set(items.map(i=>i.sequencer).filter(Boolean))].sort();
+  const selOpts=(vals,cur)=>vals.map(v=>`<option value="${esc(v)}"${cur===v?' selected':''}>${esc(v)}</option>`).join('');
+  card.innerHTML=`${statsHtml}<div class="trk-tools">`+`<div class="prep-segments"><button type="button" class="prep-seg${view==='embryo'?' active':''}" data-v="embryo">Embryo view</button><button type="button" class="prep-seg${view==='patient'?' active':''}" data-v="patient">Patient view</button></div><div class="search-wrap"><span>\u2315</span><input id="trkQ" type="search" placeholder="Search patient, embryo or sample ID\u2026" value="${esc(q)}" autocomplete="off"></div><select id="trkTestF" class="trk-filter-sel"><option value="">All tests</option>${selOpts(tests,filterTest)}</select><select id="trkSeqF" class="trk-filter-sel"><option value="">All sequencers</option>${selOpts(seqs,filterSeq)}</select>${(filterTest||filterSeq)?'<button type="button" class="trk-clear-filters">Clear filters</button>':''}</div>
   ${stage?`<div class="trk-filter-chip">Showing ${stage==='processed'?'processed':'reports released'} only <button type="button" id="trkClearFilter">\u00d7 Clear</button></div>`:''}
   ${table||`<div class="tk-empty"><h3>${items.length?'Nothing here':'No embryos yet'}</h3><p>${items.length?'Try another search.':'Embryos appear here once your samples are in our sheet.'}</p></div>`}`;
   card.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{view=b.dataset.v;draw()});
@@ -554,7 +557,10 @@ window.renderEmbryoTracker=async function(g){
   const clr=card.querySelector('#trkClearFilter');if(clr)clr.onclick=()=>{stage='';draw()};
   card.querySelectorAll('.trk-erow').forEach(r=>r.onclick=()=>trkHistory([list[+r.dataset.n]]));
   card.querySelectorAll('.trk-prow').forEach(r=>r.onclick=()=>trkHistory(items.filter(i=>i.patient.trim().toUpperCase()===r.dataset.p.trim().toUpperCase()).sort((x,y)=>x.embryo.localeCompare(y.embryo,undefined,{numeric:true})),r.dataset.p));
-  const inp=card.querySelector('#trkQ');if(inp){inp.oninput=()=>{q=inp.value;const pos=inp.selectionStart;draw();const n=card.querySelector('#trkQ');n.focus();n.setSelectionRange(pos,pos)}}};
+  const inp=card.querySelector('#trkQ');if(inp){inp.oninput=()=>{q=inp.value;const pos=inp.selectionStart;draw();const n=card.querySelector('#trkQ');n.focus();n.setSelectionRange(pos,pos)}}
+  const tf=card.querySelector('#trkTestF');if(tf)tf.onchange=()=>{filterTest=tf.value;draw()};
+  const sf=card.querySelector('#trkSeqF');if(sf)sf.onchange=()=>{filterSeq=sf.value;draw()};
+  const cf=card.querySelector('.trk-clear-filters');if(cf)cf.onclick=()=>{filterTest='';filterSeq='';draw()}};
  draw()};
 
 // ---------------- Patient page section ----------------
