@@ -507,7 +507,7 @@ window.renderClientHome=async function(g){
  const steps=HOME_STEPS.map(([icon,label,desc])=>`<div class="home-step"><img src="/static/assets/icons/${icon}.png" alt=""><strong>${esc(label)}</strong><small>${esc(desc)}</small></div>`).join('');
  const _testCard=t=>`<div class="home-test-card"><div class="home-test-card-head"><img class="home-test-card-img" src="/static/assets/icons/${t.icon}.png" alt=""></div><div class="home-test-card-body"><p class="home-test-card-name">${esc(t.name)}</p><p class="home-test-card-q">${esc(t.q)}</p><p class="home-test-card-desc">${esc(t.desc)}</p>${t.note?`<p class="home-test-card-note">${esc(t.note)}</p>`:''}</div></div>`;
  const allTestCards=[...HOME_TESTS,...HOME_TESTS_PAIR].map(_testCard).join('');
- card.innerHTML=`<div class="home-hero"><p class="home-hero-eyebrow">Anderson Diagnostics &amp; Labs</p><h1>Welcome${clinic?`, <span>${esc(clinic)}</span>`:''}</h1></div>
+ card.innerHTML=`<div class="home-hero"><p class="home-hero-welcome">Welcome</p><h1>${clinic?`<span>${esc(clinic)}</span>`:'to EmbryoMatrix'}</h1><div class="home-hero-line"></div></div>
  <div class="home-tests-section"><h2 class="home-tests-heading">Tests by Anderson</h2><div class="home-test-grid">${allTestCards}</div></div>
  <div class="home-steps-card"><h3>How a PGT-A sample moves through our lab</h3><div class="home-steps">${steps}</div></div>`;
  card.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>showView(b.dataset.go));

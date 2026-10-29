@@ -2411,11 +2411,13 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .trk-table td .ptrack{min-width:460px}
 @media(max-width:700px){.trk-mtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.trk-mtop .trk-eta{margin-left:auto}}
 /* Client home page */
-.home-hero{margin:0 0 24px;background:linear-gradient(120deg,#0a3d4a,#0a7180);border-radius:16px;padding:36px 40px;position:relative;overflow:hidden;text-align:center}
-.home-hero::after{content:'';position:absolute;right:-60px;top:-60px;width:280px;height:280px;background:radial-gradient(circle,rgba(255,255,255,.07),transparent 70%);pointer-events:none}
-.home-hero-eyebrow{font:700 10px "Inter";letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.6);margin:0 0 10px}
-.home-hero h1{font:500 34px "Lora";margin:0;color:#fff;letter-spacing:-.3px}
-.home-hero h1 span{color:#5ecaa8}
+.home-hero{margin:0 0 24px;background:linear-gradient(135deg,#072d38 0%,#0a5464 50%,#0a7180 100%);border-radius:18px;padding:44px 48px;position:relative;overflow:hidden;text-align:center}
+.home-hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='30' cy='30' r='1' fill='rgba(255,255,255,0.04)'/%3E%3C/svg%3E");pointer-events:none}
+.home-hero::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:500px;height:200px;background:radial-gradient(ellipse,rgba(94,202,168,.12),transparent 70%);pointer-events:none}
+.home-hero-welcome{font:400 italic 15px "Lora";color:rgba(255,255,255,.65);margin:0 0 6px;letter-spacing:.3px}
+.home-hero h1{font:600 42px "Lora";margin:0 0 16px;color:#fff;letter-spacing:-.5px;position:relative;z-index:1}
+.home-hero h1 span{color:#5ecaa8;font-style:italic}
+.home-hero-line{width:48px;height:2.5px;background:linear-gradient(90deg,#5ecaa8,rgba(94,202,168,0));border-radius:2px;margin:0 auto}
 .home-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin:26px 0}
 .home-tile{display:flex;flex-direction:column;align-items:flex-start;gap:0;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:16px;padding:22px 22px 18px;cursor:pointer;box-shadow:var(--shadow);font:inherit;transition:box-shadow .18s,border-color .18s,background .18s;position:relative;overflow:hidden}
 .home-tile::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#3daf88,#5ecaa8);opacity:0;transition:opacity .18s}
