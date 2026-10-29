@@ -1258,7 +1258,7 @@ function applyRoleAccess(){
   // Non-client: drop the sidebar rail when only one top-level item is visible.
   if(r!=='embryologist'){const topItems=[...document.querySelectorAll('.topnav > .nav-item')].filter(n=>!n.hidden);if(topItems.length<=1)document.body.classList.remove('sidebar-nav');}
 }
-function showView(view){if(!viewAllowed(view))view=roleHomeView();
+function showView(view){closeQcPanel();if(!viewAllowed(view))view=roleHomeView();
  {const gt=$('#genericHeaderTitle');if(gt)gt.textContent=''}  // header buttons (Image vault, Protocols) belong to one view only
  let scope='';if(view==='pgtm'){view='samples';scope='pgtm'}if(!scope)pgtmCard=null;
  if(view==='samples'||view==='cases'){const changed=samplesScope!==scope;samplesScope=scope;const h=$('#registryHeaderLeft h2');if(h?.firstChild)h.firstChild.nodeValue=scope?'Add-on tests samples':'Patient & embryo registry';$('#registryHeaderLeft')?.classList.toggle('no-title',!scope);if(changed){refreshTestFilterOptions();const sms=$('#samplesMonthFilter');if(sms){if(scope){pgtmSavedMonth=sms.value;sms.value=allEmbryos().some(e=>isPgtmSample(e)&&recordMonth(e)==='Pending')?'Pending':''}else if(pgtmSavedMonth!==null){sms.value=pgtmSavedMonth;pgtmSavedMonth=null}}renderCases()}}
