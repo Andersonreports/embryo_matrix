@@ -511,7 +511,7 @@ window.renderClientHome=async function(g){
  const _heroRight=_brand?.logo
    ?`<img src="${_brand.logo}" alt="${esc(clinic)}" class="home-hero-logo">`
    :`<div class="home-hero-deco"><svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="10" stroke="white" stroke-width="2" opacity=".9"/><circle cx="24" cy="24" r="18" stroke="white" stroke-width="1.2" opacity=".4"/><circle cx="24" cy="24" r="4" fill="white" opacity=".9"/><line x1="24" y1="6" x2="24" y2="14" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".6"/><line x1="24" y1="34" x2="24" y2="42" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".6"/><line x1="6" y1="24" x2="14" y2="24" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".6"/><line x1="34" y1="24" x2="42" y2="24" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".6"/></svg></div>`;
- card.innerHTML=`<div class="home-hero"><div class="home-hero-text"><p class="home-hero-welcome">Welcome to EmbryoMatrix</p><h1>${clinic?`<span>${esc(clinic)}</span>`:'Your Portal'}</h1></div>${_heroRight}</div>
+ card.innerHTML=`<div class="home-hero"><div class="home-hero-text"><h1>${clinic?`Welcome, <span>${esc(clinic)}</span>!`:'Welcome to EmbryoMatrix'}</h1></div>${_heroRight}</div>
  <div class="home-tests-section"><h2 class="home-tests-heading">Tests by Anderson</h2><div class="home-test-grid">${allTestCards}</div></div>
  <div class="home-steps-card"><h3>How a PGT-A sample moves through our lab</h3><div class="home-steps">${steps}</div></div>`;
  card.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>showView(b.dataset.go));
