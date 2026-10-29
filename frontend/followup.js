@@ -508,9 +508,8 @@ window.renderClientHome=async function(g){
  const testCards=HOME_TESTS.map(t=>`<div class="home-test-card"><img class="home-test-card-img" src="/static/assets/icons/${t.icon}.png" alt=""><div class="home-test-card-body"><p class="home-test-card-name">${esc(t.name)}</p><p class="home-test-card-q">${esc(t.q)}</p><p class="home-test-card-desc">${esc(t.desc)}</p><p class="home-test-card-note">${esc(t.note)}</p></div></div>`).join('');
  const pairCards=HOME_TESTS_PAIR.map(t=>`<div class="home-test-card compact"><img class="home-test-card-img" src="/static/assets/icons/${t.icon}.png" alt=""><div class="home-test-card-body"><p class="home-test-card-name">${esc(t.name)}</p><p class="home-test-card-desc">${esc(t.desc)}</p></div></div>`).join('');
  card.innerHTML=`<div class="home-hero"><h1>${clinic?`Welcome, ${esc(clinic)}`:'Welcome'}</h1><p>Complete transparency, every step of the way - track every embryo you've sent us from the moment it arrives to the day your report is sent, with no phone calls needed.</p></div>
- <div class="home-tiles">${tiles}</div>
- <div class="home-steps-card"><h3>How a PGT-A sample moves through our lab</h3><div class="home-steps">${steps}</div></div>
- <div class="home-tests-section"><p class="home-tests-eyebrow">Testing with purpose</p><h2 class="home-tests-heading">The right test starts with the right question.</h2><p class="home-tests-sub">A focused answer for each family, with workup and counselling where needed.</p><div class="home-test-list">${testCards}<div class="home-test-pair">${pairCards}</div></div></div>`;
+ <div class="home-tests-section"><p class="home-tests-eyebrow">Testing with purpose</p><h2 class="home-tests-heading">The right test starts with the right question.</h2><p class="home-tests-sub">A focused answer for each family, with workup and counselling where needed.</p><div class="home-test-list">${testCards}<div class="home-test-pair">${pairCards}</div></div></div>
+ <div class="home-steps-card"><h3>How a PGT-A sample moves through our lab</h3><div class="home-steps">${steps}</div></div>`;
  card.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>showView(b.dataset.go));
 };
 window.renderEmbryoTracker=async function(g){
