@@ -1,6 +1,0 @@
-{
-  "ServerUrl": "https://tracker.example.com",
-  "SyncKey": "paste IMAGE_SYNC_TOKEN from the server's .env here",
-  "Destination": "D:\\EmbryoMatrix",
-  "IntervalMinutes": 5
-}
