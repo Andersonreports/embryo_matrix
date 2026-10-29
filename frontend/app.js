@@ -1241,7 +1241,7 @@ const ROLE_VIEWS={member:['samples','pgtm','cases','images','batches','trfs'],em
 // Per-client white-label branding. Keys must match currentUser.clientLabel (case-insensitive).
 // logo: path under /static/; bg/text: topbar override colors.
 const CLIENT_BRANDS={
-  'oasis fertility':{logo:'/static/assets/logos/oasis-fertility.png',bg:'#6B3FA0',text:'#fff'},
+  'oasis fertility':{logo:'/static/assets/logos/oasis-fertility.jpeg',bg:'#7B3F8C',text:'#fff'},
   'mamta hospital':{logo:'/static/assets/logos/mamta-hospital.png',bg:'#1a6b8a',text:'#fff'},
 };
 const viewAllowed=v=>{const r=currentUser.role;if(v==='users')return !currentUser.signedIn||canManageUsers();return !currentUser.signedIn||!ROLE_VIEWS[r]&&isStaff()||!!ROLE_VIEWS[r]&&ROLE_VIEWS[r].includes(v)};
