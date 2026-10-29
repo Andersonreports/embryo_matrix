@@ -2411,7 +2411,7 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .trk-table td .ptrack{min-width:460px}
 @media(max-width:700px){.trk-mtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.trk-mtop .trk-eta{margin-left:auto}}
 /* Client home page */
-.home-hero{margin:0 0 24px;background:linear-gradient(120deg,#0a3d4a,#0a7180);border-radius:16px;padding:36px 40px;position:relative;overflow:hidden}
+.home-hero{margin:0 0 24px;background:linear-gradient(120deg,#0a3d4a,#0a7180);border-radius:16px;padding:36px 40px;position:relative;overflow:hidden;text-align:center}
 .home-hero::after{content:'';position:absolute;right:-60px;top:-60px;width:280px;height:280px;background:radial-gradient(circle,rgba(255,255,255,.07),transparent 70%);pointer-events:none}
 .home-hero-eyebrow{font:700 10px "Inter";letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.6);margin:0 0 10px}
 .home-hero h1{font:500 34px "Lora";margin:0;color:#fff;letter-spacing:-.3px}
@@ -2752,14 +2752,14 @@ body::after{content:"";position:fixed;top:50%;left:50%;width:var(--wm-width);hei
 /* ===== Client home: tests we offer ===== */
 .home-tests-section{margin-top:28px}
 .home-tests-eyebrow{font:700 10px "Inter";letter-spacing:1.3px;color:#0a7180;text-transform:uppercase;margin:0 0 8px}
-.home-tests-heading{font:500 24px "Lora";color:var(--ink);margin:0 0 4px}
+.home-tests-heading{font:500 24px "Lora";color:var(--ink);margin:0 0 16px;text-align:center}
 .home-tests-sub{font-size:13.5px;color:var(--muted);margin:0 0 20px;line-height:1.5}
 /* single 5-col row for all tests */
 .home-test-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
 .home-test-card{display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
 .home-test-card-head{display:flex;align-items:center;justify-content:center;padding:20px 16px 16px;background:linear-gradient(145deg,#e8f5f3,#f4faf8)}
 .home-test-card-img{width:68px;height:68px;object-fit:contain}
-.home-test-card-body{flex:1;display:flex;flex-direction:column;gap:4px;padding:14px 16px 16px}
+.home-test-card-body{flex:1;display:flex;flex-direction:column;gap:4px;padding:14px 16px 16px;text-align:center}
 .home-test-card-name{font:700 14px "Inter";color:#0a4a56;margin:0}
 .home-test-card-q{font-style:italic;font-size:12px;color:#0a7180;font-weight:600;margin:0;line-height:1.4}
 .home-test-card-desc{font-size:12px;color:var(--ink);line-height:1.5;margin:4px 0 0}

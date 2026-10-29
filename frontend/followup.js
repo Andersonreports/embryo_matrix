@@ -495,8 +495,8 @@ const HOME_TESTS=[
  {icon:'tests-transfers__pgt-sr',name:'PGT-SR',q:'Has the embryo inherited an unbalanced rearrangement?',desc:'Checks for extra or missing chromosome material linked to the known rearrangement.',note:'Parental karyotype review comes first.'},
  {icon:'tests-transfers__pgt-m',name:'PGT-M',q:'Has a known familial condition been inherited?',desc:'A family-specific assay checks the disease-causing variant and linked markers as appropriate.',note:'Complete the custom workup before the IVF cycle.'}];
 const HOME_TESTS_PAIR=[
- {icon:'tests-transfers__embryosure',name:'EmbryoSure',desc:'CNV + SNP analysis adds ploidy, contamination and parental-origin insights within the agreed assay scope.'},
- {icon:'departments__hla',name:'PGT-M + HLA',desc:'Assesses the familial condition and HLA compatibility with an affected sibling, with specialist planning.'}];
+ {icon:'tests-transfers__embryosure',name:'EmbryoSure',q:'What deeper insights can your sample provide?',desc:'CNV + SNP analysis adds ploidy, contamination and parental-origin insights within the agreed assay scope.'},
+ {icon:'departments__hla',name:'PGT-M + HLA',q:'Is HLA compatibility also needed?',desc:'Assesses the familial condition and HLA compatibility with an affected sibling, with specialist planning.'}];
 window.renderClientHome=async function(g){
  const ht=document.getElementById('genericHeaderTitle');if(ht)ht.textContent='';
  const mh=document.getElementById('mainHeader');if(mh)mh.classList.add('hidden');
@@ -505,7 +505,8 @@ window.renderClientHome=async function(g){
  const clinic=(typeof currentUser!=='undefined'&&currentUser.clientLabel)||'';
  const tiles=HOME_TILES.map(([view,title,desc,icon])=>`<button type="button" class="home-tile" data-go="${view}"><span class="home-tile-icon"><img src="/static/assets/icons/${icon}.png" alt=""></span><span class="home-tile-text"><strong>${esc(title)}</strong><small>${esc(desc)}</small></span><span class="home-tile-arrow">→</span></button>`).join('');
  const steps=HOME_STEPS.map(([icon,label,desc])=>`<div class="home-step"><img src="/static/assets/icons/${icon}.png" alt=""><strong>${esc(label)}</strong><small>${esc(desc)}</small></div>`).join('');
- const allTestCards=[...HOME_TESTS.map(t=>`<div class="home-test-card"><div class="home-test-card-head"><img class="home-test-card-img" src="/static/assets/icons/${t.icon}.png" alt=""></div><div class="home-test-card-body"><p class="home-test-card-name">${esc(t.name)}</p><p class="home-test-card-q">${esc(t.q)}</p><p class="home-test-card-desc">${esc(t.desc)}</p><p class="home-test-card-note">${esc(t.note)}</p></div></div>`),...HOME_TESTS_PAIR.map(t=>`<div class="home-test-card"><div class="home-test-card-head"><img class="home-test-card-img" src="/static/assets/icons/${t.icon}.png" alt=""></div><div class="home-test-card-body"><p class="home-test-card-name">${esc(t.name)}</p><p class="home-test-card-desc">${esc(t.desc)}</p></div></div>`)].join('');
+ const _testCard=t=>`<div class="home-test-card"><div class="home-test-card-head"><img class="home-test-card-img" src="/static/assets/icons/${t.icon}.png" alt=""></div><div class="home-test-card-body"><p class="home-test-card-name">${esc(t.name)}</p><p class="home-test-card-q">${esc(t.q)}</p><p class="home-test-card-desc">${esc(t.desc)}</p>${t.note?`<p class="home-test-card-note">${esc(t.note)}</p>`:''}</div></div>`;
+ const allTestCards=[...HOME_TESTS,...HOME_TESTS_PAIR].map(_testCard).join('');
  card.innerHTML=`<div class="home-hero"><p class="home-hero-eyebrow">Anderson Diagnostics &amp; Labs</p><h1>Welcome${clinic?`, <span>${esc(clinic)}</span>`:''}</h1></div>
  <div class="home-tests-section"><h2 class="home-tests-heading">Tests by Anderson</h2><div class="home-test-grid">${allTestCards}</div></div>
  <div class="home-steps-card"><h3>How a PGT-A sample moves through our lab</h3><div class="home-steps">${steps}</div></div>`;
