@@ -2414,8 +2414,8 @@ body.role-coordinator #patientDetail .patient-detail-v2{padding-bottom:6px}
 .home-hero{margin:0 0 24px;background:linear-gradient(130deg,#0a3d4a 0%,#0a6070 55%,#0d9090 100%);border-radius:18px;padding:32px 44px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:32px;min-height:148px;box-shadow:0 6px 28px rgba(10,60,74,.28)}
 .home-hero::before{content:'';position:absolute;right:-80px;bottom:-80px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.06),transparent 65%);pointer-events:none}
 .home-hero-text{position:relative;z-index:1}
-.home-hero h1{font:500 40px "Lora";margin:0;color:#fff;letter-spacing:-.4px;line-height:1.1}
-.home-hero h1 span{color:#7de8cc}
+.home-hero h1{font:500 40px "Lora";margin:0;color:rgba(255,255,255,.7);letter-spacing:-.4px;line-height:1.1}
+.home-hero h1 span{color:#fff;font-weight:700}
 .home-hero-deco{position:relative;z-index:1;flex-shrink:0;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.3);display:grid;place-items:center;backdrop-filter:blur(6px)}
 .home-hero-deco svg{width:44px;height:44px}
 .home-hero-logo{height:108px;width:200px;object-fit:contain;flex-shrink:0;border-radius:14px;background:#fff;padding:12px 20px;box-shadow:0 6px 24px rgba(0,0,0,.22)}
