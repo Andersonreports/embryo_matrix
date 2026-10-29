@@ -1238,6 +1238,12 @@ const isStaff=()=>!currentUser.signedIn||['admin','senior_executive','team_lead'
 const canEditResults=()=>!currentUser.signedIn||['admin','senior_executive'].includes(currentUser.role);
 const canManageUsers=()=>currentUser.signedIn&&['admin','senior_executive'].includes(currentUser.role);
 const ROLE_VIEWS={member:['samples','pgtm','cases','images','batches','trfs'],embryologist:['fuHome','fuTrack','fuTasks','fuDash','trfs'],coordinator:['coord']};
+// Per-client white-label branding. Keys must match currentUser.clientLabel (case-insensitive).
+// logo: path under /static/; bg/text: topbar override colors.
+const CLIENT_BRANDS={
+  'oasis fertility':{logo:'/static/assets/logos/oasis-fertility.png',bg:'#6B3FA0',text:'#fff'},
+  'mamta hospital':{logo:'/static/assets/logos/mamta-hospital.png',bg:'#1a6b8a',text:'#fff'},
+};
 const viewAllowed=v=>{const r=currentUser.role;if(v==='users')return !currentUser.signedIn||canManageUsers();return !currentUser.signedIn||!ROLE_VIEWS[r]&&isStaff()||!!ROLE_VIEWS[r]&&ROLE_VIEWS[r].includes(v)};
 const roleHomeView=()=>(ROLE_VIEWS[currentUser.role]||[])[0]||'home';
 function applyRoleAccess(){
@@ -1253,7 +1259,17 @@ function applyRoleAccess(){
   // Home page - keeping them in the sidebar too would just be the same four links twice.
   // Client: hide only the Home nav button (they land there and navigate via tiles); keep the
   // other four visible so the second-row bar works. Always drop the sidebar rail for clients.
-  if(r==='embryologist'){document.body.classList.remove('sidebar-nav');window._noSidebar=true;document.querySelectorAll('.nav-sub').forEach(n=>n.hidden=true);}
+  if(r==='embryologist'){
+    document.body.classList.remove('sidebar-nav');window._noSidebar=true;document.querySelectorAll('.nav-sub').forEach(n=>n.hidden=true);
+    const brand=CLIENT_BRANDS[(currentUser.clientLabel||'').toLowerCase().trim()]||null;
+    window._clientBrand=brand;
+    if(brand){
+      const tb=document.querySelector('.topbar');
+      if(tb){tb.style.background=brand.bg;tb.style.color=brand.text;}
+      const bl=document.querySelector('.brand');
+      if(bl){bl.style.color=brand.text;}
+    }
+  }
   document.querySelectorAll('.session-menu-item[data-view],#qcAlerts,.import-data-btn').forEach(n=>{if(!ROLE_VIEWS[r].includes(n.dataset.view))n.style.display='none'});
   // Non-client: drop the sidebar rail when only one top-level item is visible.
   if(r!=='embryologist'){const topItems=[...document.querySelectorAll('.topnav > .nav-item')].filter(n=>!n.hidden);if(topItems.length<=1)document.body.classList.remove('sidebar-nav');}
