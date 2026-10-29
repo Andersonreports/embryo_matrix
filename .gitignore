@@ -34,3 +34,11 @@ apps_script/Code.deploy.gs
 others/reports/
 others/documents/
 others/icon-library/
+
+# workspace/ local-only folders (patient data, DB backups, reference files)
+workspace/data/
+workspace/images/
+workspace/ICONS/
+workspace/documents/
+workspace/start-demo.sh
+workspace/start.bat
