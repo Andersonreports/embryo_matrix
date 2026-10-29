@@ -8,6 +8,12 @@
 (function(){
  const NAV_LAYOUT='sidebar'; // 'topbar' = original top navigation
  if(NAV_LAYOUT!=='sidebar')return;
+ // Skip the rail entirely for client logins. Two guards cover both race directions:
+ //   fast whoami (resolves before this script): applyRoleAccess sets window._noSidebar
+ //   slow whoami (resolves after this script):  applyRoleAccess removes class + hides .nav-sub
+ if(window._noSidebar)return;
+ const _cr=(()=>{try{return sessionStorage.getItem('em-role')||''}catch{return ''}})();
+ if(_cr==='embryologist')return;
  document.body.classList.add('sidebar-nav');
  const nav=document.querySelector('.topnav'),topbar=document.querySelector('.topbar');
  if(!nav||!topbar||nav._hier)return;
