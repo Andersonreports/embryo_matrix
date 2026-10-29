@@ -491,9 +491,9 @@ const HOME_STEPS=[
  ['stages__report-preparation','Report preparation','Our team reviews the results and writes up your report.'],
  ['stages__report-send','Report sent','Your report is sent to your center - the same moment it shows here.']];
 const HOME_TESTS=[
- {icon:'tests-transfers__pgt-a',name:'PGT-A',q:'Are there chromosome gains or losses?',desc:'NGS assesses chromosome copy number in the embryo biopsy.',note:'Chromosome screening; suitability is individualised.'},
- {icon:'tests-transfers__pgt-sr',name:'PGT-SR',q:'Has the embryo inherited an unbalanced rearrangement?',desc:'Checks for extra or missing chromosome material linked to the known rearrangement.',note:'Parental karyotype review comes first.'},
- {icon:'tests-transfers__pgt-m',name:'PGT-M',q:'Has a known familial condition been inherited?',desc:'A family-specific assay checks the disease-causing variant and linked markers as appropriate.',note:'Complete the custom workup before the IVF cycle.'}];
+ {icon:'tests-transfers__pgt-a',name:'PGT-A',q:'Are there chromosome gains or losses?',desc:'NGS assesses chromosome copy number in the embryo biopsy.'},
+ {icon:'tests-transfers__pgt-sr',name:'PGT-SR',q:'Has the embryo inherited an unbalanced rearrangement?',desc:'Checks for extra or missing chromosome material linked to the known rearrangement.'},
+ {icon:'tests-transfers__pgt-m',name:'PGT-M',q:'Has a known familial condition been inherited?',desc:'A family-specific assay checks the disease-causing variant and linked markers as appropriate.'}];
 const HOME_TESTS_PAIR=[
  {icon:'tests-transfers__embryosure',name:'EmbryoSure',q:'What deeper insights can your sample provide?',desc:'CNV + SNP analysis adds ploidy, contamination and parental-origin insights within the agreed assay scope.'},
  {icon:'departments__hla',name:'PGT-M + HLA',q:'Is HLA compatibility also needed?',desc:'Assesses the familial condition and HLA compatibility with an affected sibling, with specialist planning.'}];
@@ -505,7 +505,7 @@ window.renderClientHome=async function(g){
  const clinic=(typeof currentUser!=='undefined'&&currentUser.clientLabel)||'';
  const tiles=HOME_TILES.map(([view,title,desc,icon])=>`<button type="button" class="home-tile" data-go="${view}"><span class="home-tile-icon"><img src="/static/assets/icons/${icon}.png" alt=""></span><span class="home-tile-text"><strong>${esc(title)}</strong><small>${esc(desc)}</small></span><span class="home-tile-arrow">→</span></button>`).join('');
  const steps=HOME_STEPS.map(([icon,label,desc])=>`<div class="home-step"><img src="/static/assets/icons/${icon}.png" alt=""><strong>${esc(label)}</strong><small>${esc(desc)}</small></div>`).join('');
- const _testCard=t=>`<div class="home-test-card"><div class="home-test-card-head"><img class="home-test-card-img" src="/static/assets/icons/${t.icon}.png" alt=""></div><div class="home-test-card-body"><p class="home-test-card-name">${esc(t.name)}</p><p class="home-test-card-q">${esc(t.q)}</p><p class="home-test-card-desc">${esc(t.desc)}</p>${t.note?`<p class="home-test-card-note">${esc(t.note)}</p>`:''}</div></div>`;
+ const _testCard=t=>`<div class="home-test-card"><div class="home-test-card-head"><img class="home-test-card-img" src="/static/assets/icons/${t.icon}.png" alt=""></div><div class="home-test-card-body"><p class="home-test-card-name">${esc(t.name)}</p><p class="home-test-card-q">${esc(t.q)}</p><p class="home-test-card-desc">${esc(t.desc)}</p></div></div>`;
  const allTestCards=[...HOME_TESTS,...HOME_TESTS_PAIR].map(_testCard).join('');
  const _brand=window._clientBrand||null;
  const _decoInner=_brand?.logo
