@@ -24,15 +24,7 @@
       --topbar-h: 60px;
     }
 
-@font-face { font-family: 'SegoeUI'; src: url('/pgta-fonts/SEGOEUI.TTF'); }
-
-@font-face { font-family: 'SegoeUI-Bold'; src: url('/pgta-fonts/SEGOEUIB.TTF'); }
-
-@font-face { font-family: 'GillSansMT-Bold'; src: url('/pgta-fonts/GILB____.TTF'); }
-
-@font-face { font-family: 'Calibri'; src: url('/pgta-fonts/CALIBRI.TTF'); }
-
-@font-face { font-family: 'Calibri-Bold'; src: url('/pgta-fonts/CALIBRIB.TTF'); }
+/* Fonts are used server-side (PDF generation) only — not loaded in the browser */
 
 .pgta-view body.loaded {
       opacity: 1;
