@@ -1344,7 +1344,7 @@
           const embryoId  = _g(["sample id","sample no","box number","embryo id","embryo name"]) || `PS${i + 1}`;
           const resultSum = _g(["result summary","result"]) || RESULT_SUMMARY_OPTIONS[0];
           const interp    = _g(["interpretation"]) || "NA";
-          const mtcopy    = _g(["mt copy","mtcopy"]) || "NA";
+          const mtcopy    = _g(["mtcopy"]) || "NA";
           const autosomes = _g(["autosomes","autosome"]) || "Normal";
           const sexChrom  = _g(["sex chromosomes","sex chromosome","sex"]) || "Normal";
           const karyo     = _g(["karyotype","karyotype mwf"]);
@@ -1680,7 +1680,7 @@
               result_description: summaryToDescription(rs),
               autosomes: autosomes,
               sex_chromosomes: sexChrom,
-              mtcopy: _fe(["mt copy","mtcopy"]) || "NA",
+              mtcopy: _fe(["mtcopy"]) || "NA",
               interpretation: _fe(["interpretation"]) || "NA",
               chromosome_statuses: chrStatuses,
               mosaic_percentages: mosaicPcts,
