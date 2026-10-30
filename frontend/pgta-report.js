@@ -103,9 +103,14 @@
       document.querySelectorAll(".tab-content").forEach(t => t.classList.remove("active"));
       document.querySelector(`.tab[data-tab="${tab}"]`).classList.add("active");
       document.getElementById(`tab-${tab}`).classList.add("active");
-      
+
       const sidebar = document.getElementById("previewSidebar");
       if (sidebar) sidebar.style.display = (tab === "manual") ? "flex" : "none";
+
+      // Update session-strip title to reflect active tab
+      const tabTitles = { manual: "Single Entry", bulk: "Bulk Entry", compare: "Report Comparison" };
+      const strip = document.getElementById("viewTitleStrip");
+      if (strip) strip.textContent = tabTitles[tab] || "Report Preparation";
     }
 
     
@@ -1329,40 +1334,48 @@
 
     let _pfLastPatients = [];
 
-    function _pfRenderModalList(patients) {
-      const listEl = document.getElementById("pfModalList");
-      listEl.innerHTML = "";
+    function _pfRenderDropdown(patients) {
+      const dd = document.getElementById("pfDropdown");
+      if (!dd) return;
+      dd.innerHTML = "";
       if (!patients.length) {
-        listEl.innerHTML = '<div style="padding:10px;font-size:12px;color:#64748b;">No matching patients.</div>';
+        dd.innerHTML = '<div class="pf-dd-empty">No matching patients</div>';
+        dd.style.display = "block";
         return;
       }
       patients.forEach(p => {
         const item = document.createElement("button");
         item.type = "button";
-        item.textContent = `${p.patient_name} - ${p.gender || ""}/${p.age ?? ""} - ${p.patient_no} - ${(p.sample_receipt_date || "").split(" ")[0]}`;
-        item.style.cssText = "text-align:left;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;width:100%;transition:0.12s;";
-        item.onmouseover = () => item.style.background = "#f0f4f8";
-        item.onmouseout = () => item.style.background = "#fff";
-        item.onclick = () => _pfApplyPatient(p);
-        listEl.appendChild(item);
+        item.className = "pf-dd-item";
+        const detail = [p.patient_no, p.age ? `${p.age}y` : "", p.client_name, p.test].filter(Boolean).join(" · ");
+        item.innerHTML = `<div class="pf-dd-name">${esc(p.patient_name)}</div><div class="pf-dd-detail">${esc(detail)}</div>`;
+        item.onmousedown = e => {
+          e.preventDefault();
+          _pfApplyPatient(p);
+          dd.style.display = "none";
+          const inp = document.getElementById("pfSearch");
+          if (inp) inp.value = p.patient_name;
+        };
+        dd.appendChild(item);
       });
+      dd.style.display = "block";
     }
 
-    function _pfFilterModalList(query) {
-      const q = (query || "").trim().toLowerCase();
-      if (!q) { _pfRenderModalList(_pfLastPatients); return; }
-      const filtered = _pfLastPatients.filter(p =>
-        (p.patient_name || "").toLowerCase().includes(q) ||
-        (p.patient_no || "").toLowerCase().includes(q)
-      );
-      _pfRenderModalList(filtered);
+    function _pfDropdownBlur() {
+      setTimeout(() => {
+        const dd = document.getElementById("pfDropdown");
+        if (dd) dd.style.display = "none";
+      }, 150);
     }
 
     // Build patient list from the sheet data already loaded in EmbryoMatrix (global `cases` array)
-    function _pfSheetPatients(query, testFilter) {
+    function _pfSheetPatients(query, testFilter, monthFilter, yearFilter, clientFilter) {
       const q = (query || "").trim().toLowerCase();
       const tf = (testFilter || "").trim().toLowerCase();
-      if (!q && !tf) return [];
+      const mf = (monthFilter || "").trim();
+      const yf = (yearFilter || "").trim();
+      const cf = (clientFilter || "").trim().toLowerCase();
+      if (!q && !tf && !mf && !yf && !cf) return [];
       const src = (typeof cases !== "undefined" && Array.isArray(cases)) ? cases : [];
       const results = [];
       for (const c of src) {
@@ -1370,7 +1383,19 @@
         if (!name) continue;
         const clientName = c.client || "";
         const testName = (c.test || "").toLowerCase();
-        if (tf && !testName.includes(tf.toLowerCase())) continue;
+        if (tf && !testName.includes(tf)) continue;
+        if (cf && !clientName.toLowerCase().includes(cf)) continue;
+        if (mf || yf) {
+          const e0 = c.embryos?.[0] || {};
+          const dateStr = e0["date sample received"] || e0["date sample collected"] || "";
+          if (dateStr) {
+            const d = new Date(dateStr);
+            if (!isNaN(d)) {
+              if (yf && String(d.getFullYear()) !== yf) continue;
+              if (mf && String(d.getMonth() + 1).padStart(2, "0") !== mf) continue;
+            } else { continue; }
+          } else { continue; }
+        }
         const matchesQ = !q ||
           name.toLowerCase().includes(q) ||
           (c.id || "").toLowerCase().includes(q) ||
@@ -1391,34 +1416,60 @@
           client_name: clientName,
           test: c.test || "",
         });
-        if (results.length >= 50) break;
+        if (results.length >= 80) break;
       }
       return results;
     }
 
+    function pfRunFilters() {
+      pfLiveSearch(document.getElementById("pfSearch")?.value || "");
+    }
+
     function pfLiveSearch(query) {
-      const testFilter = document.getElementById("pfTestFilter")?.value || "";
+      const testFilter   = document.getElementById("pfTestFilter")?.value || "";
+      const monthFilter  = document.getElementById("pfMonthFilter")?.value || "";
+      const yearFilter   = document.getElementById("pfYearFilter")?.value || "";
+      const clientFilter = document.getElementById("pfClientFilter")?.value || "";
       const statusEl = document.getElementById("pfStatus");
       const q = (query || "").trim();
-      if (q.length < 2 && !testFilter) {
+      const hasFilter = testFilter || monthFilter || yearFilter || clientFilter;
+      if (q.length < 2 && !hasFilter) {
         _pfLastPatients = [];
-        document.getElementById("pfModalOverlay").style.display = "none";
+        const dd = document.getElementById("pfDropdown");
+        if (dd) dd.style.display = "none";
         if (statusEl) statusEl.textContent = "";
         return;
       }
-      const patients = _pfSheetPatients(q, testFilter);
+      const patients = _pfSheetPatients(q, testFilter, monthFilter, yearFilter, clientFilter);
       _pfLastPatients = patients;
       if (statusEl) statusEl.textContent = patients.length ? `${patients.length} found` : "No matches";
-      const searchEl = document.getElementById("pfModalSearch");
-      if (searchEl) searchEl.value = "";
-      _pfRenderModalList(patients);
-      const overlay = document.getElementById("pfModalOverlay");
-      const inputEl = document.getElementById("pfSearch");
-      if (inputEl && overlay) {
-        const rect = inputEl.getBoundingClientRect();
-        overlay.style.top = (window.scrollY + rect.bottom + 4) + "px";
-        overlay.style.left = (window.scrollX + rect.left) + "px";
-        overlay.style.display = patients.length ? "block" : "none";
+      _pfRenderDropdown(patients);
+    }
+
+    function _pfPopulateFilters() {
+      const src = (typeof cases !== "undefined" && Array.isArray(cases)) ? cases : [];
+      const clients = [...new Set(src.map(c => c.client).filter(Boolean))].sort();
+      const clientSel = document.getElementById("pfClientFilter");
+      if (clientSel) {
+        clientSel.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
+        clients.forEach(v => clientSel.add(new Option(v, v)));
+      }
+      const years = new Set(), months = new Set();
+      for (const c of src) {
+        const e0 = c.embryos?.[0] || {};
+        const ds = e0["date sample received"] || e0["date sample collected"] || "";
+        if (ds) { const d = new Date(ds); if (!isNaN(d)) { years.add(String(d.getFullYear())); months.add(String(d.getMonth() + 1).padStart(2, "0")); } }
+      }
+      const yearSel = document.getElementById("pfYearFilter");
+      if (yearSel) {
+        yearSel.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
+        [...years].sort().reverse().forEach(y => yearSel.add(new Option(y, y)));
+      }
+      const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const monthSel = document.getElementById("pfMonthFilter");
+      if (monthSel) {
+        monthSel.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
+        [...months].sort().forEach(m => monthSel.add(new Option(MN[parseInt(m) - 1], m)));
       }
     }
 
@@ -1450,8 +1501,8 @@
     const resultDropZone = document.getElementById("resultDropZone");
     const bulkResultInput = document.getElementById("bulkResultFileInput");
 
-    bulkInput.addEventListener("change", () => { if (bulkInput.files.length > 0) _onBulkOrResultFileChosen(); });
-    dropZone.addEventListener("drop", e => {
+    if (bulkInput) bulkInput.addEventListener("change", () => { if (bulkInput.files.length > 0) _onBulkOrResultFileChosen(); });
+    if (dropZone) dropZone.addEventListener("drop", e => {
       e.preventDefault(); dropZone.classList.remove("drag-over");
       if (e.dataTransfer.files.length === 0) return;
       const dt = new DataTransfer();
@@ -1460,17 +1511,73 @@
       _onBulkOrResultFileChosen();
     });
 
-    resultDropZone.addEventListener("dragover", e => { e.preventDefault(); resultDropZone.classList.add("drag-over"); });
-    resultDropZone.addEventListener("dragleave", () => resultDropZone.classList.remove("drag-over"));
-    resultDropZone.addEventListener("drop", e => {
-      e.preventDefault(); resultDropZone.classList.remove("drag-over");
-      if (e.dataTransfer.files.length === 0) return;
-      const dt = new DataTransfer();
-      Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
-      bulkResultInput.files = dt.files;
-      _onBulkOrResultFileChosen();
-    });
-    bulkResultInput.addEventListener("change", () => _onBulkOrResultFileChosen());
+    if (resultDropZone) {
+      resultDropZone.addEventListener("dragover", e => { e.preventDefault(); resultDropZone.classList.add("drag-over"); });
+      resultDropZone.addEventListener("dragleave", () => resultDropZone.classList.remove("drag-over"));
+      resultDropZone.addEventListener("drop", e => {
+        e.preventDefault(); resultDropZone.classList.remove("drag-over");
+        if (e.dataTransfer.files.length === 0) return;
+        const dt = new DataTransfer();
+        Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+        bulkResultInput.files = dt.files;
+        _onBulkOrResultFileChosen();
+      });
+    }
+    if (bulkResultInput) bulkResultInput.addEventListener("change", () => _onBulkOrResultFileChosen());
+
+    function loadBulkFromSheet(query) {
+      const testFilter   = document.getElementById("bulkTestFilter")?.value || "";
+      const statusEl     = document.getElementById("bulkSheetSearchStatus");
+      const q = (query || "").trim();
+      if (q.length < 2 && !testFilter) {
+        state.bulkPatients = [];
+        if (statusEl) statusEl.textContent = "";
+        renderBulkPatients();
+        return;
+      }
+      const src = (typeof cases !== "undefined" && Array.isArray(cases)) ? cases : [];
+      const matched = src.filter(c => {
+        const name = (c.patient || "").trim();
+        if (!name) return false;
+        if (testFilter && (c.test || "").toLowerCase() !== testFilter.toLowerCase()) return false;
+        return !q || name.toLowerCase().includes(q.toLowerCase()) ||
+          (c.id || "").toLowerCase().includes(q.toLowerCase()) ||
+          (c.client || "").toLowerCase().includes(q.toLowerCase());
+      });
+      if (statusEl) statusEl.textContent = matched.length ? `${matched.length} patient${matched.length > 1 ? "s" : ""} found` : "No matches";
+      state.bulkPatients = matched.map(c => {
+        const e0 = c.embryos?.[0] || {};
+        const _f = keys => { for (const k of keys) { const v = e0[k]; if (v && String(v).trim()) return String(v).trim(); } return ""; };
+        const isoDate = (_f(["date sample received", "received date"]) || "").split(" ")[0];
+        const [ry, rm, rd] = (isoDate || "").split("-");
+        const disp = ry && rm && rd ? `${rd}-${rm}-${ry}` : "";
+        return {
+          patient_name: c.patient,
+          spouse_name: "w/o",
+          pin: c.id || _f(["patient id", "patient no", "pin"]),
+          age: _f(["age"]),
+          sample_number: _f(["sample id", "sample no", "lab no", "box number"]),
+          referring_clinician: _f(["referring doctor", "doctor name", "referred by"]),
+          biopsy_date: disp,
+          hospital_clinic: c.client || "",
+          sample_collection_date: disp,
+          specimen: "DAY 5 TROPHECTODERM BIOPSY",
+          sample_receipt_date: disp,
+          biopsy_performed_by: "",
+          report_date: todayStr(),
+          report_template: "pgta",
+          indication: "",
+          results_summary_comment: "",
+          embryos: (c.embryos || []).map((e, i) => ({
+            embryo_id: _f.call(null, []) || `PS${i + 1}`,
+            result_summary: (e["result summary"] || e["result"] || RESULT_SUMMARY_OPTIONS[0]),
+            mtcopy: e["mt copy"] || e["mtcopy"] || "NA",
+            interpretation: e["interpretation"] || "NA",
+          })),
+        };
+      });
+      renderBulkPatients();
+    }
 
     const _isSheet = f => /\.(xlsx|xls|csv)$/i.test(f.name);
     const _isImg = f => /\.(png|jpe?g)$/i.test(f.name);
@@ -3083,6 +3190,9 @@
           schedulePreview();
         });
         setEmbryoCount(1);
+        _pfPopulateFilters();
+        const strip = document.getElementById("viewTitleStrip");
+        if (strip) strip.textContent = "Single Entry";
       } catch (e) { console.error("Init error:", e); }
     }
 

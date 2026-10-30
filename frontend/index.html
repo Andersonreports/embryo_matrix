@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="/static/calculators.css?v=20261015a" />
   <link rel="stylesheet" href="/static/batches.css?v=20261017m" />
   <link rel="stylesheet" href="/static/sidebar-nav.css?v=20261024h" />
-  <link rel="stylesheet" href="/static/pgta-report.css?v=20261030g" />
+  <link rel="stylesheet" href="/static/pgta-report.css?v=20261030h" />
 </head>
 <body>
   <div class="app-shell">
@@ -200,10 +200,18 @@
             
             <div class="card">
               <h3> Patient Information</h3>
-              <div style="display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
-                <div class="field" style="margin:0;flex:1 1 180px;"><label>Search Patient</label><input type="search" id="pfSearch" placeholder="Name, sample ID or clinic…" autocomplete="off" oninput="pfLiveSearch(this.value)"></div>
-                <div class="field" style="margin:0;"><label>Test</label><select id="pfTestFilter" onchange="pfLiveSearch(document.getElementById('pfSearch').value)"><option value="">All tests</option><option value="PGT-A">PGT-A</option><option value="PGT-M">PGT-M</option><option value="PGT-SR">PGT-SR</option><option value="HLA">HLA</option></select></div>
-                        <span id="pfStatus" style="font-size:11.5px; color:var(--text-muted);"></span>
+              <div class="pf-filter-bar">
+                <div class="pf-search-wrap">
+                  <label class="pf-filter-label">Search Patient</label>
+                  <input type="search" id="pfSearch" placeholder="Type name, PIN or clinic…" autocomplete="off"
+                    oninput="pfLiveSearch(this.value)" onblur="_pfDropdownBlur()" onfocus="pfLiveSearch(this.value)">
+                  <div id="pfDropdown" class="pf-dropdown" style="display:none;"></div>
+                </div>
+                <div class="pf-filter-field"><label class="pf-filter-label">Test</label><select id="pfTestFilter" onchange="pfRunFilters()"><option value="">All tests</option><option value="PGT-A">PGT-A</option><option value="PGT-M">PGT-M</option><option value="PGT-SR">PGT-SR</option><option value="HLA">HLA</option></select></div>
+                <div class="pf-filter-field"><label class="pf-filter-label">Month</label><select id="pfMonthFilter" onchange="pfRunFilters()"><option value="">All months</option></select></div>
+                <div class="pf-filter-field"><label class="pf-filter-label">Year</label><select id="pfYearFilter" onchange="pfRunFilters()"><option value="">All years</option></select></div>
+                <div class="pf-filter-field" style="min-width:120px;"><label class="pf-filter-label">Client</label><select id="pfClientFilter" onchange="pfRunFilters()"><option value="">All clients</option></select></div>
+                <span id="pfStatus" class="pf-status-badge"></span>
               </div>
               <div class="field-grid">
                 <div class="field"><label>Patient Name <span class="req">*</span></label><textarea id="f_patient_name"
@@ -755,11 +763,10 @@
       
       <div class="preview-sidebar" id="previewSidebar">
         <div class="preview-sidebar-header">
-          <h4> Report Preview (PDF)</h4>
+          <h4> Report Preview (PDF)<span id="previewStatus" class="preview-status-text">Fill form and click Refresh</span></h4>
           <button class="btn-refresh-preview" onclick="triggerPreview()">
             Refresh</button>
         </div>
-        <p id="previewStatus" class="preview-status-text">Fill form and click Refresh</p>
         <div class="preview-frame-wrap">
           <iframe id="previewFrame" scrolling="yes"></iframe>
         </div>
@@ -809,7 +816,7 @@
   <script src="/static/sidebar-nav.js?v=20261027a"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="/static/pgta-report.js?v=20261030e"></script>
+  <script src="/static/pgta-report.js?v=20261030f"></script>
   <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))</script>
 </body>
 </html>

@@ -26,8 +26,65 @@
 
 /* Fonts are used server-side (PDF generation) only — not loaded in the browser */
 
+/* Reduce watermark opacity so pgta content is more legible */
+body:has(#pgtaView:not(.hidden)) { --wm-opacity: 0.018; }
+
+/* Show tab name in the session-info strip when pgta is open */
+body:has(#pgtaView:not(.hidden)) #viewTitleStrip {
+  display: block;
+  font-size: 12.5px; font-weight: 600; color: #3d5060;
+  margin-right: 14px; white-space: nowrap;
+}
+
 /* Reset EmbryoMatrix .content padding so pgta fills its own space */
 #pgtaView.content { padding: 0 !important; max-width: none !important; margin: 0 !important; }
+
+/* ── Patient filter bar ──────────────────────────────────────── */
+.pf-filter-bar {
+  display: flex; align-items: flex-end; gap: 8px;
+  flex-wrap: nowrap; margin-bottom: 12px; overflow-x: auto;
+}
+.pf-search-wrap {
+  position: relative; flex: 1 1 160px; min-width: 140px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.pf-search-wrap input[type="search"] { width: 100%; box-sizing: border-box; }
+.pf-filter-field {
+  display: flex; flex-direction: column; gap: 3px;
+  flex: 0 0 auto; min-width: 80px; max-width: 130px;
+}
+.pf-filter-field select {
+  font-size: 12px; padding: 5px 6px; border-radius: 6px;
+  border: 1px solid var(--input-border); background: #fff; color: var(--text);
+  height: 34px; box-sizing: border-box;
+}
+.pf-filter-label {
+  font-size: 10.5px; font-weight: 700; color: #3d5060;
+  text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;
+}
+.pf-status-badge {
+  font-size: 11px; color: var(--text-muted);
+  align-self: center; white-space: nowrap; padding-bottom: 2px;
+}
+
+/* ── Patient floating dropdown ───────────────────────────────── */
+.pf-dropdown {
+  position: absolute; top: calc(100% + 3px); left: 0; right: 0;
+  z-index: 900; background: #fff;
+  border: 1px solid var(--panel-border); border-radius: 8px;
+  box-shadow: 0 6px 22px rgba(10,113,128,.15);
+  max-height: 280px; overflow-y: auto;
+}
+.pf-dd-item {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 12px; border: 0;
+  border-bottom: 1px solid #f0f5f6; background: transparent; cursor: pointer;
+}
+.pf-dd-item:last-child { border-bottom: 0; }
+.pf-dd-item:hover, .pf-dd-item:focus { background: #f0f8f9; outline: none; }
+.pf-dd-name { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.pf-dd-detail { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.pf-dd-empty { padding: 10px 12px; font-size: 12px; color: #64748b; }
 
 /* Back button inside pgta page header */
 .pgta-view .pgta-back-btn {
@@ -2409,17 +2466,16 @@
     }
 
 .pgta-view .preview-status-text {
-      font-size: 11px;
-      color: var(--text-muted);
-      padding: 6px 14px;
-      flex-shrink: 0;
+      font-size: 10px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.75);
     }
 
-.pgta-view .preview-status-text.busy { color: var(--primary); }
+.pgta-view .preview-status-text.busy { color: rgba(255,255,255,0.75); }
 
-.pgta-view .preview-status-text.ok { color: #16a34a; }
+.pgta-view .preview-status-text.ok { color: #86efac; }
 
-.pgta-view .preview-status-text.err { color: #ef4444; }
+.pgta-view .preview-status-text.err { color: #fca5a5; }
 
 .pgta-view .preview-frame-wrap {
       flex: 1;
