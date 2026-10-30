@@ -1341,15 +1341,25 @@
         if (hintEl) hintEl.textContent = `${n} embryo${n !== 1 ? "s" : ""}`;
         caseEmbs.slice(0, n).forEach((e, i) => {
           const _g = keys => { for (const k of keys) { const v = e[k]; if (v && String(v).trim()) return String(v).trim(); } return ""; };
-          const embryoId    = _g(["sample id","sample no","box number","embryo id","embryo name"]) || `PS${i + 1}`;
-          const resultSum   = _g(["result summary","result"]) || RESULT_SUMMARY_OPTIONS[0];
-          const interp      = _g(["interpretation"]) || "NA";
-          const mtcopy      = _g(["mt copy","mtcopy"]) || "NA";
+          const embryoId  = _g(["sample id","sample no","box number","embryo id","embryo name"]) || `PS${i + 1}`;
+          const resultSum = _g(["result summary","result"]) || RESULT_SUMMARY_OPTIONS[0];
+          const interp    = _g(["interpretation"]) || "NA";
+          const mtcopy    = _g(["mt copy","mtcopy"]) || "NA";
+          const autosomes = _g(["autosomes","autosome"]) || "Normal";
+          const sexChrom  = _g(["sex chromosomes","sex chromosome","sex"]) || "Normal";
+          const karyo     = _g(["karyotype","karyotype mwf"]);
+          // Derive per-chromosome statuses from karyotype if available, else result text
+          const chrStatuses = {}; for (let ci = 1; ci <= 22; ci++) chrStatuses[String(ci)] = "N";
+          const mosaicPcts = {};
+          const { cMap, mMap } = _parseResult(karyo || resultSum);
+          Object.assign(chrStatuses, cMap); Object.assign(mosaicPcts, mMap);
           state.summaryRows.push({ embryo_id: embryoId, result_summary: resultSum, interpretation: interp, mtcopy });
           const ef = defaultEmbryo(i);
           ef.embryo_id = embryoId; ef.result_summary = resultSum;
           ef.result_description = summaryToDescription(resultSum);
           ef.interpretation = interp; ef.mtcopy = mtcopy;
+          ef.autosomes = autosomes; ef.sex_chromosomes = sexChrom;
+          ef.chromosome_statuses = chrStatuses; ef.mosaic_percentages = mosaicPcts;
           state.embryoForms.push(ef);
         });
         renderSummaryTable();
@@ -1653,12 +1663,29 @@
           report_template: "pgta",
           indication: "",
           results_summary_comment: "",
-          embryos: (c.embryos || []).map((e, i) => ({
-            embryo_id: _f.call(null, []) || `PS${i + 1}`,
-            result_summary: (e["result summary"] || e["result"] || RESULT_SUMMARY_OPTIONS[0]),
-            mtcopy: e["mt copy"] || e["mtcopy"] || "NA",
-            interpretation: e["interpretation"] || "NA",
-          })),
+          embryos: (c.embryos || []).map((e, i) => {
+            const _fe = keys => { for (const k of keys) { const v = e[k]; if (v && String(v).trim()) return String(v).trim(); } return ""; };
+            const embryoId  = _fe(["sample id","sample no","box number","embryo id","embryo name"]) || `PS${i + 1}`;
+            const rs        = _fe(["result summary","result"]) || RESULT_SUMMARY_OPTIONS[0];
+            const autosomes = _fe(["autosomes","autosome"]) || "Normal";
+            const sexChrom  = _fe(["sex chromosomes","sex chromosome","sex"]) || "Normal";
+            const karyo     = _fe(["karyotype","karyotype mwf"]);
+            const chrStatuses = {}; for (let ci = 1; ci <= 22; ci++) chrStatuses[String(ci)] = "N";
+            const mosaicPcts = {};
+            const { cMap, mMap } = _parseResult(karyo || rs);
+            Object.assign(chrStatuses, cMap); Object.assign(mosaicPcts, mMap);
+            return {
+              embryo_id: embryoId,
+              result_summary: rs,
+              result_description: summaryToDescription(rs),
+              autosomes: autosomes,
+              sex_chromosomes: sexChrom,
+              mtcopy: _fe(["mt copy","mtcopy"]) || "NA",
+              interpretation: _fe(["interpretation"]) || "NA",
+              chromosome_statuses: chrStatuses,
+              mosaic_percentages: mosaicPcts,
+            };
+          }),
         };
       });
       renderBulkPatients();
