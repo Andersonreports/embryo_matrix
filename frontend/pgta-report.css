@@ -26,6 +26,18 @@
 
 /* Fonts are used server-side (PDF generation) only — not loaded in the browser */
 
+/* Reset EmbryoMatrix .content padding so pgta fills its own space */
+#pgtaView.content { padding: 0 !important; max-width: none !important; margin: 0 !important; }
+
+/* Back button inside pgta page header */
+.pgta-view .pgta-back-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: transparent; border: 1px solid #cbd5e1; border-radius: 7px;
+  padding: 5px 12px; font-size: 12px; font-weight: 600; color: #475569;
+  cursor: pointer; flex-shrink: 0;
+}
+.pgta-view .pgta-back-btn:hover { background: #f1f5f9; color: #1e293b; }
+
 .pgta-view body.loaded {
       opacity: 1;
     }

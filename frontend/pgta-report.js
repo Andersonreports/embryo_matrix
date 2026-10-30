@@ -1358,36 +1358,69 @@
       _pfRenderModalList(filtered);
     }
 
-    document.getElementById("pfFindBtn")?.addEventListener("click", async () => {
-      const findBtn = document.getElementById("pfFindBtn");
-      const fromEl = document.getElementById("pfFromDate");
-      const toEl = document.getElementById("pfToDate");
-      const statusEl = document.getElementById("pfStatus");
-      const fromDate = fromEl.value, toDate = toEl.value;
-      if (!fromDate || !toDate) { statusEl.textContent = "Pick both dates first."; return; }
-      statusEl.textContent = "Searching...";
-      try {
-        const res = await fetch(`${PGTA_BASE}/api/pgta/patients`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ from_date: fromDate, to_date: toDate, reporting_type: "PGTA" }),
+    // Build patient list from the sheet data already loaded in EmbryoMatrix (global `cases` array)
+    function _pfSheetPatients(query, testFilter) {
+      const q = (query || "").trim().toLowerCase();
+      const tf = (testFilter || "").trim().toLowerCase();
+      if (!q && !tf) return [];
+      const src = (typeof cases !== "undefined" && Array.isArray(cases)) ? cases : [];
+      const results = [];
+      for (const c of src) {
+        const name = (c.patient || "").trim();
+        if (!name) continue;
+        const clientName = c.client || "";
+        const testName = (c.test || "").toLowerCase();
+        if (tf && !testName.includes(tf.toLowerCase())) continue;
+        const matchesQ = !q ||
+          name.toLowerCase().includes(q) ||
+          (c.id || "").toLowerCase().includes(q) ||
+          clientName.toLowerCase().includes(q);
+        if (!matchesQ) continue;
+        // Use first embryo row for sample-level fields
+        const e = c.embryos?.[0] || {};
+        const _f = (keys) => { for (const k of keys) { const v = e[k]; if (v && String(v).trim()) return String(v).trim(); } return ""; };
+        results.push({
+          patient_name: name,
+          gender: _f(["gender", "sex"]),
+          age: _f(["age"]),
+          patient_no: c.id || _f(["patient id", "patient no", "pin"]),
+          lab_no: _f(["sample id", "sample no", "lab no", "box number"]),
+          sample_receipt_date: _f(["date sample received", "received date"]),
+          sample_collected_time: _f(["sample collection date", "date sample collected"]),
+          referring_doctor: _f(["referring doctor", "doctor name", "referred by"]),
+          client_name: clientName,
+          test: c.test || "",
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) { statusEl.textContent = data.detail || "Search failed."; return; }
-        const patients = data.patients || [];
-        statusEl.textContent = `${patients.length} found`;
-        _pfLastPatients = patients;
-        const searchEl = document.getElementById("pfModalSearch");
-        if (searchEl) searchEl.value = "";
-        _pfRenderModalList(patients);
-        const overlay = document.getElementById("pfModalOverlay");
-        const rect = findBtn.getBoundingClientRect();
-        overlay.style.top = (window.scrollY + rect.bottom + 6) + "px";
-        overlay.style.left = (window.scrollX + rect.left) + "px";
-        overlay.style.display = "block";
-      } catch (err) {
-        statusEl.textContent = "Could not reach the server.";
+        if (results.length >= 50) break;
       }
-    });
+      return results;
+    }
+
+    function pfLiveSearch(query) {
+      const testFilter = document.getElementById("pfTestFilter")?.value || "";
+      const statusEl = document.getElementById("pfStatus");
+      const q = (query || "").trim();
+      if (q.length < 2 && !testFilter) {
+        _pfLastPatients = [];
+        document.getElementById("pfModalOverlay").style.display = "none";
+        if (statusEl) statusEl.textContent = "";
+        return;
+      }
+      const patients = _pfSheetPatients(q, testFilter);
+      _pfLastPatients = patients;
+      if (statusEl) statusEl.textContent = patients.length ? `${patients.length} found` : "No matches";
+      const searchEl = document.getElementById("pfModalSearch");
+      if (searchEl) searchEl.value = "";
+      _pfRenderModalList(patients);
+      const overlay = document.getElementById("pfModalOverlay");
+      const inputEl = document.getElementById("pfSearch");
+      if (inputEl && overlay) {
+        const rect = inputEl.getBoundingClientRect();
+        overlay.style.top = (window.scrollY + rect.bottom + 4) + "px";
+        overlay.style.left = (window.scrollX + rect.left) + "px";
+        overlay.style.display = patients.length ? "block" : "none";
+      }
+    }
 
     function _csvEscape(value) {
       const s = String(value ?? "");
@@ -1408,36 +1441,17 @@
       ]);
       return [header, ...rows].map(r => r.map(_csvEscape).join(",")).join("\r\n");
     }
-    document.getElementById("pfDownloadCsvBtn")?.addEventListener("click", async () => {
-      const fromEl = document.getElementById("pfFromDate");
-      const toEl = document.getElementById("pfToDate");
+    document.getElementById("pfDownloadCsvBtn")?.addEventListener("click", () => {
       const statusEl = document.getElementById("pfStatus");
-      const fromDate = fromEl.value, toDate = toEl.value;
-      if (!fromDate || !toDate) { statusEl.textContent = "Pick both dates first."; return; }
-      statusEl.textContent = "Preparing CSV...";
-      try {
-        const res = await fetch(`${PGTA_BASE}/api/pgta/patients`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ from_date: fromDate, to_date: toDate, reporting_type: "PGTA" }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) { statusEl.textContent = data.detail || "Search failed."; return; }
-        const patients = data.patients || [];
-        if (!patients.length) { statusEl.textContent = "No patients in this date range."; return; }
-        const csv = "﻿" + _patientsToCsv(patients);
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `patients_${fromDate}_to_${toDate}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-        statusEl.textContent = `${patients.length} found`;
-      } catch (err) {
-        statusEl.textContent = "Could not reach the server.";
-      }
+      const patients = _pfLastPatients;
+      if (!patients.length) { if (statusEl) statusEl.textContent = "Search for patients first."; return; }
+      const csv = "﻿" + _patientsToCsv(patients);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `patients_${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
     });
 
 

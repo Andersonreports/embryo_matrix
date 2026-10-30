@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="/static/calculators.css?v=20261015a" />
   <link rel="stylesheet" href="/static/batches.css?v=20261017m" />
   <link rel="stylesheet" href="/static/sidebar-nav.css?v=20261024h" />
-  <link rel="stylesheet" href="/static/pgta-report.css?v=20261030b" />
+  <link rel="stylesheet" href="/static/pgta-report.css?v=20261030c" />
 </head>
 <body>
   <div class="app-shell">
@@ -181,7 +181,8 @@
 
     <div class="page-hdr">
       <div class="page-hdr-left">
-        <h1>PGT-A Report Generator</h1>
+        <button type="button" class="pgta-back-btn" onclick="if(typeof showView==='function')showView('home')">‹ Back</button>
+        <h1>Report Preparation</h1>
       </div>
       <div class="tab-bar">
         <button class="tab active" data-tab="manual" onclick="switchTab('manual')"><i class="fas fa-user-edit"></i> Single
@@ -205,9 +206,8 @@
             <div class="card">
               <h3> Patient Information</h3>
               <div style="display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
-                <div class="field" style="margin:0;"><label>From Date</label><input type="date" id="pfFromDate"></div>
-                <div class="field" style="margin:0;"><label>To Date</label><input type="date" id="pfToDate"></div>
-                <button class="btn-sm btn-outline" id="pfFindBtn" type="button"><i class="fas fa-search"></i> Find Patients</button>
+                <div class="field" style="margin:0;flex:1 1 180px;"><label>Search Patient</label><input type="search" id="pfSearch" placeholder="Name, sample ID or clinic…" autocomplete="off" oninput="pfLiveSearch(this.value)"></div>
+                <div class="field" style="margin:0;"><label>Test</label><select id="pfTestFilter" onchange="pfLiveSearch(document.getElementById('pfSearch').value)"><option value="">All tests</option><option value="PGT-A">PGT-A</option><option value="PGT-M">PGT-M</option><option value="PGT-SR">PGT-SR</option><option value="HLA">HLA</option></select></div>
                 <button class="btn-sm btn-outline" id="pfDownloadCsvBtn" type="button"><i class="fas fa-file-csv"></i> Download CSV</button>
                 <span id="pfStatus" style="font-size:11.5px; color:var(--text-muted);"></span>
               </div>
@@ -821,7 +821,7 @@
   <script src="/static/sidebar-nav.js?v=20261027a"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="/static/pgta-report.js?v=20261030b"></script>
+  <script src="/static/pgta-report.js?v=20261030c"></script>
   <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))</script>
 </body>
 </html>
