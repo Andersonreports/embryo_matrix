@@ -1279,11 +1279,11 @@ function showView(view){closeQcPanel();if(!viewAllowed(view))view=roleHomeView()
  let scope='';if(view==='pgtm'){view='samples';scope='pgtm'}if(!scope)pgtmCard=null;
  if(view==='samples'||view==='cases'){const changed=samplesScope!==scope;samplesScope=scope;const h=$('#registryHeaderLeft h2');if(h?.firstChild)h.firstChild.nodeValue=scope?'Add-on tests samples':'Patient & embryo registry';$('#registryHeaderLeft')?.classList.toggle('no-title',!scope);if(changed){refreshTestFilterOptions();const sms=$('#samplesMonthFilter');if(sms){if(scope){pgtmSavedMonth=sms.value;sms.value=allEmbryos().some(e=>isPgtmSample(e)&&recordMonth(e)==='Pending')?'Pending':''}else if(pgtmSavedMonth!==null){sms.value=pgtmSavedMonth;pgtmSavedMonth=null}}renderCases()}}
  const navView=scope?'pgtm':view;
- $('#mainHeader')?.classList.toggle('hidden',view==='home'||view==='pgta');$('#overviewTitle')?.classList.toggle('hidden',view!=='overview');
+ $('#mainHeader')?.classList.toggle('hidden',view==='home');$('#overviewTitle')?.classList.toggle('hidden',view!=='overview');
  $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===navView||(!scope&&['cases','reportprep','rebiopsy'].includes(view)&&n.dataset.view==='samples')||(n.id==='runStatusNav'&&isStaff()&&!scope&&['samples','cases','reportprep','rebiopsy','overdue','run','overview'].includes(view))));
  $('#registryViewToggle')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#registryHeaderLeft')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
- $('#genericHeaderLeft')?.classList.toggle('hidden',view==='overview'||view==='home'||view==='cases'||view==='samples');
+ $('#genericHeaderLeft')?.classList.toggle('hidden',view==='overview'||view==='home'||view==='cases'||view==='samples'||view==='pgta');$('#pgtaHeaderLeft')?.classList.toggle('hidden',view!=='pgta');
  $('#rebiopsyHeaderSearch')?.classList.toggle('hidden',view!=='rebiopsy');
  $('#rebiopsyHeaderActions')?.classList.toggle('hidden',view!=='rebiopsy');
  $('#vaultHeaderActions')?.classList.toggle('hidden',view!=='images'||isStaff());

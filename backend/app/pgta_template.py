@@ -18,8 +18,8 @@ import sys
 import base64
 from io import BytesIO
 from datetime import datetime
-from pgta_assets import HEADER_LOGO_B64, FOOTER_BANNER_B64, SIGN_ANAND_B64, SIGN_SACHIN_B64, SIGN_DIRECTOR_B64
-import pgta_classify as clf
+from .pgta_assets import HEADER_LOGO_B64, FOOTER_BANNER_B64, SIGN_ANAND_B64, SIGN_SACHIN_B64, SIGN_DIRECTOR_B64
+from . import pgta_classify as clf
 
 
 def registered_or(name, registered, fallback):

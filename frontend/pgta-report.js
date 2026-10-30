@@ -1441,18 +1441,6 @@
       ]);
       return [header, ...rows].map(r => r.map(_csvEscape).join(",")).join("\r\n");
     }
-    document.getElementById("pfDownloadCsvBtn")?.addEventListener("click", () => {
-      const statusEl = document.getElementById("pfStatus");
-      const patients = _pfLastPatients;
-      if (!patients.length) { if (statusEl) statusEl.textContent = "Search for patients first."; return; }
-      const csv = "﻿" + _patientsToCsv(patients);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = `patients_${new Date().toISOString().split("T")[0]}.csv`;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-    });
 
 
 
