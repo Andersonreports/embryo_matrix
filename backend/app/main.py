@@ -21,6 +21,7 @@ from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage,
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn, NewSampleIn
 from .sheet_sync import parse_sources, sync_sources
 from . import auth, batches, cell_edits, edits_sheet, mailer, new_samples, storage, trf_fill, trf_pdf
+from . import pgta_report
 from .clients import resolve_client, directory as client_directory
 from sqlalchemy import inspect, text
 import mimetypes
@@ -57,6 +58,7 @@ UPLOADS = settings.uploads_dir
 UPLOADS.mkdir(parents=True, exist_ok=True)
 app.mount("/static/assets", StaticFiles(directory=ASSETS), name="assets")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+app.include_router(pgta_report.router)
 
 @app.get("/uploads/{path:path}")
 def serve_upload(path: str):

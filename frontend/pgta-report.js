@@ -1,6 +1,6 @@
 /* PGT-A Report Module — loaded by embryo_matrix */
 
-    const PGTA_BASE = "http://127.0.0.1:8010";
+    const PGTA_BASE = "";
 
     // Build a readable Error from a failed response. Proxies such as nginx
     // answer with a full HTML error page rather than our JSON {detail: ...}/{error: ...},
@@ -638,7 +638,7 @@
       if (nameEl) nameEl.textContent = "Uploading...";
       const fd = new FormData(); fd.append("file", file);
       try {
-        const res = await fetch(`${PGTA_BASE}/pgta/upload-cnv`, { method: "POST", body: fd });
+        const res = await fetch(`${PGTA_BASE}/api/pgta/upload-cnv`, { method: "POST", body: fd });
         if (!res.ok) throw await uploadError(res);
         const data = await res.json(); if (data.error) throw new Error(data.error);
         state.cnvImages[idx] = data; state.embryoForms[idx].cnv_image_path = data.path;
@@ -728,7 +728,7 @@
       _setPreviewStatus("previewStatus", "Generating preview…", "busy");
       const opts = getOptions();
       try {
-        const res = await fetch(`${PGTA_BASE}/pgta/preview`, {
+        const res = await fetch(`${PGTA_BASE}/api/pgta/preview`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ patient_data: getPatientData(), embryos_data: getEmbryosData(), show_logo: opts.show_logo, show_grid: opts.show_grid }),
           signal
@@ -778,7 +778,7 @@
       
       try {
         progressFill.style.width = "40%"; progressText.textContent = "Generating report...";
-        const res = await fetch(`${PGTA_BASE}/pgta/generate`, {
+        const res = await fetch(`${PGTA_BASE}/api/pgta/generate`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ patient_info: getPatientData(), embryos: getEmbryosData(), options: { show_logo: opts.show_logo, show_grid: opts.show_grid, formats: formats }, output_dir: outputDir || undefined })
         });
@@ -866,7 +866,7 @@
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 125000);
         try {
-          const r = await fetch(`${PGTA_BASE}/open-folder-dialog`, { signal: ctrl.signal });
+          const r = await fetch(`${PGTA_BASE}/api/pgta/open-folder-dialog`, { signal: ctrl.signal });
           const d = await r.json();
           if (d.path) {
             document.getElementById(inputId).value = d.path;
@@ -1214,7 +1214,7 @@
     async function _autosavePush(mode, key, data) {
       if (!key) return;
       try {
-        const res = await fetch(`${PGTA_BASE}/pgta/autosave`, {
+        const res = await fetch(`${PGTA_BASE}/api/pgta/autosave`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ draft_key: key, mode, data }),
         });
@@ -1227,7 +1227,7 @@
     async function _autosaveCheck(mode, key, onNewer) {
       if (!key) return;
       try {
-        const res = await fetch(`${PGTA_BASE}/pgta/autosave?draft_key=${encodeURIComponent(key)}&mode=${mode}`);
+        const res = await fetch(`${PGTA_BASE}/api/pgta/autosave?draft_key=${encodeURIComponent(key)}&mode=${mode}`);
         if (!res.ok) return; 
         const r = await res.json();
         if (_autosave[mode].key !== key) return; 
@@ -1367,7 +1367,7 @@
       if (!fromDate || !toDate) { statusEl.textContent = "Pick both dates first."; return; }
       statusEl.textContent = "Searching...";
       try {
-        const res = await fetch(`${PGTA_BASE}/access/patients`, {
+        const res = await fetch(`${PGTA_BASE}/api/pgta/patients`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ from_date: fromDate, to_date: toDate, reporting_type: "PGTA" }),
         });
@@ -1416,7 +1416,7 @@
       if (!fromDate || !toDate) { statusEl.textContent = "Pick both dates first."; return; }
       statusEl.textContent = "Preparing CSV...";
       try {
-        const res = await fetch(`${PGTA_BASE}/access/patients`, {
+        const res = await fetch(`${PGTA_BASE}/api/pgta/patients`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ from_date: fromDate, to_date: toDate, reporting_type: "PGTA" }),
         });
@@ -2859,7 +2859,7 @@
       if (wrap) wrap.querySelectorAll("canvas, .preview-page-label").forEach(c => c.remove());
       if (ph) { ph.style.display = "flex"; ph.innerHTML = `<span style="font-size:11px;color:#94a3b8;">Loading ${esc(p.patient_name || "Patient")}...</span>`; }
       try {
-        const res = await fetch(`${PGTA_BASE}/pgta/preview`, {
+        const res = await fetch(`${PGTA_BASE}/api/pgta/preview`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify(buildBulkPayload(p, showLogo, showGrid))
         });
@@ -2980,7 +2980,7 @@
           payload.options = { formats: opts.formats, show_logo: opts.showLogo, show_grid: opts.showGrid };
           
           if (opts.outputDir) payload.output_dir = opts.outputDir;
-          const res = await fetch(`${PGTA_BASE}/pgta/generate`, {
+          const res = await fetch(`${PGTA_BASE}/api/pgta/generate`, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
           });
@@ -3144,7 +3144,7 @@
         const fd = new FormData();
         fd.append("manual", cmpFiles.manual);
         fd.append("automated", cmpFiles.auto);
-        const res = await fetch(`${PGTA_BASE}/pgta/compare`, { method: "POST", body: fd });
+        const res = await fetch(`${PGTA_BASE}/api/pgta/compare`, { method: "POST", body: fd });
         if (!res.ok) throw await uploadError(res);
         const data = await res.json();
         if (data.error) throw new Error(data.error);
