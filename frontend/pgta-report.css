@@ -1,23 +1,23 @@
 /* PGT-A Report Module — scoped to .pgta-view */
 
 :root {
-      --primary: #1F497D;
-      --primary-hover: #163a63;
-      --accent: #F9BE8F;
+      --primary: #0a7180;
+      --primary-hover: #087f83;
+      --accent: #dff1ef;
       --success: #10b981;
       --danger: #ef4444;
-      --bg: #f0f4f8;
-      --panel: rgba(255, 255, 255, 0.88);
-      --panel-border: rgba(255, 255, 255, 0.6);
-      --text: #1e293b;
-      --text-muted: #64748b;
+      --bg: #eef3f4;
+      --panel: #fff;
+      --panel-border: #d9e3e6;
+      --text: #102432;
+      --text-muted: #667985;
       --input-bg: #fff;
-      --input-border: #d1d5db;
-      --shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --input-border: #d9dfd7;
+      --shadow: 0 1px 2px rgba(15,35,48,.04), 0 10px 28px rgba(15,35,48,.045);
       --radius: 10px;
-      --patient-bg: #F1F1F7;
-      --summary-header: #F9BE8F;
-      --grey-box: #F2F2F2;
+      --patient-bg: #eef3f4;
+      --summary-header: #dff1ef;
+      --grey-box: #f4f8f7;
       --euploid: #000;
       --aneuploid: #dc2626;
       --mosaic: #2563eb;
@@ -162,7 +162,7 @@
 .pgta-view .page-hdr-left h1 {
       font-size: 20px;
       font-weight: 700;
-      background: linear-gradient(135deg, #1F497D, #4F81BD);
+      background: linear-gradient(135deg, #0a7180, #0f9b8e);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -238,10 +238,11 @@
     }
 
 .pgta-view .tab.active {
-      background: var(--primary);
+      background: linear-gradient(135deg, #0a7180, #0f9b8e);
       color: #fff;
-      border-color: var(--primary);
+      border-color: #0a7180;
       font-weight: 600;
+      box-shadow: 0 3px 10px rgba(10,113,128,.25);
     }
 
 .pgta-view .tab-content {
@@ -280,7 +281,7 @@
       align-items: center;
       gap: 6px;
       padding-bottom: 8px;
-      border-bottom: 2px solid var(--accent);
+      border-bottom: 1px solid var(--panel-border);
     }
 
 .pgta-view .field-grid {
