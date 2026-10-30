@@ -1327,9 +1327,41 @@
       const displayDate = (y && m && d) ? `${d}-${m}-${y}` : "";
       _pfFillField("f_sample_collection_date", displayDate);
       _pfFillField("f_sample_receipt_date", displayDate);
+
+      // Load embryo results from registry
+      const caseEmbs = p._case?.embryos || [];
+      if (caseEmbs.length) {
+        const n = Math.min(20, caseEmbs.length);
+        state.summaryRows = [];
+        state.embryoForms = [];
+        state.embryoCount = n;
+        const cntEl = document.getElementById("embryoCount");
+        if (cntEl) cntEl.value = n;
+        const hintEl = document.getElementById("embryoCountHint");
+        if (hintEl) hintEl.textContent = `${n} embryo${n !== 1 ? "s" : ""}`;
+        caseEmbs.slice(0, n).forEach((e, i) => {
+          const _g = keys => { for (const k of keys) { const v = e[k]; if (v && String(v).trim()) return String(v).trim(); } return ""; };
+          const embryoId    = _g(["sample id","sample no","box number","embryo id","embryo name"]) || `PS${i + 1}`;
+          const resultSum   = _g(["result summary","result"]) || RESULT_SUMMARY_OPTIONS[0];
+          const interp      = _g(["interpretation"]) || "NA";
+          const mtcopy      = _g(["mt copy","mtcopy"]) || "NA";
+          state.summaryRows.push({ embryo_id: embryoId, result_summary: resultSum, interpretation: interp, mtcopy });
+          const ef = defaultEmbryo(i);
+          ef.embryo_id = embryoId; ef.result_summary = resultSum;
+          ef.result_description = summaryToDescription(resultSum);
+          ef.interpretation = interp; ef.mtcopy = mtcopy;
+          state.embryoForms.push(ef);
+        });
+        renderSummaryTable();
+        renderEmbryoForms();
+      }
+
       schedulePreview();
       const statusEl = document.getElementById("pfStatus");
-      if (statusEl) statusEl.textContent = "Patient details applied.";
+      const embCount = caseEmbs.length;
+      if (statusEl) statusEl.textContent = embCount
+        ? `Applied · ${embCount} embryo${embCount !== 1 ? "s" : ""} loaded`
+        : "Patient details applied";
     }
 
     let _pfLastPatients = [];
@@ -1357,14 +1389,12 @@
           dd.appendChild(item);
         });
       }
-      // Position fixed below the search input; width spans the full filter bar
+      // Position directly below the search input (dropdown lives on body, so fixed works correctly)
       const r = inp.getBoundingClientRect();
-      const bar = inp.closest(".pf-filter-bar");
-      const barR = bar ? bar.getBoundingClientRect() : r;
       dd.style.position = "fixed";
-      dd.style.top   = (r.bottom + 4) + "px";
-      dd.style.left  = barR.left + "px";
-      dd.style.width = barR.width + "px";
+      dd.style.top   = (r.bottom + 2) + "px";
+      dd.style.left  = r.left + "px";
+      dd.style.width = Math.max(r.width, 320) + "px";
       dd.style.display = "block";
     }
 
@@ -1422,6 +1452,7 @@
           referring_doctor: _f(["referring doctor", "doctor name", "referred by"]),
           client_name: clientName,
           test: c.test || "",
+          _case: c,  // full case reference for embryo result population
         });
         if (results.length >= 80) break;
       }

@@ -205,7 +205,6 @@
                   <label class="pf-filter-label">Search Patient</label>
                   <input type="search" id="pfSearch" placeholder="Type name, PIN or clinic…" autocomplete="off"
                     oninput="pfLiveSearch(this.value)" onblur="_pfDropdownBlur()" onfocus="pfLiveSearch(this.value)">
-                  <div id="pfDropdown" class="pf-dropdown" style="display:none;"></div>
                 </div>
                 <div class="pf-filter-field"><label class="pf-filter-label">Test</label><select id="pfTestFilter" onchange="pfRunFilters()"><option value="">All tests</option><option value="PGT-A">PGT-A</option><option value="PGT-M">PGT-M</option><option value="PGT-SR">PGT-SR</option><option value="HLA">HLA</option></select></div>
                 <div class="pf-filter-field"><label class="pf-filter-label">Month</label><select id="pfMonthFilter" onchange="pfRunFilters()"><option value="">All months</option></select></div>
@@ -828,7 +827,9 @@
   <script src="/static/sidebar-nav.js?v=20261027a"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="/static/pgta-report.js?v=20261030j"></script>
+  <script src="/static/pgta-report.js?v=20261030k"></script>
   <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))</script>
+<!-- Patient search floating dropdown — lives on body so position:fixed works regardless of transformed ancestors -->
+<div id="pfDropdown" class="pf-dropdown" style="display:none;"></div>
 </body>
 </html>
