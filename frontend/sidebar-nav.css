@@ -110,6 +110,6 @@ body.sidebar-nav .topbar .topnav{justify-content:flex-start!important}
  body.sidebar-nav.sidebar-collapsed::after{left:50%}
 }
 /* View title in the account strip */
-body.sidebar-nav #viewTitleStrip{flex:1;font:600 15px "Inter";color:#102432;letter-spacing:-.2px;padding-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.sidebar-nav #viewTitleStrip{flex:1;font:600 18px "Inter";color:#102432;letter-spacing:-.3px;padding-left:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #viewTitleStrip{display:none}
 body.sidebar-nav #viewTitleStrip{display:block}
