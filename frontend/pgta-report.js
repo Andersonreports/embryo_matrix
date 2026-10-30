@@ -1357,12 +1357,14 @@
           dd.appendChild(item);
         });
       }
-      // Position fixed below the input so parent overflow:hidden can't clip it
+      // Position fixed below the search input; width spans the full filter bar
       const r = inp.getBoundingClientRect();
+      const bar = inp.closest(".pf-filter-bar");
+      const barR = bar ? bar.getBoundingClientRect() : r;
       dd.style.position = "fixed";
-      dd.style.top  = (r.bottom + 3) + "px";
-      dd.style.left = r.left + "px";
-      dd.style.width = r.width + "px";
+      dd.style.top   = (r.bottom + 4) + "px";
+      dd.style.left  = barR.left + "px";
+      dd.style.width = barR.width + "px";
       dd.style.display = "block";
     }
 
