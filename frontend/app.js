@@ -1279,11 +1279,12 @@ function showView(view){closeQcPanel();if(!viewAllowed(view))view=roleHomeView()
  let scope='';if(view==='pgtm'){view='samples';scope='pgtm'}if(!scope)pgtmCard=null;
  if(view==='samples'||view==='cases'){const changed=samplesScope!==scope;samplesScope=scope;const h=$('#registryHeaderLeft h2');if(h?.firstChild)h.firstChild.nodeValue=scope?'Add-on tests samples':'Patient & embryo registry';$('#registryHeaderLeft')?.classList.toggle('no-title',!scope);if(changed){refreshTestFilterOptions();const sms=$('#samplesMonthFilter');if(sms){if(scope){pgtmSavedMonth=sms.value;sms.value=allEmbryos().some(e=>isPgtmSample(e)&&recordMonth(e)==='Pending')?'Pending':''}else if(pgtmSavedMonth!==null){sms.value=pgtmSavedMonth;pgtmSavedMonth=null}}renderCases()}}
  const navView=scope?'pgtm':view;
- $('#mainHeader')?.classList.toggle('hidden',view==='home');$('#overviewTitle')?.classList.toggle('hidden',view!=='overview');
+ const _VT={home:'Run status',overview:'Overview',samples:'Patient & Embryo Registry',cases:'Patient & Embryo Registry',batches:'Batch creation',calc:'NGS Calculators',pgta:'Report Preparation',runreports:'Run reports',trfs:'Digital TRF',followup:'Clinical follow-up',fuHome:'Clinical follow-up',fuTasks:'Follow-up tasks',fuDash:'Outcomes',fuTrack:'Embryo tracking',coord:'Home',run:'Run status',import:'Upload result',pgtm:'Add-on tests',images:'Image vault',clients:'All clients',regions:'All regions',embryologists:'Embryologists',tests:'All tests',protocols:'PGT protocols',reportprep:'Report preparation',overdue:'Overdue samples',rebiopsy:'Re-biopsy cases',activity:'Activity log',users:'User management'};const _ts=document.getElementById('viewTitleStrip');if(_ts)_ts.textContent=view==='dashboard'?'':(_VT[view]||'');
+ $('#mainHeader')?.classList.toggle('hidden',view==='home'||view==='pgta');$('#overviewTitle')?.classList.toggle('hidden',view!=='overview');
  $$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===navView||(!scope&&['cases','reportprep','rebiopsy'].includes(view)&&n.dataset.view==='samples')||(n.id==='runStatusNav'&&isStaff()&&!scope&&['samples','cases','reportprep','rebiopsy','overdue','run','overview'].includes(view))));
  $('#registryViewToggle')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
  $('#registryHeaderLeft')?.classList.toggle('hidden',!(view==='cases'||view==='samples'));
- $('#genericHeaderLeft')?.classList.toggle('hidden',view==='overview'||view==='home'||view==='cases'||view==='samples'||view==='pgta');$('#pgtaHeaderLeft')?.classList.toggle('hidden',view!=='pgta');
+ $('#genericHeaderLeft')?.classList.toggle('hidden',view==='overview'||view==='home'||view==='cases'||view==='samples'||view==='pgta');
  $('#rebiopsyHeaderSearch')?.classList.toggle('hidden',view!=='rebiopsy');
  $('#rebiopsyHeaderActions')?.classList.toggle('hidden',view!=='rebiopsy');
  $('#vaultHeaderActions')?.classList.toggle('hidden',view!=='images'||isStaff());
@@ -2542,7 +2543,7 @@ const all=runReportRows(),months=[...new Set(all.map(r=>r.month))].sort().revers
   if(!backing&&cur&&cur!==view){if(stack[stack.length-1]!==cur)stack.push(cur);if(stack.length>30)stack.shift()}
   cur=view;orig(view);
   const t=document.getElementById('topBack');if(t)t.classList.toggle('hidden',!stack.length);
-  const o=document.getElementById('backBtn');if(o)o.classList.toggle('hidden',!stack.length||['dashboard','home','pgtm','runreports','followup','trfs','fuTasks','fuDash','fuTrack','fuHome','pgta'].includes(view)||(!isStaff()&&['samples','cases','images'].includes(view))||view==='run')};
+  const o=document.getElementById('backBtn');const _SB=['dashboard','home','overview','samples','cases','import','batches','pgtm','runreports','calc','pgta','trfs','followup','fuHome','fuTasks','fuDash','fuTrack','coord','run'];if(o)o.classList.toggle('hidden',!stack.length||_SB.includes(view))};
  const go=()=>{const prev=stack.pop();if(prev)window.showView(prev,true)};
  const t=document.getElementById('topBack');if(t)t.onclick=go;
  const o=document.getElementById('backBtn');if(o)o.onclick=go;
