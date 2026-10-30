@@ -46,11 +46,11 @@ body:has(#pgtaView:not(.hidden)) #viewTitleStrip {
 }
 .pf-search-wrap {
   position: relative; flex: 1 1 160px; min-width: 140px;
-  display: flex; flex-direction: column; gap: 3px;
+  display: flex; flex-direction: column; gap: 1px;
 }
 .pf-search-wrap input[type="search"] { width: 100%; box-sizing: border-box; }
 .pf-filter-field {
-  display: flex; flex-direction: column; gap: 3px;
+  display: flex; flex-direction: column; gap: 1px;
   flex: 0 0 auto; min-width: 80px; max-width: 130px;
 }
 .pf-filter-field select {
@@ -61,6 +61,7 @@ body:has(#pgtaView:not(.hidden)) #viewTitleStrip {
 .pf-filter-label {
   font-size: 10.5px; font-weight: 700; color: #3d5060;
   text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;
+  margin: 0 !important; line-height: 1.2;
 }
 .pf-status-badge {
   font-size: 11px; color: var(--text-muted);
@@ -69,10 +70,10 @@ body:has(#pgtaView:not(.hidden)) #viewTitleStrip {
 
 /* ── Patient floating dropdown ───────────────────────────────── */
 .pf-dropdown {
-  position: absolute; top: calc(100% + 3px); left: 0; right: 0;
-  z-index: 900; background: #fff;
+  /* position + top/left/width set by JS so parent overflow:hidden can't clip it */
+  z-index: 9999; background: #fff;
   border: 1px solid var(--panel-border); border-radius: 8px;
-  box-shadow: 0 6px 22px rgba(10,113,128,.15);
+  box-shadow: 0 6px 22px rgba(10,113,128,.18);
   max-height: 280px; overflow-y: auto;
 }
 .pf-dd-item {

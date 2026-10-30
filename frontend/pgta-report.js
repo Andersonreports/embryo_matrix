@@ -1336,28 +1336,33 @@
 
     function _pfRenderDropdown(patients) {
       const dd = document.getElementById("pfDropdown");
-      if (!dd) return;
+      const inp = document.getElementById("pfSearch");
+      if (!dd || !inp) return;
       dd.innerHTML = "";
       if (!patients.length) {
         dd.innerHTML = '<div class="pf-dd-empty">No matching patients</div>';
-        dd.style.display = "block";
-        return;
+      } else {
+        patients.forEach(p => {
+          const item = document.createElement("button");
+          item.type = "button";
+          item.className = "pf-dd-item";
+          const detail = [p.patient_no, p.age ? `${p.age}y` : "", p.client_name, p.test].filter(Boolean).join(" · ");
+          item.innerHTML = `<div class="pf-dd-name">${esc(p.patient_name)}</div><div class="pf-dd-detail">${esc(detail)}</div>`;
+          item.onmousedown = e => {
+            e.preventDefault();
+            _pfApplyPatient(p);
+            dd.style.display = "none";
+            inp.value = p.patient_name;
+          };
+          dd.appendChild(item);
+        });
       }
-      patients.forEach(p => {
-        const item = document.createElement("button");
-        item.type = "button";
-        item.className = "pf-dd-item";
-        const detail = [p.patient_no, p.age ? `${p.age}y` : "", p.client_name, p.test].filter(Boolean).join(" · ");
-        item.innerHTML = `<div class="pf-dd-name">${esc(p.patient_name)}</div><div class="pf-dd-detail">${esc(detail)}</div>`;
-        item.onmousedown = e => {
-          e.preventDefault();
-          _pfApplyPatient(p);
-          dd.style.display = "none";
-          const inp = document.getElementById("pfSearch");
-          if (inp) inp.value = p.patient_name;
-        };
-        dd.appendChild(item);
-      });
+      // Position fixed below the input so parent overflow:hidden can't clip it
+      const r = inp.getBoundingClientRect();
+      dd.style.position = "fixed";
+      dd.style.top  = (r.bottom + 3) + "px";
+      dd.style.left = r.left + "px";
+      dd.style.width = r.width + "px";
       dd.style.display = "block";
     }
 
