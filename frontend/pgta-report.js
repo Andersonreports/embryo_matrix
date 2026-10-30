@@ -3082,8 +3082,7 @@
         });
         setEmbryoCount(1);
       } catch (e) { console.error("Init error:", e); }
-          
-    });
+    }
 
     
     
