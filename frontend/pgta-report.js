@@ -1530,11 +1530,46 @@
     }
     if (bulkResultInput) bulkResultInput.addEventListener("change", () => _onBulkOrResultFileChosen());
 
+    function _bulkRunFilters() {
+      loadBulkFromSheet(document.getElementById("bulkSheetSearch")?.value || "");
+    }
+
+    function _bulkPopulateFilters() {
+      const src = (typeof cases !== "undefined" && Array.isArray(cases)) ? cases : [];
+      const clients = [...new Set(src.map(c => c.client).filter(Boolean))].sort();
+      const clientSel = document.getElementById("bulkClientFilter");
+      if (clientSel) {
+        clientSel.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
+        clients.forEach(v => clientSel.add(new Option(v, v)));
+      }
+      const years = new Set(), months = new Set();
+      for (const c of src) {
+        const e0 = c.embryos?.[0] || {};
+        const ds = e0["date sample received"] || e0["date sample collected"] || "";
+        if (ds) { const d = new Date(ds); if (!isNaN(d)) { years.add(String(d.getFullYear())); months.add(String(d.getMonth() + 1).padStart(2, "0")); } }
+      }
+      const yearSel = document.getElementById("bulkYearFilter");
+      if (yearSel) {
+        yearSel.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
+        [...years].sort().reverse().forEach(y => yearSel.add(new Option(y, y)));
+      }
+      const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const monthSel = document.getElementById("bulkMonthFilter");
+      if (monthSel) {
+        monthSel.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
+        [...months].sort().forEach(m => monthSel.add(new Option(MN[parseInt(m) - 1], m)));
+      }
+    }
+
     function loadBulkFromSheet(query) {
       const testFilter   = document.getElementById("bulkTestFilter")?.value || "";
+      const monthFilter  = document.getElementById("bulkMonthFilter")?.value || "";
+      const yearFilter   = document.getElementById("bulkYearFilter")?.value || "";
+      const clientFilter = document.getElementById("bulkClientFilter")?.value || "";
       const statusEl     = document.getElementById("bulkSheetSearchStatus");
       const q = (query || "").trim();
-      if (q.length < 2 && !testFilter) {
+      const hasFilter = testFilter || monthFilter || yearFilter || clientFilter;
+      if (q.length < 2 && !hasFilter) {
         state.bulkPatients = [];
         if (statusEl) statusEl.textContent = "";
         renderBulkPatients();
@@ -1545,6 +1580,18 @@
         const name = (c.patient || "").trim();
         if (!name) return false;
         if (testFilter && (c.test || "").toLowerCase() !== testFilter.toLowerCase()) return false;
+        if (clientFilter && !(c.client || "").toLowerCase().includes(clientFilter.toLowerCase())) return false;
+        if (monthFilter || yearFilter) {
+          const e0 = c.embryos?.[0] || {};
+          const ds = e0["date sample received"] || e0["date sample collected"] || "";
+          if (ds) {
+            const d = new Date(ds);
+            if (!isNaN(d)) {
+              if (yearFilter && String(d.getFullYear()) !== yearFilter) return false;
+              if (monthFilter && String(d.getMonth() + 1).padStart(2, "0") !== monthFilter) return false;
+            } else { return false; }
+          } else { return false; }
+        }
         return !q || name.toLowerCase().includes(q.toLowerCase()) ||
           (c.id || "").toLowerCase().includes(q.toLowerCase()) ||
           (c.client || "").toLowerCase().includes(q.toLowerCase());
@@ -3196,6 +3243,7 @@
         });
         setEmbryoCount(1);
         _pfPopulateFilters();
+        _bulkPopulateFilters();
         const strip = document.getElementById("viewTitleStrip");
         if (strip) strip.textContent = "Single Entry";
       } catch (e) { console.error("Init error:", e); }

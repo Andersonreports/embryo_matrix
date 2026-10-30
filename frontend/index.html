@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="/static/calculators.css?v=20261015a" />
   <link rel="stylesheet" href="/static/batches.css?v=20261017m" />
   <link rel="stylesheet" href="/static/sidebar-nav.css?v=20261024h" />
-  <link rel="stylesheet" href="/static/pgta-report.css?v=20261030i" />
+  <link rel="stylesheet" href="/static/pgta-report.css?v=20261030j" />
 </head>
 <body>
   <div class="app-shell">
@@ -378,16 +378,28 @@
 
           
           <div class="bulk-top-bar">
-            <div style="flex:1 1 220px;display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;">Search Patients</label>
-              <input type="search" id="bulkSheetSearch" placeholder="Name, PIN or clinic…" autocomplete="off" oninput="loadBulkFromSheet(this.value)">
+            <div style="flex:1 1 160px;min-width:130px;display:flex;flex-direction:column;gap:1px;">
+              <label class="pf-filter-label">Search Patients</label>
+              <input type="search" id="bulkSheetSearch" placeholder="Name, PIN or clinic…" autocomplete="off" oninput="_bulkRunFilters()">
               <span id="bulkSheetSearchStatus" style="font-size:10px;color:var(--text-muted);min-height:14px;"></span>
             </div>
-            <div style="flex-shrink:0;display:flex;flex-direction:column;gap:4px;">
-              <label style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.4px;">Test</label>
-              <select id="bulkTestFilter" onchange="loadBulkFromSheet(document.getElementById('bulkSheetSearch').value)">
+            <div class="pf-filter-field">
+              <label class="pf-filter-label">Test</label>
+              <select id="bulkTestFilter" onchange="_bulkRunFilters()">
                 <option value="">All tests</option><option value="PGT-A">PGT-A</option><option value="PGT-M">PGT-M</option><option value="PGT-SR">PGT-SR</option><option value="HLA">HLA</option>
               </select>
+            </div>
+            <div class="pf-filter-field">
+              <label class="pf-filter-label">Month</label>
+              <select id="bulkMonthFilter" onchange="_bulkRunFilters()"><option value="">All months</option></select>
+            </div>
+            <div class="pf-filter-field">
+              <label class="pf-filter-label">Year</label>
+              <select id="bulkYearFilter" onchange="_bulkRunFilters()"><option value="">All years</option></select>
+            </div>
+            <div class="pf-filter-field" style="min-width:110px;max-width:150px;">
+              <label class="pf-filter-label">Client</label>
+              <select id="bulkClientFilter" onchange="_bulkRunFilters()"><option value="">All clients</option></select>
             </div>
             <div class="bulk-top-sep"></div>
             <div style="flex-shrink:0;display:flex;align-items:center;gap:6px;">
@@ -816,7 +828,7 @@
   <script src="/static/sidebar-nav.js?v=20261027a"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="/static/pgta-report.js?v=20261030g"></script>
+  <script src="/static/pgta-report.js?v=20261030h"></script>
   <script>if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}))</script>
 </body>
 </html>
