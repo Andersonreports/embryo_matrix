@@ -2729,8 +2729,8 @@
       
       let html = `<div class="bulk-editor-section">
     <h4> Patient Information</h4>
-    <div class="bulk-editor-field"><label>Patient Name:</label><textarea rows="2" oninput="state.bulkPatients[${i}].patient_name=this.value;scheduleBulkPreview()">${esc(p.patient_name || "")}</textarea></div>
-    <div class="bulk-editor-field"><label>Spouse Name:</label><textarea rows="2" oninput="state.bulkPatients[${i}].spouse_name=this.value;scheduleBulkPreview()">${esc(p.spouse_name || "w/o")}</textarea></div>
+    <div class="bulk-editor-field"><label>Patient Name:</label><input type="text" value="${esc(p.patient_name || "")}" oninput="state.bulkPatients[${i}].patient_name=this.value;scheduleBulkPreview()"></div>
+    <div class="bulk-editor-field"><label>Spouse Name:</label><input type="text" value="${esc(p.spouse_name || "w/o")}" oninput="state.bulkPatients[${i}].spouse_name=this.value;scheduleBulkPreview()"></div>
     <div class="bulk-editor-field"><label>PIN:</label><input value="${esc(p.pin || "")}" oninput="state.bulkPatients[${i}].pin=this.value;scheduleBulkPreview()"></div>
     <div class="bulk-editor-field"><label>Age:</label><input value="${esc(p.age || "")}" oninput="state.bulkPatients[${i}].age=this.value;scheduleBulkPreview()"></div>
     <div class="bulk-editor-field"><label>Sample Number:</label><input value="${esc(p.sample_number || "")}" oninput="state.bulkPatients[${i}].sample_number=this.value;scheduleBulkPreview()"></div>
