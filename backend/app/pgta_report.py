@@ -304,6 +304,7 @@ async def pgta_patients(request: Request, db: Session = Depends(get_db)):
             "patient_no": d.get("patient_no", "") or d.get("patient_id", ""),
             "lab_no": d.get("lab_no", "") or d.get("sample_number", ""),
             "sample_receipt_date": str(r.submitted_at.date()) if r.submitted_at else "",
+            "biopsy_date": d.get("biopsy_date", "") or d.get("sample_collected_date", "") or d.get("collection_date", ""),
             "sample_collected_time": d.get("sample_collected_date", "") or d.get("collection_date", ""),
             "referring_doctor": d.get("referring_doctor", "") or d.get("doctor_name", ""),
             "client_name": r.clinic or d.get("clinic_name", "") or d.get("hospital", ""),

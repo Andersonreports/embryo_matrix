@@ -1327,6 +1327,17 @@
       const displayDate = (y && m && d) ? `${d}-${m}-${y}` : "";
       _pfFillField("f_sample_collection_date", displayDate);
       _pfFillField("f_sample_receipt_date", displayDate);
+      // Biopsy date: prefer the TRF-sourced collection/biopsy date; convert from
+      // any ISO (YYYY-MM-DD) or DD-MM-YYYY format; fall back to the receipt date.
+      const _toDisplay = s => {
+        const raw = String(s || "").split(" ")[0];
+        const p = raw.split("-");
+        if (p.length === 3 && p[0].length === 4) return `${p[2]}-${p[1]}-${p[0]}`;
+        if (p.length === 3 && p[2].length === 4) return raw;
+        return "";
+      };
+      const biopsyDate = _toDisplay(p.biopsy_date) || _toDisplay(p.sample_collected_time) || displayDate;
+      _pfFillField("f_biopsy_date", biopsyDate);
 
       // Load embryo results from registry — expand multi-embryo sheet rows
       const caseEmbs = p._case?.embryos || [];
