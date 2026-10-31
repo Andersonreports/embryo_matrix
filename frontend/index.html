@@ -218,7 +218,7 @@
                 <div class="field"><label>Spouse Name</label><textarea id="f_spouse_name" rows="2"
                     placeholder="w/o" oninput="schedulePreview()">w/o</textarea></div>
                 <div class="field"><label>PIN</label><input type="text" id="f_pin" placeholder="e.g. ANC2024001" oninput="schedulePreview()"></div>
-                <div class="field"><label>Age</label><input type="text" id="f_age" placeholder="e.g. 32 years" oninput="schedulePreview()"></div>
+                <div class="field"><label>Age</label><input type="text" id="f_age" placeholder="e.g. 32 Years" oninput="schedulePreview()" onblur="(function(el){const m=el.value.trim().match(/^(\d+(?:\.\d+)?)\s*(y(?:r|rs|ear|ears)?|m(?:o|os|onth|onths)?)?$/i);if(!m)return;const n=parseFloat(m[1]),u=(m[2]||'y').toLowerCase();el.value=u.startsWith('m')?n+(n===1?' Month':' Months'):n+(n===1?' Year':' Years');schedulePreview()})(this)"></div>
                 <div class="field"><label>Referring Clinician</label><input type="text" id="f_referring_clinician"
                     placeholder="Dr. Name" oninput="schedulePreview()"></div>
                 <div class="field"><label>Hospital / Clinic</label><textarea id="f_hospital_clinic" rows="2"
