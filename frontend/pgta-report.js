@@ -1410,15 +1410,21 @@
               const imgLabel = norm(img.embryo);
               let matchIdx = -1;
               for (let fi = 0; fi < capturedForms.length; fi++) {
-                // Match against the per-embryo tag stored during expansion
+                // Match strictly by embryo tag — never by upload order or position.
+                // A vault image label of "DN-1" (→ "DN1") must match a tag of "DN1"
+                // exactly, or one must be a suffix of the other only when the suffix
+                // is at least 2 chars (avoids "1" matching "DN21").
                 const tags = String(capturedForms[fi]?._rawTag || capturedForms[fi]?.embryo_id || "").split(/[,;]/).map(norm).filter(Boolean);
-                if (tags.some(t => t === imgLabel || t.endsWith(imgLabel) || imgLabel.endsWith(t))) { matchIdx = fi; break; }
+                const hit = tags.some(t => {
+                  if (t === imgLabel) return true;
+                  if (t.length >= 2 && imgLabel.endsWith(t)) return true;
+                  if (imgLabel.length >= 2 && t.endsWith(imgLabel)) return true;
+                  return false;
+                });
+                if (hit) { matchIdx = fi; break; }
               }
-              if (matchIdx < 0 && labeled.length === capturedForms.length) {
-                const sortedLabels = [...labeled].sort((a, b) => norm(a.embryo).localeCompare(norm(b.embryo)));
-                const pos = sortedLabels.indexOf(img);
-                if (pos >= 0) matchIdx = pos;
-              }
+              // No positional fallback — an unmatched image is silently skipped so
+              // it is never placed on the wrong embryo's report page.
               if (matchIdx < 0 || capturedForms[matchIdx]?.cnv_image_b64) return;
               try {
                 const blob = await fetch(img.url).then(r => r.blob());
@@ -2961,13 +2967,16 @@
             for (let ei = 0; ei < capturedEmbs.length; ei++) {
               const rawTag = String(capturedEmbs[ei]?._rawTag || capturedEmbs[ei]?.embryo_id || "");
               const tags = rawTag.split(/[,;]/).map(norm).filter(Boolean);
-              if (tags.some(t => t === imgLabel || t.endsWith(imgLabel) || imgLabel.endsWith(t))) { matchIdx = ei; break; }
+              const hit = tags.some(t => {
+                if (t === imgLabel) return true;
+                if (t.length >= 2 && imgLabel.endsWith(t)) return true;
+                if (imgLabel.length >= 2 && t.endsWith(imgLabel)) return true;
+                return false;
+              });
+              if (hit) { matchIdx = ei; break; }
             }
-            if (matchIdx < 0 && labeled.length === capturedEmbs.length) {
-              const sortedLabels = [...labeled].sort((a, b) => norm(a.embryo).localeCompare(norm(b.embryo)));
-              const pos = sortedLabels.indexOf(img);
-              if (pos >= 0) matchIdx = pos;
-            }
+            // No positional fallback — images uploaded in any order are never placed
+            // on the wrong embryo; an unmatched image is silently skipped.
             if (matchIdx < 0 || capturedEmbs[matchIdx]?.cnv_image_b64) return;
             try {
               const blob = await fetch(img.url).then(r => r.blob());
