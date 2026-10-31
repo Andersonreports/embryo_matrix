@@ -1336,13 +1336,20 @@
         for (const row of caseEmbs) {
           const rows = (typeof expandEmbryoRow === "function") ? expandEmbryoRow(row) : [row];
           for (const exp of rows) {
-            // The individual embryo tag (E1, E2 …)
-            const tag = (typeof field === "function")
-              ? field(exp, ["sample name", "embryo name", "embryo", "embryo id"]) : "";
-            // Merge per-embryo result fields so mtcopy etc. are individual, not joined
-            const expR = (typeof withEmbryoResult === "function" && tag && row._embryoResults)
-              ? withEmbryoResult(row, tag) : exp;
-            allExpanded.push({ row, expR, tag });
+            // The individual embryo tag (E1, E2 …).
+            // expandEmbryoRow() already called withEmbryoResult() internally, which
+            // can spread NGS result fields (including "sample name" = "PATIENT-E1")
+            // onto exp — so we must NOT check "sample name" first here.
+            // Use "embryo name"/"embryo"/"embryo id", then fall back to the embryo
+            // part of "sample name" via resultIdentity (strips the patient prefix).
+            let tag = (typeof field === "function")
+              ? field(exp, ["embryo name", "embryo", "embryo id"]) : "";
+            if (!tag && typeof resultIdentity === "function")
+              tag = resultIdentity(exp).embryo || "";
+            // exp is already the merged per-embryo result — use it directly.
+            // A second withEmbryoResult(row, tag) call would fail when tag is
+            // "PATIENT-E1" (cleanId mismatch) and lose all per-embryo data.
+            allExpanded.push({ row, expR: exp, tag });
           }
         }
 
@@ -1355,10 +1362,12 @@
 
         allExpanded.slice(0, n).forEach(({ row, expR, tag }, i) => {
           const _g = keys => { for (const k of keys) { const v = expR[k]; if (v && String(v).trim() && String(v).trim() !== "—") return String(v).trim(); } return ""; };
-          // Embryo ID: the individual tag (E1, E2…) — never the joined row-level value
-          const sampleId  = (typeof field === "function") ? field(row, ["sample id", "sample no", "box number"]) : _g(["sample id", "sample no", "box number"]);
-          const embryoId  = tag || sampleId || `PS${i + 1}`;
-          // Detail line shown in the per-embryo heading ("SampleID — E1")
+          // Embryo ID: the individual tag (E1, E2…).
+          // sampleId (box number / sample no) is never used as embryo_id — it can
+          // be a clinic name like "Anderson Clinical Genetics - Box 5". It is kept
+          // only for the detail line displayed in the per-embryo heading.
+          const sampleId  = (typeof field === "function") ? field(row, ["sample id", "sample no", "box number"]) : "";
+          const embryoId  = tag || `PS${i + 1}`;
           const embryoDetail = (sampleId && tag && sampleId !== tag) ? `${sampleId} — ${tag}` : embryoId;
           const resultSum = _g(["result summary", "result"]) || RESULT_SUMMARY_OPTIONS[0];
           const interp    = _g(["interpretation"]) || "NA";
@@ -1726,16 +1735,20 @@
             for (const row of (c.embryos || [])) {
               const rows = (typeof expandEmbryoRow === "function") ? expandEmbryoRow(row) : [row];
               for (const exp of rows) {
-                const tag = (typeof field === "function") ? field(exp, ["sample name", "embryo name", "embryo", "embryo id"]) : "";
-                const expR = (typeof withEmbryoResult === "function" && tag && row._embryoResults)
-                  ? withEmbryoResult(row, tag) : exp;
-                expanded.push({ row, expR, tag });
+                // Same tag/expR rules as single-entry: skip "sample name" (may be
+                // overwritten with "PATIENT-E1" by withEmbryoResult inside
+                // expandEmbryoRow); use embryo name fields, fall back to
+                // resultIdentity; and use exp directly (already merged).
+                let tag = (typeof field === "function") ? field(exp, ["embryo name", "embryo", "embryo id"]) : "";
+                if (!tag && typeof resultIdentity === "function")
+                  tag = resultIdentity(exp).embryo || "";
+                expanded.push({ row, expR: exp, tag });
               }
             }
             return expanded.slice(0, 20).map(({ row, expR, tag }, i) => {
               const _fe = keys => { for (const k of keys) { const v = expR[k]; if (v && String(v).trim() && String(v).trim() !== "—") return String(v).trim(); } return ""; };
-              const sampleId  = (typeof field === "function") ? field(row, ["sample id", "sample no", "box number"]) : _fe(["sample id", "sample no", "box number"]);
-              const embryoId  = tag || sampleId || `PS${i + 1}`;
+              const sampleId  = (typeof field === "function") ? field(row, ["sample id", "sample no", "box number"]) : "";
+              const embryoId  = tag || `PS${i + 1}`;  // sampleId never used as embryo_id
               const embryoDetail = (sampleId && tag && sampleId !== tag) ? `${sampleId} — ${tag}` : embryoId;
               const rs        = _fe(["result summary", "result"]) || RESULT_SUMMARY_OPTIONS[0];
               const autosomes = _fe(["autosomes", "autosome"]) || "Normal";
