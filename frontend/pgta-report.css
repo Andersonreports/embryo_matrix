@@ -1383,8 +1383,27 @@ body:has(#pgtaView:not(.hidden)) #viewTitleStrip {
       border: 1px solid var(--input-border);
       border-radius: 6px;
       font-size: 11px;
-      width: 180px;
+      flex: 1 1 160px;
+      min-width: 0;
       background: var(--input-bg);
+    }
+
+.pgta-view .bulk-top-folder .btn-folder {
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid var(--primary);
+      border-radius: 6px;
+      background: var(--primary);
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      line-height: 1.4;
+    }
+
+.pgta-view .bulk-top-folder .btn-folder:hover {
+      background: var(--primary-dark, var(--primary));
     }
 
 .pgta-view .bulk-controls {
