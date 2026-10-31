@@ -1328,38 +1328,57 @@
       _pfFillField("f_sample_collection_date", displayDate);
       _pfFillField("f_sample_receipt_date", displayDate);
 
-      // Load embryo results from registry
+      // Load embryo results from registry — expand multi-embryo sheet rows
       const caseEmbs = p._case?.embryos || [];
       if (caseEmbs.length) {
-        const n = Math.min(20, caseEmbs.length);
-        state.summaryRows = [];
-        state.embryoForms = [];
-        state.embryoCount = n;
+        // Expand every sheet row into individual embryo entries using the registry helpers
+        const allExpanded = [];
+        for (const row of caseEmbs) {
+          const rows = (typeof expandEmbryoRow === "function") ? expandEmbryoRow(row) : [row];
+          for (const exp of rows) {
+            // The individual embryo tag (E1, E2 …)
+            const tag = (typeof field === "function")
+              ? field(exp, ["sample name", "embryo name", "embryo", "embryo id"]) : "";
+            // Merge per-embryo result fields so mtcopy etc. are individual, not joined
+            const expR = (typeof withEmbryoResult === "function" && tag && row._embryoResults)
+              ? withEmbryoResult(row, tag) : exp;
+            allExpanded.push({ row, expR, tag });
+          }
+        }
+
+        const n = Math.min(20, allExpanded.length || 1);
+        state.summaryRows = []; state.embryoForms = []; state.embryoCount = n;
         const cntEl = document.getElementById("embryoCount");
         if (cntEl) cntEl.value = n;
         const hintEl = document.getElementById("embryoCountHint");
         if (hintEl) hintEl.textContent = `${n} embryo${n !== 1 ? "s" : ""}`;
-        caseEmbs.slice(0, n).forEach((e, i) => {
-          const _g = keys => { for (const k of keys) { const v = e[k]; if (v && String(v).trim()) return String(v).trim(); } return ""; };
-          const embryoId  = _g(["sample id","sample no","box number","embryo id","embryo name"]) || `PS${i + 1}`;
-          const resultSum = _g(["result summary","result"]) || RESULT_SUMMARY_OPTIONS[0];
+
+        allExpanded.slice(0, n).forEach(({ row, expR, tag }, i) => {
+          const _g = keys => { for (const k of keys) { const v = expR[k]; if (v && String(v).trim() && String(v).trim() !== "—") return String(v).trim(); } return ""; };
+          // Embryo ID: the individual tag (E1, E2…) — never the joined row-level value
+          const sampleId  = (typeof field === "function") ? field(row, ["sample id", "sample no", "box number"]) : _g(["sample id", "sample no", "box number"]);
+          const embryoId  = tag || sampleId || `PS${i + 1}`;
+          // Detail line shown in the per-embryo heading ("SampleID — E1")
+          const embryoDetail = (sampleId && tag && sampleId !== tag) ? `${sampleId} — ${tag}` : embryoId;
+          const resultSum = _g(["result summary", "result"]) || RESULT_SUMMARY_OPTIONS[0];
           const interp    = _g(["interpretation"]) || "NA";
+          // mtcopy: expR now has the per-embryo value (withEmbryoResult merged it)
           const mtcopy    = _g(["mtcopy"]) || "NA";
-          const autosomes = _g(["autosomes","autosome"]) || "Normal";
-          const sexChrom  = _g(["sex chromosomes","sex chromosome","sex"]) || "Normal";
-          const karyo     = _g(["karyotype","karyotype mwf"]);
-          // Derive per-chromosome statuses from karyotype if available, else result text
+          const autosomes = _g(["autosomes", "autosome"]) || "Normal";
+          const sexChrom  = _g(["sex chromosomes", "sex chromosome", "sex"]) || "Normal";
+          const karyo     = _g(["karyotype", "karyotype mwf"]);
           const chrStatuses = {}; for (let ci = 1; ci <= 22; ci++) chrStatuses[String(ci)] = "N";
           const mosaicPcts = {};
           const { cMap, mMap } = _parseResult(karyo || resultSum);
           Object.assign(chrStatuses, cMap); Object.assign(mosaicPcts, mMap);
           state.summaryRows.push({ embryo_id: embryoId, result_summary: resultSum, interpretation: interp, mtcopy });
           const ef = defaultEmbryo(i);
-          ef.embryo_id = embryoId; ef.result_summary = resultSum;
-          ef.result_description = summaryToDescription(resultSum);
+          ef.embryo_id = embryoId; ef.embryo_id_detail = embryoDetail;
+          ef.result_summary = resultSum; ef.result_description = summaryToDescription(resultSum);
           ef.interpretation = interp; ef.mtcopy = mtcopy;
           ef.autosomes = autosomes; ef.sex_chromosomes = sexChrom;
           ef.chromosome_statuses = chrStatuses; ef.mosaic_percentages = mosaicPcts;
+          ef._rawTag = tag; // for vault image matching
           state.embryoForms.push(ef);
         });
         renderSummaryTable();
@@ -1369,7 +1388,6 @@
         const vaultCaseId = p._case?.id;
         if (vaultCaseId && typeof patientImages === "function") {
           const capturedForms = state.embryoForms;
-          const capturedEmbs  = caseEmbs;
           patientImages(vaultCaseId).then(imgs => {
             const labeled = imgs.filter(img => img.embryo && img.embryo !== "General / patient");
             if (!labeled.length) return;
@@ -1379,11 +1397,10 @@
               const imgLabel = norm(img.embryo);
               let matchIdx = -1;
               for (let fi = 0; fi < capturedForms.length; fi++) {
-                const rawTag = String(capturedEmbs[fi]?.["embryo name"] || capturedEmbs[fi]?.["embryo id"] || capturedEmbs[fi]?.["embryo"] || "");
-                const tags = rawTag.split(/[,;]/).map(norm).filter(Boolean);
+                // Match against the per-embryo tag stored during expansion
+                const tags = String(capturedForms[fi]?._rawTag || capturedForms[fi]?.embryo_id || "").split(/[,;]/).map(norm).filter(Boolean);
                 if (tags.some(t => t === imgLabel || t.endsWith(imgLabel) || imgLabel.endsWith(t))) { matchIdx = fi; break; }
               }
-              // Positional fallback: if all images have labels and count matches embryo count
               if (matchIdx < 0 && labeled.length === capturedForms.length) {
                 const sortedLabels = [...labeled].sort((a, b) => norm(a.embryo).localeCompare(norm(b.embryo)));
                 const pos = sortedLabels.indexOf(img);
@@ -1703,30 +1720,46 @@
           report_template: "pgta",
           indication: "",
           results_summary_comment: "",
-          embryos: (c.embryos || []).map((e, i) => {
-            const _fe = keys => { for (const k of keys) { const v = e[k]; if (v && String(v).trim()) return String(v).trim(); } return ""; };
-            const embryoId  = _fe(["sample id","sample no","box number","embryo id","embryo name"]) || `PS${i + 1}`;
-            const rs        = _fe(["result summary","result"]) || RESULT_SUMMARY_OPTIONS[0];
-            const autosomes = _fe(["autosomes","autosome"]) || "Normal";
-            const sexChrom  = _fe(["sex chromosomes","sex chromosome","sex"]) || "Normal";
-            const karyo     = _fe(["karyotype","karyotype mwf"]);
-            const chrStatuses = {}; for (let ci = 1; ci <= 22; ci++) chrStatuses[String(ci)] = "N";
-            const mosaicPcts = {};
-            const { cMap, mMap } = _parseResult(karyo || rs);
-            Object.assign(chrStatuses, cMap); Object.assign(mosaicPcts, mMap);
-            return {
-              embryo_id: embryoId,
-              _rawTag: _fe(["embryo name", "embryo id", "embryo"]),
-              result_summary: rs,
-              result_description: summaryToDescription(rs),
-              autosomes: autosomes,
-              sex_chromosomes: sexChrom,
-              mtcopy: _fe(["mtcopy"]) || "NA",
-              interpretation: _fe(["interpretation"]) || "NA",
-              chromosome_statuses: chrStatuses,
-              mosaic_percentages: mosaicPcts,
-            };
-          }),
+          embryos: (() => {
+            // Expand every sheet row into individual embryo entries
+            const expanded = [];
+            for (const row of (c.embryos || [])) {
+              const rows = (typeof expandEmbryoRow === "function") ? expandEmbryoRow(row) : [row];
+              for (const exp of rows) {
+                const tag = (typeof field === "function") ? field(exp, ["sample name", "embryo name", "embryo", "embryo id"]) : "";
+                const expR = (typeof withEmbryoResult === "function" && tag && row._embryoResults)
+                  ? withEmbryoResult(row, tag) : exp;
+                expanded.push({ row, expR, tag });
+              }
+            }
+            return expanded.slice(0, 20).map(({ row, expR, tag }, i) => {
+              const _fe = keys => { for (const k of keys) { const v = expR[k]; if (v && String(v).trim() && String(v).trim() !== "—") return String(v).trim(); } return ""; };
+              const sampleId  = (typeof field === "function") ? field(row, ["sample id", "sample no", "box number"]) : _fe(["sample id", "sample no", "box number"]);
+              const embryoId  = tag || sampleId || `PS${i + 1}`;
+              const embryoDetail = (sampleId && tag && sampleId !== tag) ? `${sampleId} — ${tag}` : embryoId;
+              const rs        = _fe(["result summary", "result"]) || RESULT_SUMMARY_OPTIONS[0];
+              const autosomes = _fe(["autosomes", "autosome"]) || "Normal";
+              const sexChrom  = _fe(["sex chromosomes", "sex chromosome", "sex"]) || "Normal";
+              const karyo     = _fe(["karyotype", "karyotype mwf"]);
+              const chrStatuses = {}; for (let ci = 1; ci <= 22; ci++) chrStatuses[String(ci)] = "N";
+              const mosaicPcts = {};
+              const { cMap, mMap } = _parseResult(karyo || rs);
+              Object.assign(chrStatuses, cMap); Object.assign(mosaicPcts, mMap);
+              return {
+                embryo_id: embryoId,
+                embryo_id_detail: embryoDetail,
+                _rawTag: tag,
+                result_summary: rs,
+                result_description: summaryToDescription(rs),
+                autosomes: autosomes,
+                sex_chromosomes: sexChrom,
+                mtcopy: _fe(["mtcopy"]) || "NA",
+                interpretation: _fe(["interpretation"]) || "NA",
+                chromosome_statuses: chrStatuses,
+                mosaic_percentages: mosaicPcts,
+              };
+            });
+          })(),
         };
       });
       renderBulkPatients();
