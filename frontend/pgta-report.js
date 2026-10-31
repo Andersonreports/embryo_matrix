@@ -2875,9 +2875,9 @@
     <div class="bulk-editor-field"><label>Sample Number:</label><input value="${esc(p.sample_number || "")}" oninput="state.bulkPatients[${i}].sample_number=this.value;scheduleBulkPreview()"></div>
     <div class="bulk-editor-field"><label>Referring Clinician:</label><input value="${esc(p.referring_clinician || "")}" oninput="state.bulkPatients[${i}].referring_clinician=this.value;scheduleBulkPreview()"></div>
     <div class="bulk-editor-field"><label>Biopsy Date:</label><input value="${esc(p.biopsy_date || "")}" oninput="state.bulkPatients[${i}].biopsy_date=this.value;scheduleBulkPreview()"></div>
-    <div class="bulk-editor-field"><label>Hospital/Clinic:</label><textarea rows="2" oninput="state.bulkPatients[${i}].hospital_clinic=this.value;scheduleBulkPreview()">${esc(p.hospital_clinic || "")}</textarea></div>
+    <div class="bulk-editor-field"><label>Hospital/Clinic:</label><input type="text" value="${esc(p.hospital_clinic || "")}" oninput="state.bulkPatients[${i}].hospital_clinic=this.value;scheduleBulkPreview()"></div>
     <div class="bulk-editor-field"><label>Sample Collection Date:</label><input value="${esc(p.sample_collection_date || "")}" oninput="state.bulkPatients[${i}].sample_collection_date=this.value;scheduleBulkPreview()"></div>
-    <div class="bulk-editor-field"><label>Specimen:</label><textarea rows="2" oninput="state.bulkPatients[${i}].specimen=this.value;scheduleBulkPreview()">${esc(p.specimen || "DAY 5 TROPHECTODERM BIOPSY")}</textarea></div>
+    <div class="bulk-editor-field"><label>Specimen:</label><input type="text" value="${esc(p.specimen || "DAY 5 TROPHECTODERM BIOPSY")}" oninput="state.bulkPatients[${i}].specimen=this.value;scheduleBulkPreview()"></div>
     <div class="bulk-editor-field"><label>Sample Receipt Date:</label><input value="${esc(p.sample_receipt_date || "")}" oninput="state.bulkPatients[${i}].sample_receipt_date=this.value;scheduleBulkPreview()"></div>
     <div class="bulk-editor-field"><label>Biopsy Performed By:</label><input value="${esc(p.biopsy_performed_by || "")}" oninput="state.bulkPatients[${i}].biopsy_performed_by=this.value;scheduleBulkPreview()"></div>
     <div class="bulk-editor-field"><label>Report Date:</label><input value="${esc(p.report_date || todayStr())}" oninput="state.bulkPatients[${i}].report_date=this.value;scheduleBulkPreview()"></div>
