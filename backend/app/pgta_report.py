@@ -273,7 +273,49 @@ async def pgta_compare(manual: UploadFile = File(...), automated: UploadFile = F
     ]
     return {"html_diff": html_diff, "total_changes": len(changes), "match": len(changes) == 0}
 
-# ── Patient search (uses TRF submissions for date-range lookup) ────────────────
+# ── Patient search ─────────────────────────────────────────────────────────────
+def _build_patient(r) -> dict:
+    d = r.data or {}
+    return {
+        "patient_name": r.patient_name or d.get("patient_name", ""),
+        "gender": d.get("gender", ""),
+        "age": d.get("age", ""),
+        "patient_no": d.get("patient_no", "") or d.get("patient_id", ""),
+        "lab_no": d.get("lab_no", "") or d.get("sample_number", ""),
+        "sample_receipt_date": str(r.submitted_at.date()) if r.submitted_at else "",
+        "biopsy_date": d.get("biopsy_date", "") or d.get("sample_collected_date", "") or d.get("collection_date", ""),
+        "sample_collected_time": d.get("sample_collected_date", "") or d.get("collection_date", ""),
+        "referring_doctor": d.get("referring_doctor", "") or d.get("doctor_name", ""),
+        "client_name": r.clinic or d.get("clinic_name", "") or d.get("hospital", ""),
+    }
+
+@router.get("/patient-search")
+def pgta_patient_search(q: str = "", db: Session = Depends(get_db)):
+    """Name-based patient search across all TRF submissions (no date range needed)."""
+    q = q.strip()
+    if len(q) < 2:
+        return {"patients": []}
+    q_lower = q.lower()
+    rows = (
+        db.query(TrfSubmission)
+        .filter(TrfSubmission.patient_name.ilike(f"%{q}%"))
+        .order_by(TrfSubmission.submitted_at.desc())
+        .limit(50)
+        .all()
+    )
+    seen = set()
+    patients = []
+    for r in rows:
+        p = _build_patient(r)
+        key = (p["patient_name"] or "").lower()
+        if not key or key not in q_lower and q_lower not in key:
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+        patients.append(p)
+    return {"patients": patients}
+
 @router.post("/patients")
 async def pgta_patients(request: Request, db: Session = Depends(get_db)):
     body = await request.json()
@@ -294,22 +336,7 @@ async def pgta_patients(request: Request, db: Session = Depends(get_db)):
         .limit(200)
         .all()
     )
-    patients = []
-    for r in rows:
-        d = r.data or {}
-        patients.append({
-            "patient_name": r.patient_name or d.get("patient_name", ""),
-            "gender": d.get("gender", ""),
-            "age": d.get("age", ""),
-            "patient_no": d.get("patient_no", "") or d.get("patient_id", ""),
-            "lab_no": d.get("lab_no", "") or d.get("sample_number", ""),
-            "sample_receipt_date": str(r.submitted_at.date()) if r.submitted_at else "",
-            "biopsy_date": d.get("biopsy_date", "") or d.get("sample_collected_date", "") or d.get("collection_date", ""),
-            "sample_collected_time": d.get("sample_collected_date", "") or d.get("collection_date", ""),
-            "referring_doctor": d.get("referring_doctor", "") or d.get("doctor_name", ""),
-            "client_name": r.clinic or d.get("clinic_name", "") or d.get("hospital", ""),
-        })
-    return {"patients": patients}
+    return {"patients": [_build_patient(r) for r in rows]}
 
 # ── Open-folder stub (desktop-only feature; not applicable in web mode) ─────────
 @router.get("/open-folder-dialog")

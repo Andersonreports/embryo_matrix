@@ -1550,6 +1550,7 @@
       pfLiveSearch(document.getElementById("pfSearch")?.value || "");
     }
 
+    let _pfSearchTimer = null;
     function pfLiveSearch(query) {
       const testFilter   = document.getElementById("pfTestFilter")?.value || "";
       const monthFilter  = document.getElementById("pfMonthFilter")?.value || "";
@@ -1565,10 +1566,34 @@
         if (statusEl) statusEl.textContent = "";
         return;
       }
-      const patients = _pfSheetPatients(q, testFilter, monthFilter, yearFilter, clientFilter);
-      _pfLastPatients = patients;
-      if (statusEl) statusEl.textContent = patients.length ? `${patients.length} found` : "No matches";
-      _pfRenderDropdown(patients);
+      // Show local (registry) results immediately
+      const local = _pfSheetPatients(q, testFilter, monthFilter, yearFilter, clientFilter);
+      _pfLastPatients = local;
+      if (statusEl) statusEl.textContent = local.length ? `${local.length} found` : "Searching…";
+      _pfRenderDropdown(local);
+
+      // Also search TRF database so patients not yet in the registry are found
+      clearTimeout(_pfSearchTimer);
+      _pfSearchTimer = setTimeout(async () => {
+        if (q.length < 2) return;
+        try {
+          const r = await fetch(`${PGTA_BASE}/api/pgta/patient-search?q=${encodeURIComponent(q)}`);
+          if (!r.ok) return;
+          const data = await r.json();
+          const dbPatients = (data.patients || []).filter(p => p.patient_name);
+          // Merge: add TRF results not already present from local search
+          const localNames = new Set(local.map(p => (p.patient_name || "").toLowerCase()));
+          const merged = [...local];
+          for (const p of dbPatients) {
+            if (!localNames.has((p.patient_name || "").toLowerCase())) {
+              merged.push(p);
+            }
+          }
+          _pfLastPatients = merged;
+          if (statusEl) statusEl.textContent = merged.length ? `${merged.length} found` : "No matches";
+          _pfRenderDropdown(merged);
+        } catch { /* ignore network errors */ }
+      }, 300);
     }
 
     function _pfPopulateFilters() {
