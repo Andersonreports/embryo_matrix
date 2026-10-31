@@ -879,19 +879,14 @@
             return;
           }
           if (d.error) throw new Error(d.error);
-          if (r.ok) return; // user cancelled the native dialog
+          // d.unavailable (or no path) — fall through to browser picker
         } finally {
           clearTimeout(timer);
         }
-      } catch { /* native dialog unavailable — fall back below */ }
+      } catch { /* fall through to browser picker */ }
 
       if (!window.showDirectoryPicker) {
-
-        const inp = document.getElementById(inputId);
-        inp.removeAttribute("readonly");
-        inp.placeholder = "Type folder path (e.g. C:\\Reports or /Users/you/Reports)";
-        inp.focus();
-        showToast("Folder picker needs Chrome/Edge + HTTPS. Type a path directly in the box.", "info");
+        showToast("Folder picker requires Chrome or Edge browser.", "error");
         return;
       }
       try {
@@ -901,11 +896,7 @@
         showToast(`Folder selected: ${dirHandle.name}`, "success");
       } catch (err) {
         if (err.name !== "AbortError") {
-
-          const inp = document.getElementById(inputId);
-          inp.removeAttribute("readonly");
-          inp.placeholder = "Type folder path manually";
-          showToast("Could not open folder picker — type a path in the box instead.", "info");
+          showToast("Could not open folder picker.", "error");
         }
       }
     }

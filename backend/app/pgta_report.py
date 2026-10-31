@@ -314,4 +314,4 @@ async def pgta_patients(request: Request, db: Session = Depends(get_db)):
 # ── Open-folder stub (desktop-only feature; not applicable in web mode) ─────────
 @router.get("/open-folder-dialog")
 def pgta_open_folder_dialog():
-    return {}
+    return {"unavailable": True}  # native OS dialog not supported in web mode
