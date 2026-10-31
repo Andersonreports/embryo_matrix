@@ -1364,6 +1364,45 @@
         });
         renderSummaryTable();
         renderEmbryoForms();
+
+        // Fetch CNV chart images from the vault for this case
+        const vaultCaseId = p._case?.id;
+        if (vaultCaseId && typeof patientImages === "function") {
+          const capturedForms = state.embryoForms;
+          const capturedEmbs  = caseEmbs;
+          patientImages(vaultCaseId).then(imgs => {
+            const labeled = imgs.filter(img => img.embryo && img.embryo !== "General / patient");
+            if (!labeled.length) return;
+            const norm = s => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+            let changed = false;
+            const promises = labeled.map(async img => {
+              const imgLabel = norm(img.embryo);
+              let matchIdx = -1;
+              for (let fi = 0; fi < capturedForms.length; fi++) {
+                const rawTag = String(capturedEmbs[fi]?.["embryo name"] || capturedEmbs[fi]?.["embryo id"] || capturedEmbs[fi]?.["embryo"] || "");
+                const tags = rawTag.split(/[,;]/).map(norm).filter(Boolean);
+                if (tags.some(t => t === imgLabel || t.endsWith(imgLabel) || imgLabel.endsWith(t))) { matchIdx = fi; break; }
+              }
+              // Positional fallback: if all images have labels and count matches embryo count
+              if (matchIdx < 0 && labeled.length === capturedForms.length) {
+                const sortedLabels = [...labeled].sort((a, b) => norm(a.embryo).localeCompare(norm(b.embryo)));
+                const pos = sortedLabels.indexOf(img);
+                if (pos >= 0) matchIdx = pos;
+              }
+              if (matchIdx < 0 || capturedForms[matchIdx]?.cnv_image_b64) return;
+              try {
+                const blob = await fetch(img.url).then(r => r.blob());
+                const b64 = await new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = rej; rd.readAsDataURL(blob); });
+                if (capturedForms[matchIdx] === state.embryoForms[matchIdx]) {
+                  state.embryoForms[matchIdx].cnv_image_b64 = b64;
+                  state.embryoForms[matchIdx].cnv_image_path = "";
+                  changed = true;
+                }
+              } catch (_) {}
+            });
+            Promise.all(promises).then(() => { if (changed) { renderEmbryoForms(); schedulePreview(); } });
+          }).catch(() => {});
+        }
       }
 
       schedulePreview();
@@ -1647,6 +1686,7 @@
         const [ry, rm, rd] = (isoDate || "").split("-");
         const disp = ry && rm && rd ? `${rd}-${rm}-${ry}` : "";
         return {
+          _caseId: c.id,
           patient_name: c.patient,
           spouse_name: "w/o",
           pin: c.id || _f(["patient id", "patient no", "pin"]),
@@ -1676,6 +1716,7 @@
             Object.assign(chrStatuses, cMap); Object.assign(mosaicPcts, mMap);
             return {
               embryo_id: embryoId,
+              _rawTag: _fe(["embryo name", "embryo id", "embryo"]),
               result_summary: rs,
               result_description: summaryToDescription(rs),
               autosomes: autosomes,
@@ -2783,6 +2824,44 @@
     function renderBulkEditor(i) {
       const p = state.bulkPatients[i];
       if (!p) return;
+
+      // Lazy-fetch CNV chart images from the vault for this patient (once per editor open)
+      if (p._caseId && !p._imagesFetched && typeof patientImages === "function") {
+        p._imagesFetched = true;
+        const capturedEmbs = p.embryos || [];
+        patientImages(p._caseId).then(imgs => {
+          const labeled = imgs.filter(img => img.embryo && img.embryo !== "General / patient");
+          if (!labeled.length) return;
+          const norm = s => String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+          let changed = false;
+          const promises = labeled.map(async img => {
+            const imgLabel = norm(img.embryo);
+            let matchIdx = -1;
+            for (let ei = 0; ei < capturedEmbs.length; ei++) {
+              const rawTag = String(capturedEmbs[ei]?._rawTag || capturedEmbs[ei]?.embryo_id || "");
+              const tags = rawTag.split(/[,;]/).map(norm).filter(Boolean);
+              if (tags.some(t => t === imgLabel || t.endsWith(imgLabel) || imgLabel.endsWith(t))) { matchIdx = ei; break; }
+            }
+            if (matchIdx < 0 && labeled.length === capturedEmbs.length) {
+              const sortedLabels = [...labeled].sort((a, b) => norm(a.embryo).localeCompare(norm(b.embryo)));
+              const pos = sortedLabels.indexOf(img);
+              if (pos >= 0) matchIdx = pos;
+            }
+            if (matchIdx < 0 || capturedEmbs[matchIdx]?.cnv_image_b64) return;
+            try {
+              const blob = await fetch(img.url).then(r => r.blob());
+              const b64 = await new Promise((res, rej) => { const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = rej; rd.readAsDataURL(blob); });
+              if (state.bulkPatients[i]?.embryos[matchIdx]) {
+                state.bulkPatients[i].embryos[matchIdx].cnv_image_b64 = b64;
+                state.bulkPatients[i].embryos[matchIdx].cnv_image_path = "";
+                changed = true;
+              }
+            } catch (_) {}
+          });
+          Promise.all(promises).then(() => { if (changed) renderBulkEditor(i); });
+        }).catch(() => {});
+      }
+
       const el = document.getElementById("bulkEditorContent");
       const embryos = p.embryos || [];
 
