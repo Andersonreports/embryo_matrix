@@ -1308,9 +1308,9 @@
 
     function _pfApplyPatient(p) {
       _pfFillField("f_patient_name", p.patient_name);
-      _pfFillField("f_pin", p.patient_no);
+      _pfFillField("f_pin", p.lab_no);   // Anderson ID (Sample ID from sheet)
       _pfFillField("f_age", p.age);
-      _pfFillField("f_sample_number", p.lab_no);
+      // f_sample_number intentionally left blank — filled manually
       _pfFillField("f_referring_clinician", p.referring_doctor);
       _pfFillField("f_hospital_clinic", p.client_name);
       const isoDate = (p.sample_receipt_date || "").split(" ")[0];
