@@ -507,7 +507,7 @@ class PGTADocxGenerator:
 
         existing_auto = self._clean(embryo_data.get('autosomes', ''))
         chr_statuses = embryo_data.get('chromosome_statuses') or {}
-        if not chr_statuses:
+        if not chr_statuses or all(v == 'N' for v in chr_statuses.values()):
             chr_statuses = clf.derive_chromosome_statuses(raw_result)
             chr_statuses = clf.validate_statuses(chr_statuses, raw_result)
         auto = clf.derive_autosomes(raw_result, chr_statuses, existing_auto)
@@ -577,7 +577,7 @@ class PGTADocxGenerator:
         
         if not is_inconclusive:
             chr_statuses = embryo_data.get('chromosome_statuses') or {}
-            if not chr_statuses:
+            if not chr_statuses or all(v == 'N' for v in chr_statuses.values()):
                 chr_statuses = clf.derive_chromosome_statuses(raw_result)
                 chr_statuses = clf.validate_statuses(chr_statuses, raw_result)
             mosaic_map = embryo_data.get('mosaic_percentages', {})

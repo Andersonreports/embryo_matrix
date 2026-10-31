@@ -842,7 +842,7 @@ class PGTAReportTemplate:
 
         existing_auto = self._clean(embryo_data.get('autosomes', ''))
         chr_statuses = embryo_data.get('chromosome_statuses') or {}
-        if not chr_statuses:
+        if not chr_statuses or all(v == 'N' for v in chr_statuses.values()):
             chr_statuses = clf.derive_chromosome_statuses(raw_result)
             chr_statuses = clf.validate_statuses(chr_statuses, raw_result)
         autosomes_text = clf.derive_autosomes(raw_result, chr_statuses, existing_auto)
@@ -964,7 +964,7 @@ class PGTAReportTemplate:
     def _create_cnv_table(self, embryo_data):
         """Create CNV status table"""
         chr_statuses = embryo_data.get('chromosome_statuses') or {}
-        if not chr_statuses:
+        if not chr_statuses or all(v == 'N' for v in chr_statuses.values()):
             raw_result = self._clean(embryo_data.get('result_summary') or embryo_data.get('result_description') or '')
             chr_statuses = clf.derive_chromosome_statuses(raw_result)
             chr_statuses = clf.validate_statuses(chr_statuses, raw_result)

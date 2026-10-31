@@ -2121,37 +2121,71 @@
     }
 
     function _parseResult(rStr) {
+      // Mirrors Python's derive_chromosome_statuses() + _split_findings() exactly.
       const cMap = {}, mMap = {};
       if (!rStr || _cleanV(rStr) === "") return { cMap, mMap };
-      const parts = rStr.split(/,\s*(?=(?:del|dup|mos|[+-]|Monosomy|Trisomy))/i);
-      for (let part of parts) {
-        part = part.trim(); if (!part) continue;
-        const m = part.match(/(?:del|dup|mos)[^a-zA-Z]*?(\d+|X|Y)/i);
-        if (m) {
-          const etype = part.slice(0,3).toLowerCase(), chrom = m[1];
-          const isSeg = /([pq]\d|mb)/i.test(part);
-          let st = etype === "del" ? (isSeg ? "SL" : "L") : etype === "dup" ? (isSeg ? "SG" : "G") : "M";
-          const mm = part.match(/[~]*(\d+)%/);
-          if (mm) {
-            mMap[chrom] = mm[1];
-            st = etype === "del" ? (isSeg ? "SML" : "ML") : etype === "dup" ? (isSeg ? "SMG" : "MG") : "M";
-          }
-          cMap[chrom] = st;
-        } else if (/^\+/.test(part) || /^-\d/.test(part)) {
-          // Whole-chromosome gain/loss. A "~NN%" fraction makes it mosaic
-          // ("+15(~30%)" -> MG with Mosaic (%) 30, "-20(~51%)" -> ML with 51);
-          // without one it is a plain G / L.
-          const isGain = /^\+/.test(part);
-          const ch = part.replace(/^[+-]/,"").replace(/\(.*\)/,"").replace(/[^0-9XY]/gi,"").trim();
-          if (ch) {
-            const mm = part.match(/~?\s*(\d+)\s*%/);
-            if (mm) {
-              mMap[ch] = mm[1];
-              cMap[ch] = isGain ? "MG" : "ML";
-            } else {
-              cMap[ch] = isGain ? "G" : "L";
-            }
-          }
+      const s = rStr.trim(), su = s.toUpperCase();
+      if (su.includes("FAILED") || su.includes("NO RESULT")) return { cMap, mMap };
+      if (/^(EUPLOID|NORMAL|NORMAL CHROMOSOME COMPLEMENT)$/i.test(s)) return { cMap, mMap };
+
+      // Split on commas/semicolons outside parentheses, then split each piece on "and"
+      const rawParts = [];
+      { let depth = 0, cur = "";
+        for (const ch of s) {
+          if (ch === "(") depth++;
+          else if (ch === ")") depth = Math.max(0, depth - 1);
+          if ((ch === "," || ch === ";") && depth === 0) { rawParts.push(cur); cur = ""; }
+          else cur += ch;
+        }
+        rawParts.push(cur);
+      }
+      const tokens = [];
+      for (const p of rawParts) for (const t of p.split(/\band\b/i)) tokens.push(t.trim());
+
+      for (const tok of tokens) {
+        if (!tok) continue;
+        const isMos = /\bmosaic\b/i.test(tok) || /~?\s*\d+(?:\.\d+)?\s*%/.test(tok);
+        const isSeg = /\bsegmental\b/i.test(tok);
+        const pctM = (tok.match(/~?\s*(\d+(?:\.\d+)?)\s*%/) || [])[1];
+
+        // del(N)/dup(N) — always segmental (SG/SL), mosaic → SMG/SML
+        for (const m of [...tok.matchAll(/\b(del|dup)\s*\(\s*(1[0-9]|2[0-2]|[1-9])\s*[pq]?/gi)]) {
+          const op = m[1].toLowerCase(), num = m[2];
+          cMap[num] = isMos ? (op === "dup" ? "SMG" : "SML") : (op === "dup" ? "SG" : "SL");
+          if (pctM && isMos) mMap[num] = pctM;
+        }
+
+        // Monosomy/Nullisomy N → L (ML if mosaic)
+        for (const m of [...tok.matchAll(/\b(?:monosomy|nullisomy)\s+(1[0-9]|2[0-2]|[1-9])\b/gi)]) {
+          cMap[m[1]] = isMos ? "ML" : "L";
+          if (pctM && isMos) mMap[m[1]] = pctM;
+        }
+
+        // Trisomy/Tetrasomy N → G (MG if mosaic)
+        for (const m of [...tok.matchAll(/\b(?:trisomy|tetrasomy)\s+(1[0-9]|2[0-2]|[1-9])\b/gi)]) {
+          cMap[m[1]] = isMos ? "MG" : "G";
+          if (pctM && isMos) mMap[m[1]] = pctM;
+        }
+
+        // "loss [chr] N" / "gain [chr] N"
+        for (const m of [...tok.matchAll(/\bloss\s+(?:chr)?\s*(1[0-9]|2[0-2]|[1-9])\b/gi)]) {
+          cMap[m[1]] = isMos ? (isSeg ? "SML" : "ML") : (isSeg ? "SL" : "L");
+          if (pctM && isMos) mMap[m[1]] = pctM;
+        }
+        for (const m of [...tok.matchAll(/\bgain\s+(?:chr)?\s*(1[0-9]|2[0-2]|[1-9])\b/gi)]) {
+          cMap[m[1]] = isMos ? (isSeg ? "SMG" : "MG") : (isSeg ? "SG" : "G");
+          if (pctM && isMos) mMap[m[1]] = pctM;
+        }
+
+        // +/- chromosome number (anywhere in token; skips chromosomes already set above)
+        for (const m of [...tok.matchAll(/([+-])\s*(1[0-9]|2[0-2]|[1-9])\b/g)]) {
+          const sign = m[1], num = m[2];
+          if (cMap[num]) continue;
+          cMap[num] = (isMos && isSeg) ? (sign === "+" ? "SMG" : "SML")
+                    : isMos            ? (sign === "+" ? "MG"  : "ML")
+                    : isSeg            ? (sign === "+" ? "SG"  : "SL")
+                    :                    (sign === "+" ? "G"   : "L");
+          if (pctM && isMos) mMap[num] = pctM;
         }
       }
       return { cMap, mMap };
