@@ -1369,13 +1369,17 @@
           const sampleId  = (typeof field === "function") ? field(row, ["sample id", "sample no", "box number"]) : "";
           const embryoId  = tag || `PS${i + 1}`;
           const embryoDetail = (sampleId && tag && sampleId !== tag) ? `${sampleId} — ${tag}` : embryoId;
-          const resultSum = _g(["result summary", "result"]) || RESULT_SUMMARY_OPTIONS[0];
-          const interp    = _g(["interpretation"]) || "NA";
           // mtcopy: expR now has the per-embryo value (withEmbryoResult merged it)
           const mtcopy    = _g(["mtcopy"]) || "NA";
           const autosomes = _g(["autosomes", "autosome"]) || "Normal";
           const sexChrom  = _g(["sex chromosomes", "sex chromosome", "sex"]) || "Normal";
-          const karyo     = _g(["karyotype", "karyotype mwf"]);
+          // karyotype mwf is per-embryo (in RESULT_MERGE_FIELDS); classify it to get
+          // result_summary and interpretation — row-level "result summary" is a joined
+          // string that is the same for all embryos in the row and must not be used.
+          const karyo = _g(["karyotype mwf", "karyotype"]);
+          const clf   = _classifyKaryo(karyo);
+          const resultSum = clf ? clf.rs : (RESULT_SUMMARY_OPTIONS.includes(_g(["result summary", "result"])) ? _g(["result summary", "result"]) : RESULT_SUMMARY_OPTIONS[0]);
+          const interp    = clf ? clf.interp : (_g(["interpretation"]) || "NA");
           const chrStatuses = {}; for (let ci = 1; ci <= 22; ci++) chrStatuses[String(ci)] = "N";
           const mosaicPcts = {};
           const { cMap, mMap } = _parseResult(karyo || resultSum);
@@ -1750,10 +1754,12 @@
               const sampleId  = (typeof field === "function") ? field(row, ["sample id", "sample no", "box number"]) : "";
               const embryoId  = tag || `PS${i + 1}`;  // sampleId never used as embryo_id
               const embryoDetail = (sampleId && tag && sampleId !== tag) ? `${sampleId} — ${tag}` : embryoId;
-              const rs        = _fe(["result summary", "result"]) || RESULT_SUMMARY_OPTIONS[0];
               const autosomes = _fe(["autosomes", "autosome"]) || "Normal";
               const sexChrom  = _fe(["sex chromosomes", "sex chromosome", "sex"]) || "Normal";
-              const karyo     = _fe(["karyotype", "karyotype mwf"]);
+              const karyo     = _fe(["karyotype mwf", "karyotype"]);
+              const clfB      = _classifyKaryo(karyo);
+              const rs        = clfB ? clfB.rs : (RESULT_SUMMARY_OPTIONS.includes(_fe(["result summary", "result"])) ? _fe(["result summary", "result"]) : RESULT_SUMMARY_OPTIONS[0]);
+              const interpB   = clfB ? clfB.interp : (_fe(["interpretation"]) || "NA");
               const chrStatuses = {}; for (let ci = 1; ci <= 22; ci++) chrStatuses[String(ci)] = "N";
               const mosaicPcts = {};
               const { cMap, mMap } = _parseResult(karyo || rs);
@@ -1767,7 +1773,7 @@
                 autosomes: autosomes,
                 sex_chromosomes: sexChrom,
                 mtcopy: _fe(["mtcopy"]) || "NA",
-                interpretation: _fe(["interpretation"]) || "NA",
+                interpretation: interpB,
                 chromosome_statuses: chrStatuses,
                 mosaic_percentages: mosaicPcts,
               };
@@ -2202,6 +2208,41 @@
         }
       }
       return { cMap, mMap };
+    }
+
+    // Classifies a per-embryo karyotype string into result_summary + interpretation,
+    // mirroring Python's classify_embryo() + SUMMARY_TEXT / INTERP mapping exactly.
+    // Returns null when the karyotype is absent or unclassifiable.
+    function _classifyKaryo(karyo) {
+      const s = (karyo || "").trim();
+      if (!s || s === "—" || s === "-") return null;
+      const su = s.toUpperCase();
+      if (/\bFAILED\b|\bNO RESULT\b/i.test(s))       return { rs: "Inconclusive",              interp: "Inconclusive" };
+      if (/\bINCONCLUSIVE\b/i.test(s))                return { rs: "Inconclusive",              interp: "Inconclusive" };
+      if (/\bLOW DNA\b|\bNO DNA\b/i.test(s))          return { rs: "Low DNA concentration",     interp: "Low DNA concentration" };
+      if (/^(EUPLOID|NORMAL|NORMAL CHROMOSOME COMPLEMENT)$/i.test(s))
+                                                       return { rs: "Normal chromosome complement", interp: "Euploid" };
+
+      const { cMap, mMap } = _parseResult(s);
+      const abnormal = Object.entries(cMap).filter(([, v]) => v !== "N");
+      if (!abnormal.length) return null;
+
+      const mosaicPairs = abnormal.filter(([, v]) => /M/.test(v));
+      const isSeg       = abnormal.some(([, v])  => /^S/.test(v));
+
+      if (mosaicPairs.length >= 3) return { rs: "Mosaic chromosome complement",  interp: "Complex mosaic" };
+
+      if (mosaicPairs.length > 0) {
+        const pcts = mosaicPairs.map(([chr]) => parseFloat(mMap[chr] || "0")).filter(p => p > 0);
+        const max = pcts.length ? Math.max(...pcts) : 0;
+        if (max > 80) return { rs: "Abnormal chromosome complement", interp: "Aneuploid" };
+        if (max > 0 && max < 30) return { rs: "Normal chromosome complement",   interp: "Euploid" };
+        if (max > 50) return { rs: "Mosaic chromosome complement",   interp: "High level mosaic" };
+        return   { rs: "Mosaic chromosome complement",   interp: "Low level mosaic" };
+      }
+
+      if (isSeg) return { rs: "Multiple chromosomal abnormalities", interp: "Aneuploid" };
+      return       { rs: "Abnormal chromosome complement",          interp: "Aneuploid" };
     }
 
 
