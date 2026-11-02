@@ -878,8 +878,9 @@
             delete _dirHandles[inputId];
             return;
           }
+          if (d.cancelled) return;  // user dismissed the native dialog
           if (d.error) throw new Error(d.error);
-          // d.unavailable (or no path) — fall through to browser picker
+          // d.unavailable — fall through to browser picker
         } finally {
           clearTimeout(timer);
         }

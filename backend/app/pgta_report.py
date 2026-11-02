@@ -341,4 +341,16 @@ async def pgta_patients(request: Request, db: Session = Depends(get_db)):
 # ── Open-folder stub (desktop-only feature; not applicable in web mode) ─────────
 @router.get("/open-folder-dialog")
 def pgta_open_folder_dialog():
-    return {"unavailable": True}  # native OS dialog not supported in web mode
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        folder = filedialog.askdirectory(title="Select Output Folder", parent=root)
+        root.destroy()
+        if folder:
+            return {"path": folder}
+        return {"cancelled": True}
+    except Exception as e:
+        return {"unavailable": True, "error": str(e)}
