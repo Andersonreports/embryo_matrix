@@ -120,7 +120,7 @@ function render(){
  // Populate edits-sheet link from API (cached after first call)
  const bxLink=$('#bxSheetLink');
  if(bxLink){if(_bxSheetUrl){bxLink.href=_bxSheetUrl;bxLink.style.display=''}else{bxLink.style.display='none';
-  if(!_bxSheetUrlFetching){_bxSheetUrlFetching=true;fetch('/api/edits-sheet').then(r=>r.ok?r.json():{}).then(d=>{if(d.url){_bxSheetUrl=d.url;const l=$('#bxSheetLink');if(l){l.href=d.url;l.style.display=''}}}).catch(()={})}}}}
+  if(!_bxSheetUrlFetching){_bxSheetUrlFetching=true;fetch('/api/edits-sheet').then(r=>r.ok?r.json():{}).then(d=>{if(d.url){_bxSheetUrl=d.url;const l=$('#bxSheetLink');if(l){l.href=d.url;l.style.display=''}}}).catch(()=>{})}}}}
 
 function nextNo(k){const nums=[...(k==='wga'?sheetWga:sheetSeq).map(b=>b.runId),...list.filter(b=>b.kind===k).map(b=>b.meta.batchNo)].map(v=>/^\d+$/.test(String(v||'').trim())?+v:0);return String(Math.max(0,...nums)+1)}
 // The kit, instrument and the people preparing/checking barely change from one batch to the next,
