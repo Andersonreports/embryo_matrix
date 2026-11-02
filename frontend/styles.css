@@ -1528,10 +1528,10 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .rr-nav .rr-mode{margin-right:2px}
 .rr-actions{display:flex;align-items:center}.rr-actions .rr-export{height:42px;margin:0}
 .rr-nav .rr-filters label{justify-content:center}
-.rr-emb-tools{display:flex;flex-wrap:nowrap;align-items:center;gap:6px 10px;margin:0 0 10px;padding:7px 14px;border:1px solid var(--line);border-radius:14px;background:#fbfcfb}
+.rr-emb-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0 0 10px;padding:7px 14px;border:1px solid var(--line);border-radius:14px;background:#fbfcfb}
 .rr-emb-tools .rr-mchips{flex:1 1 auto;flex-wrap:nowrap}
 .rr-emb-tools .rr-mchip-actions{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding-left:10px;border-left:1px solid var(--line)}
-.rr-emb-right{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:nowrap}
+.rr-emb-right{flex:0 0 100%;display:flex;align-items:center;gap:12px;flex-wrap:nowrap;border-top:1px solid var(--line);padding-top:6px;margin-top:2px}
 .rr-emb-right .prep-search{min-width:260px;margin:0}
 .rr-emb-right .prep-search input,.rr-min select{height:38px;box-sizing:border-box}
 .rr-min{white-space:nowrap}
