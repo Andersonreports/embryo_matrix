@@ -1486,12 +1486,14 @@
           dd.appendChild(item);
         });
       }
-      // Position directly below the search input (dropdown lives on body, so fixed works correctly)
+      // Stretch from the search input's left edge to the Run filter's right edge
       const r = inp.getBoundingClientRect();
+      const runSel = document.getElementById("pfRunFilter");
+      const rightEdge = runSel ? runSel.getBoundingClientRect().right : r.right;
       dd.style.position = "fixed";
       dd.style.top   = (r.bottom + 2) + "px";
       dd.style.left  = r.left + "px";
-      dd.style.width = Math.max(r.width, 320) + "px";
+      dd.style.width = Math.max(rightEdge - r.left, 320) + "px";
       dd.style.display = "block";
     }
 
