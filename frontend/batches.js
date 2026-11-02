@@ -59,7 +59,8 @@ function pending(k){
   if(k==='wga'&&field(e,['wga done on']))continue;
   const patient=e._case?.patient||field(e,['patient name']),received=field(e,['date sample received']);
   if(!patient||!received||SKIP_PATIENT.test(patient))continue;
-  const units=embryoRowsOf(e),names=units.map(u=>field(u,['sample name','embryo name','embryo'])),dup=new Set(names).size<names.length;
+  const sid=field(e,['sample id']);
+  const units=embryoRowsOf(e),names=units.map(u=>field(u,['embryo id','sample name','embryo name','embryo'])||sid),dup=new Set(names).size<names.length;
   units.forEach((u,i)=>{const tag=dup?`${names[i]||'E'}#${i+1}`:names[i]||'',kk=key(patient,tag);if(!tag||done.has(kk))return;
    const wv=wgaVals.get(kk)||{};
    out.push({key:kk,editSid:editSampleId(e),editTag:editEmbryoTag(names[i]),patient,embryo:tag,caseRef:e._case,sampleId:field(e,['sample id']),test:canonicalTestName(field(e,['test name']))||e._case?.test||'',
@@ -86,7 +87,7 @@ function render(){
  const keys=new Set(all.map(r=>r.key));picked.forEach(k=>{if(!keys.has(k))picked.delete(k)});
  const sel=all.filter(r=>picked.has(r.key)),selPatients=new Set(sel.map(r=>r.patient)).size,noWga=kind==='seq'?sel.filter(r=>!r.wga).length:0,
   selTests=Object.entries(sel.reduce((m,r)=>(m[r.test||'No test']=(m[r.test||'No test']||0)+1,m),{})).map(([t,n])=>`${t}: ${n}`).join(' · '),
-  made=list.filter(b=>b.kind===kind).length;
+  made=list.filter(b=>b.kind===kind).length,inBatch=placed(kind).size;
  // Columns: the WGA tab follows the WGA batch sheet's Sample Details (the barcode fills in for the embryos picked,
  // in the order they'll be written; S. No. is only in the sheet), then a few columns that help choose.
  const selNo=new Map(sel.map((r,i)=>[r.key,i])),dash='<span class="muted">—</span>',td=(v,cls='')=>`<td class="${cls}">${v?esc(v):dash}</td>`;
@@ -112,7 +113,7 @@ function render(){
    ${custom?`<span class="bx-range"><input type="date" data-flt="from" value="${esc(flt.from)}" aria-label="Received from"${flt.to?` max="${esc(flt.to)}"`:''}><span>to</span><input type="date" data-flt="to" value="${esc(flt.to)}" aria-label="Received to"${flt.from?` min="${esc(flt.from)}"`:''}></span>`:''}
    ${defs.map(([k,l])=>{const o=optsOf(k);return `<select class="bx-pill${flt[k]?' on':''}" data-flt="${k}" aria-label="${l}"${o.length?'':' disabled title="Not filled in the sheet for these embryos yet"'}><option value="">${l}: ${o.length?'All':'No data'}</option>${o.map(v=>`<option value="${esc(v)}"${flt[k]===v?' selected':''}>${flt[k]===v?`${esc(l)}: `:''}${esc(v)}</option>`).join('')}</select>`}).join('')}
    ${nFlt?'<button type="button" class="text-button bx-fclear" id="bxFltClear">Clear all</button>':''}</div>
-  <div class="bx-bar"><div><strong>${all.length}</strong> embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${rows.length!==all.length?` · ${rows.length} shown`:''}<button type="button" class="text-button bx-made-btn" id="bxMade">${KIND[kind].plural} made here (${made})</button></div>
+  <div class="bx-bar"><div><strong>${all.length}</strong> embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${rows.length!==all.length?` · ${rows.length} shown`:''}${inBatch?` <span class="muted bx-in-batch" title="${inBatch} embryo${inBatch===1?'':'s'} already in ${kind==='wga'?'WGA batches':'sequencing runs'}">· ${inBatch} already batched</span>`:''}<button type="button" class="text-button bx-made-btn" id="bxMade">${KIND[kind].plural} made here (${made})</button></div>
    <div class="bx-bar-act"><span class="bx-count" title="${esc(selTests)}">${picked.size} selected${picked.size?` <small>· ${selPatients} patient${selPatients>1?'s':''}</small>`:''}</span>${noWga?`<span class="bx-warn" title="These embryos have no WGA date yet">${noWga} without WGA</span>`:''}<button type="button" class="secondary compact bx-up" id="bxUpload" title="Upload a batch file you downloaded here, after filling in the results at the bench">⇪ Upload results</button><input type="file" id="bxUploadFile" accept=".xlsx" hidden><button type="button" class="secondary compact" id="bxClear"${picked.size?'':' disabled'}>Clear</button><button type="button" class="primary" id="bxMake"${picked.size?'':' disabled'}>Create ${kind==='wga'?'WGA batch':'sequencing run'}</button></div></div>
   <div class="bx-table-wrap" id="bxTable">${groups.length?`<table class="prep-table bx-table bx-t-${kind}"><thead><tr><th class="bx-ck"><input type="checkbox" id="bxAll" aria-label="Select all shown"${rows.length&&rows.every(r=>picked.has(r.key))?' checked':''}></th>${cols.map(c=>`<th>${c[0]}</th>`).join('')}</tr></thead><tbody>${groups.map(g=>{const on=g.rows.every(r=>picked.has(r.key));return g.rows.map((r,i)=>`<tr class="${picked.has(r.key)?'on':''}${i===0?' bx-first':''}" data-key="${esc(r.key)}"><td class="bx-ck"><input type="checkbox"${picked.has(r.key)?' checked':''} aria-label="Select ${esc(r.patient)} ${esc(r.embryo)}"></td>${cols.map(c=>c[1]!=='patient'?c[1](r):i===0?`<td class="strong bx-pat" rowspan="${g.rows.length}"><div class="bx-pat-in"><label><input type="checkbox" class="bx-pck" data-patient="${esc(g.patient)}"${on?' checked':''}> ${esc(g.patient)}</label><small>${g.rows.length} embryo${g.rows.length>1?'s':''}</small></div></td>`:'').join('')}</tr>`).join('')}).join('')}</tbody></table>`:`<div class="chart-empty">No embryos waiting for ${kind==='wga'?'WGA':'sequencing'}${needle||nFlt?' match these filters':''}.</div>`}</div>
  </div>`;
