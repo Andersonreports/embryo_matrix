@@ -886,7 +886,6 @@
       } catch { /* fall through to browser picker */ }
 
       if (!window.showDirectoryPicker) {
-        showToast("Folder selection not supported in this browser — reports will download to your Downloads folder.", "info");
         document.getElementById(inputId).value = "Downloads folder";
         delete _dirHandles[inputId];
         return;
