@@ -1467,16 +1467,16 @@
           const item = document.createElement("button");
           item.type = "button";
           item.className = "pf-dd-item";
-          const line1 = [p.patient_name, p.patient_no].filter(Boolean).join("  ·  ");
-          const line2 = [p.client_name, p.test, p.age ? `${p.age}y` : ""].filter(Boolean).join(" · ");
-          const line3 = [
+          const detail = [
+            p.client_name,
+            p.test,
+            p.age ? `${p.age}y` : "",
             p.sample_receipt_date ? `Recd ${p.sample_receipt_date}` : "",
-            p.embryo_count ? `${p.embryo_count} embryo${p.embryo_count !== 1 ? "s" : ""}` : "",
+            p.embryo_count ? `${p.embryo_count} emb` : "",
             p.embryologist || "",
           ].filter(Boolean).join(" · ");
           item.innerHTML = `<div class="pf-dd-name">${esc(p.patient_name)}<span class="pf-dd-sid">${esc(p.patient_no)}</span></div>`
-            + (line2 ? `<div class="pf-dd-detail">${esc(line2)}</div>` : "")
-            + (line3 ? `<div class="pf-dd-meta">${esc(line3)}</div>` : "");
+            + (detail ? `<div class="pf-dd-detail">${esc(detail)}</div>` : "");
           item.onmousedown = e => {
             e.preventDefault();
             _pfApplyPatient(p);
