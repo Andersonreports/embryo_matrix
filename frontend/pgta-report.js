@@ -1528,7 +1528,8 @@
         const testName = (c.test || "").toLowerCase();
         if (tf && !testName.includes(tf)) continue;
         if (cf && !clientName.toLowerCase().includes(cf)) continue;
-        if (rf && !(c.embryos || []).some(e => _runsOf(e).includes(rf))) continue;
+        const _cRuns = [...new Set([...(c.embryos || []).flatMap(_runsOf), ...(typeof caseRunMap !== "undefined" && caseRunMap[c.id] ? [String(caseRunMap[c.id])] : [])])];
+        if (rf && !_cRuns.includes(rf)) continue;
         if (mf || yf) {
           const e0 = c.embryos?.[0] || {};
           const dateStr = e0["date sample received"] || e0["date sample collected"] || "";
@@ -1636,6 +1637,7 @@
         const ds = e0["date sample received"] || e0["date sample collected"] || "";
         if (ds) { const d = new Date(ds); if (!isNaN(d)) { years.add(String(d.getFullYear())); months.add(String(d.getMonth() + 1).padStart(2, "0")); } }
         (c.embryos || []).forEach(e => String(e["run id"] || "").split(",").forEach(r => { const v = r.trim(); if (v) runs.add(v); }));
+        if (typeof caseRunMap !== "undefined" && caseRunMap[c.id]) runs.add(String(caseRunMap[c.id]));
       }
       const yearSel = document.getElementById("pfYearFilter");
       if (yearSel) {
@@ -1768,7 +1770,8 @@
         if (!name) return false;
         if (testFilter && (c.test || "").toLowerCase() !== testFilter.toLowerCase()) return false;
         if (clientFilter && !(c.client || "").toLowerCase().includes(clientFilter.toLowerCase())) return false;
-        if (runFilter && !(c.embryos || []).some(e => _runsOf(e).includes(runFilter))) return false;
+        const _cRunsB = [...new Set([...(c.embryos || []).flatMap(_runsOf), ...(typeof caseRunMap !== "undefined" && caseRunMap[c.id] ? [String(caseRunMap[c.id])] : [])])];
+        if (runFilter && !_cRunsB.includes(runFilter)) return false;
         if (monthFilter || yearFilter) {
           const e0 = c.embryos?.[0] || {};
           const ds = e0["date sample received"] || e0["date sample collected"] || "";
