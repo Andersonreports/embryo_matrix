@@ -74,7 +74,7 @@ body:has(#pgtaView:not(.hidden)) #viewTitleStrip {
   z-index: 9999; background: #fff;
   border: 1px solid var(--panel-border); border-radius: 10px;
   box-shadow: 0 8px 28px rgba(10,113,128,.2);
-  max-height: 360px; overflow-y: auto; min-width: 280px;
+  max-height: 70vh; overflow-y: auto; min-width: 280px;
 }
 .pf-dd-item {
   display: block; width: 100%; text-align: left;
