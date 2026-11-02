@@ -785,7 +785,7 @@
         progressFill.style.width = "40%"; progressText.textContent = "Generating report...";
         const res = await fetch(`${PGTA_BASE}/api/pgta/generate`, {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ patient_info: getPatientData(), embryos: getEmbryosData(), options: { show_logo: opts.show_logo, show_grid: opts.show_grid, formats: formats }, output_dir: outputDir || undefined })
+          body: JSON.stringify({ patient_info: getPatientData(), embryos: getEmbryosData(), options: { show_logo: opts.show_logo, show_grid: opts.show_grid, formats: formats }, output_dir: (outputDir && outputDir !== "Downloads folder") ? outputDir : undefined })
         });
         if (!res.ok) throw await uploadError(res);
         const data = await res.json(); if (data.error) throw new Error(data.error);
@@ -886,7 +886,9 @@
       } catch { /* fall through to browser picker */ }
 
       if (!window.showDirectoryPicker) {
-        showToast("Folder picker requires Chrome or Edge browser.", "error");
+        showToast("Folder selection not supported in this browser — reports will download to your Downloads folder.", "info");
+        document.getElementById(inputId).value = "Downloads folder";
+        delete _dirHandles[inputId];
         return;
       }
       try {
@@ -3401,6 +3403,7 @@
         showToast("Please select output folder", "warning");
         return;
       }
+      const _effectiveBulkDir = (outputDir && outputDir !== "Downloads folder") ? outputDir : null;
 
       const btn = document.getElementById(btnId);
       const otherBtn = document.getElementById(btnId === "generateAllBtn" ? "generateSelectedBtn" : "generateAllBtn");
@@ -3436,7 +3439,7 @@
           
           payload.options = { formats: opts.formats, show_logo: opts.showLogo, show_grid: opts.showGrid };
           
-          if (opts.outputDir) payload.output_dir = opts.outputDir;
+          if (_effectiveBulkDir) payload.output_dir = _effectiveBulkDir;
           const res = await fetch(`${PGTA_BASE}/api/pgta/generate`, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
@@ -3485,7 +3488,7 @@
       resultBox.classList.remove("hidden");
       if (!errors.length) {
         resultBox.className = "result-box success";
-        resultBox.innerHTML = ` <strong>${done} report${done > 1 ? "s" : ""} generated successfully!</strong>${opts.outputDir ? `<br><small>Saved to: ${esc(opts.outputDir)}</small>` : ""}`;
+        resultBox.innerHTML = ` <strong>${done} report${done > 1 ? "s" : ""} generated successfully!</strong>${_effectiveBulkDir ? `<br><small>Saved to: ${esc(_effectiveBulkDir)}</small>` : ""}`;
         showToast(`${done} report${done > 1 ? "s" : ""} done`, "success");
       } else {
         resultBox.className = "result-box error";
