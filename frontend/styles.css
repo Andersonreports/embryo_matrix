@@ -1232,7 +1232,7 @@ html,body{max-width:100%;overflow-x:hidden}
 .od-clear{height:36px;padding:0 14px;border:1px solid #e6c4ba;border-radius:10px;background:#fbefeb;color:#a04f3d;font:600 13px "Inter";cursor:pointer}
 .prep-toolbar{gap:10px}
 /* Run reports tab */
-.rr-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 18px}
+.rr-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 10px}
 .rr-nav{display:flex;align-items:center;gap:6px}
 .rr-nav select{min-width:230px;height:42px;font:600 15px "Inter";color:var(--ink);padding:0 14px;border-radius:10px;background:#fff}
 .rr-step{width:42px;height:42px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#0a7180;font:600 22px/1 "Inter";cursor:pointer}
@@ -1339,8 +1339,8 @@ html,body{max-width:100%;overflow-x:hidden}
 /* Run reports > Embryologists */
 .rr-single{display:contents}
 .rr-single.hidden{display:none}
-.rr-emb-tools{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"chips search" "acts search";gap:6px 16px;align-items:start;margin:0 0 14px}
-.rr-emb-tools .rr-mchips{grid-area:chips}.rr-emb-tools .rr-mchip-actions{grid-area:acts}.rr-emb-right{grid-area:search;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.rr-emb-right .prep-search{min-width:260px}
+.rr-emb-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0 0 10px}
+.rr-emb-tools .rr-mchips{flex:1 1 auto}.rr-emb-tools .rr-mchip-actions{flex:0 0 auto;display:flex;align-items:center;gap:6px}.rr-emb-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:0 0 auto}.rr-emb-right .prep-search{min-width:260px}
 .rr-min{display:flex;align-items:center;gap:8px;margin:0;font:600 12px "Inter";color:#5d6a63}.rr-min select{padding:8px 10px;font:600 13px "Inter"}
 @media(max-width:900px){.rr-emb-tools{grid-template-columns:minmax(0,1fr);grid-template-areas:"chips" "acts" "search"}}
 .rr-mchips{display:flex;flex-wrap:wrap;gap:6px}
@@ -1528,9 +1528,9 @@ button[data-set="Rejected"]:hover{background:#a02f23!important}
 .rr-nav .rr-mode{margin-right:2px}
 .rr-actions{display:flex;align-items:center}.rr-actions .rr-export{height:42px;margin:0}
 .rr-nav .rr-filters label{justify-content:center}
-.rr-emb-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:0 0 16px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fbfcfb}
-.rr-emb-tools .rr-mchips{flex:0 1 auto}
-.rr-emb-tools .rr-mchip-actions{flex:0 0 auto;align-items:center;padding-left:12px;border-left:1px solid var(--line)}
+.rr-emb-tools{display:flex;flex-wrap:nowrap;align-items:center;gap:6px 10px;margin:0 0 10px;padding:7px 14px;border:1px solid var(--line);border-radius:14px;background:#fbfcfb}
+.rr-emb-tools .rr-mchips{flex:1 1 auto;flex-wrap:nowrap}
+.rr-emb-tools .rr-mchip-actions{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding-left:10px;border-left:1px solid var(--line)}
 .rr-emb-right{margin-left:auto;display:flex;align-items:center;gap:12px;flex-wrap:nowrap}
 .rr-emb-right .prep-search{min-width:260px;margin:0}
 .rr-emb-right .prep-search input,.rr-min select{height:38px;box-sizing:border-box}
