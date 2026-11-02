@@ -1382,8 +1382,13 @@
           // string that is the same for all embryos in the row and must not be used.
           const karyo = _g(["karyotype mwf", "karyotype"]);
           const clf   = _classifyKaryo(karyo);
-          const resultSum = clf ? clf.rs : (RESULT_SUMMARY_OPTIONS.includes(_g(["result summary", "result"])) ? _g(["result summary", "result"]) : RESULT_SUMMARY_OPTIONS[0]);
-          const interp    = clf ? clf.interp : (_g(["interpretation"]) || "NA");
+          const _rSheet = _g(["result summary", "result"]);
+          const _rOutcome = getPrettySummary(String(expR._outcome || ""));
+          const resultSum = clf ? clf.rs
+            : RESULT_SUMMARY_OPTIONS.includes(_rSheet) ? _rSheet
+            : RESULT_SUMMARY_OPTIONS.includes(_rOutcome) ? _rOutcome
+            : RESULT_SUMMARY_OPTIONS[0];
+          const interp    = clf ? clf.interp : (_g(["interpretation"]) || (isNoResultSummary(resultSum) ? "Inconclusive" : "NA"));
           const chrStatuses = {}; for (let ci = 1; ci <= 22; ci++) chrStatuses[String(ci)] = "N";
           const mosaicPcts = {};
           const { cMap, mMap } = _parseResult(karyo || resultSum);
@@ -1829,8 +1834,13 @@
               const sexChrom  = _fe(["sex chromosomes", "sex chromosome", "sex"]) || "Normal";
               const karyo     = _fe(["karyotype mwf", "karyotype"]);
               const clfB      = _classifyKaryo(karyo);
-              const rs        = clfB ? clfB.rs : (RESULT_SUMMARY_OPTIONS.includes(_fe(["result summary", "result"])) ? _fe(["result summary", "result"]) : RESULT_SUMMARY_OPTIONS[0]);
-              const interpB   = clfB ? clfB.interp : (_fe(["interpretation"]) || "NA");
+              const _rSheetB  = _fe(["result summary", "result"]);
+              const _rOutcomeB = getPrettySummary(String(expR._outcome || ""));
+              const rs        = clfB ? clfB.rs
+                : RESULT_SUMMARY_OPTIONS.includes(_rSheetB) ? _rSheetB
+                : RESULT_SUMMARY_OPTIONS.includes(_rOutcomeB) ? _rOutcomeB
+                : RESULT_SUMMARY_OPTIONS[0];
+              const interpB   = clfB ? clfB.interp : (_fe(["interpretation"]) || (isNoResultSummary(rs) ? "Inconclusive" : "NA"));
               const chrStatuses = {}; for (let ci = 1; ci <= 22; ci++) chrStatuses[String(ci)] = "N";
               const mosaicPcts = {};
               const { cMap, mMap } = _parseResult(karyo || rs);
