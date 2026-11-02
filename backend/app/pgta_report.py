@@ -341,16 +341,34 @@ async def pgta_patients(request: Request, db: Session = Depends(get_db)):
 # ── Open-folder stub (desktop-only feature; not applicable in web mode) ─────────
 @router.get("/open-folder-dialog")
 def pgta_open_folder_dialog():
-    try:
-        import tkinter as tk
-        from tkinter import filedialog
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
-        folder = filedialog.askdirectory(title="Select Output Folder", parent=root)
-        root.destroy()
-        if folder:
-            return {"path": folder}
-        return {"cancelled": True}
-    except Exception as e:
-        return {"unavailable": True, "error": str(e)}
+    import subprocess, shutil
+    _env = {**os.environ, "DISPLAY": os.environ.get("DISPLAY", ":0")}
+    # zenity (GTK) — available on most Linux desktops
+    if shutil.which("zenity"):
+        try:
+            r = subprocess.run(
+                ["zenity", "--file-selection", "--directory", "--title=Select Output Folder"],
+                capture_output=True, text=True, timeout=120, env=_env,
+            )
+            if r.returncode == 0:
+                folder = r.stdout.strip()
+                if folder:
+                    return {"path": folder}
+            return {"cancelled": True}
+        except Exception as e:
+            return {"unavailable": True, "error": str(e)}
+    # kdialog (KDE)
+    if shutil.which("kdialog"):
+        try:
+            r = subprocess.run(
+                ["kdialog", "--getexistingdirectory", os.path.expanduser("~"), "--title", "Select Output Folder"],
+                capture_output=True, text=True, timeout=120, env=_env,
+            )
+            if r.returncode == 0:
+                folder = r.stdout.strip()
+                if folder:
+                    return {"path": folder}
+            return {"cancelled": True}
+        except Exception as e:
+            return {"unavailable": True, "error": str(e)}
+    return {"unavailable": True}
