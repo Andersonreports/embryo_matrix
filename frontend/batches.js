@@ -49,12 +49,12 @@ function placed(k){const m=new Map,add=(arr,lab)=>arr.forEach(b=>(b.samples||[])
  else{add(sheetSeq,b=>`Run ${b.runId}`);add(list.filter(b=>b.kind==='seq'),b=>`Run ${b.meta.batchNo} (here)`)}
  return m}
 
-// One row per embryo still waiting for this step, oldest received first, a patient's embryos together.
+// One row per embryo still waiting for this step, in the same order they appear in the Google Sheet.
 function pending(k){
  const done=placed(k),inWga=placed('wga'),out=[],wgaVals=new Map;
  // WGA results uploaded to a batch made here fill the concentrations the tracker doesn't have yet.
  list.filter(b=>b.kind==='wga').forEach(b=>b.samples.forEach(x=>wgaVals.set(x.key,x)));
- for(const e of allEmbryos()){
+ for(const [eIdx,e] of allEmbryos().entries()){
   if(e._stale||field(e,['ngs report'])||field(e,['seq date']))continue;
   if(k==='wga'&&field(e,['wga done on']))continue;
   const patient=e._case?.patient||field(e,['patient name']),received=field(e,['date sample received']);
@@ -64,14 +64,15 @@ function pending(k){
    const wv=wgaVals.get(kk)||{};
    out.push({key:kk,editSid:editSampleId(e),editTag:editEmbryoTag(names[i]),patient,embryo:tag,caseRef:e._case,sampleId:field(e,['sample id']),test:canonicalTestName(field(e,['test name']))||e._case?.test||'',
     received,biopsy:field(e,['date of biopsy']),
+    remarks:blankish(field(e,['remarks'])),
     dnaConc:ownDnaValue(field(e,['dna conc unpurified','wga conc unpurified','wga conc']),names[i])||wv.dnaConc||'',
     purified:String((e._embryoResults||{})[cleanId(names[i])]?.['wga conc']||'').trim()||wv.purified||'',
     wga:field(e,['wga done on'])||inWga.get(kk)||'',
     client:blankish(e._case?.client||field(e,['center name'])),embryologist:blankish(e._case?.embryologist||field(e,['embryologist name'])),
-    receivedBy:blankish(field(e,['received by'])),kit:blankish(field(e,['kit detail'])),wgaBy:blankish(field(e,['wga done by'])),platform:blankish(field(e,['seq platform']))})})}
+    receivedBy:blankish(field(e,['received by'])),kit:blankish(field(e,['kit detail'])),wgaBy:blankish(field(e,['wga done by'])),platform:blankish(field(e,['seq platform'])),
+    _order:eIdx*100+i})})}
  ['client','embryologist','receivedBy','kit','wgaBy','platform'].forEach(f=>unifySpellings(out,f));
- const first=new Map;out.forEach(r=>{const p=r.patient.toUpperCase(),d=dmyKey(r.received);if(!first.has(p)||first.get(p)>d)first.set(p,d)});
- return out.sort((a,b)=>first.get(a.patient.toUpperCase()).localeCompare(first.get(b.patient.toUpperCase()))||a.patient.localeCompare(b.patient)||a.embryo.localeCompare(b.embryo,undefined,{numeric:true}))}
+ return out.sort((a,b)=>a._order-b._order)}
 
 function render(){
  const prevScroll=$('#bxTable')?.scrollTop||0;
@@ -96,11 +97,10 @@ function render(){
   dna:['DNA Conc. (ng/µL)',r=>td(r.dnaConc,'mono')],pur:['Purified WGA Conc. (ng/µL)',r=>td(r.purified,'mono')],
   sid:['Sample ID',r=>td(r.sampleId,'mono')],test:['Test',r=>td(r.test)],client:['Client',r=>`<td class="bx-client" title="${esc(r.client)}">${r.client?esc(r.client):dash}</td>`],
   wait:['Waiting',r=>`<td>${waitChip(waitDays(r.received))}</td>`],
-  wga:['WGA',r=>`<td>${r.wga?`<span class="bx-wga ok">${esc(r.wga)}</span>`:'<span class="bx-wga">Not yet</span>'}</td>`]};
- // The sequencing tab follows the Sequencing Batch Record's Sample Processing Details; Volume, pool, I7, I5 and
- // remarks are filled at the bench, so they are left to the file.
- const cols=(kind==='wga'?['biopsy','received','type','patient','embryo','index','dna','pur','sid','test','client','wait']
-  :['received','patient','embryo','dna','seqIndex','sid','test','client','wait','wga']).map(k=>C[k]);
+  wga:['WGA',r=>`<td>${r.wga?`<span class="bx-wga ok">${esc(r.wga)}</span>`:'<span class="bx-wga">Not yet</span>'}</td>`],
+  remarks:['Remarks',r=>r.remarks?`<td class="bx-remarks" title="${esc(r.remarks)}">${esc(r.remarks)}</td>`:`<td>${dash}</td>`]};
+ const cols=(kind==='wga'?['biopsy','received','type','patient','embryo','index','dna','pur','sid','test','client','wait','remarks']
+  :['received','patient','embryo','dna','seqIndex','sid','test','client','wait','wga','remarks']).map(k=>C[k]);
  const groups=[];rows.forEach(r=>{const g=groups[groups.length-1];if(g&&g.patient===r.patient)g.rows.push(r);else groups.push({patient:r.patient,rows:[r]})});
  root.innerHTML=`<div class="bx">
   <div class="bx-top"><div class="prep-segments bx-kind" role="tablist">${Object.entries(KIND).map(([k,v])=>`<button type="button" class="prep-seg${k===kind?' active':''}" data-kind="${k}" role="tab" aria-selected="${k===kind}">${v.label}</button>`).join('')}</div>
@@ -216,4 +216,6 @@ window.renderBatchCreationView=async function(container){
   container.addEventListener('input',e=>{if(e.target.id==='bxSearch'){q=e.target.value;const pos=e.target.selectionStart;render();const s=$('#bxSearch');s.focus();s.setSelectionRange(pos,pos)}});
   container.addEventListener('change',e=>{if(e.target.id==='bxUploadFile'){const f=e.target.files?.[0];e.target.value='';if(f)uploadResults(f)}else if(e.target.dataset.flt){flt[e.target.dataset.flt]=e.target.value;render()}})}
  await load();if(root===container)render()};
+// Called by app.js after a sheet sync brings in new samples — re-renders in place if the view is open.
+window.refreshBatchView=function(){if(root&&root.isConnected)load().then(render)};
 })();
