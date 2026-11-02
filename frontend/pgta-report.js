@@ -1495,14 +1495,16 @@
     }
 
     // Build patient list from the sheet data already loaded in EmbryoMatrix (global `cases` array)
-    function _pfSheetPatients(query, testFilter, monthFilter, yearFilter, clientFilter) {
+    function _pfSheetPatients(query, testFilter, monthFilter, yearFilter, clientFilter, runFilter) {
       const q = (query || "").trim().toLowerCase();
       const tf = (testFilter || "").trim().toLowerCase();
       const mf = (monthFilter || "").trim();
       const yf = (yearFilter || "").trim();
       const cf = (clientFilter || "").trim().toLowerCase();
-      if (!q && !tf && !mf && !yf && !cf) return [];
+      const rf = (runFilter || "").trim();
+      if (!q && !tf && !mf && !yf && !cf && !rf) return [];
       const src = (typeof cases !== "undefined" && Array.isArray(cases)) ? cases : [];
+      const _runsOf = e => String(e["run id"] || "").split(",").map(x => x.trim()).filter(Boolean);
       const results = [];
       for (const c of src) {
         const name = (c.patient || "").trim();
@@ -1511,6 +1513,7 @@
         const testName = (c.test || "").toLowerCase();
         if (tf && !testName.includes(tf)) continue;
         if (cf && !clientName.toLowerCase().includes(cf)) continue;
+        if (rf && !(c.embryos || []).some(e => _runsOf(e).includes(rf))) continue;
         if (mf || yf) {
           const e0 = c.embryos?.[0] || {};
           const dateStr = e0["date sample received"] || e0["date sample collected"] || "";
@@ -1558,9 +1561,10 @@
       const monthFilter  = document.getElementById("pfMonthFilter")?.value || "";
       const yearFilter   = document.getElementById("pfYearFilter")?.value || "";
       const clientFilter = document.getElementById("pfClientFilter")?.value || "";
+      const runFilter    = document.getElementById("pfRunFilter")?.value || "";
       const statusEl = document.getElementById("pfStatus");
       const q = (query || "").trim();
-      const hasFilter = testFilter || monthFilter || yearFilter || clientFilter;
+      const hasFilter = testFilter || monthFilter || yearFilter || clientFilter || runFilter;
       if (q.length < 2 && !hasFilter) {
         _pfLastPatients = [];
         const dd = document.getElementById("pfDropdown");
@@ -1569,7 +1573,7 @@
         return;
       }
       // Show local (registry) results immediately
-      const local = _pfSheetPatients(q, testFilter, monthFilter, yearFilter, clientFilter);
+      const local = _pfSheetPatients(q, testFilter, monthFilter, yearFilter, clientFilter, runFilter);
       _pfLastPatients = local;
       if (statusEl) statusEl.textContent = local.length ? `${local.length} found` : "Searching…";
       _pfRenderDropdown(local);
@@ -1606,11 +1610,12 @@
         clientSel.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
         clients.forEach(v => clientSel.add(new Option(v, v)));
       }
-      const years = new Set(), months = new Set();
+      const years = new Set(), months = new Set(), runs = new Set();
       for (const c of src) {
         const e0 = c.embryos?.[0] || {};
         const ds = e0["date sample received"] || e0["date sample collected"] || "";
         if (ds) { const d = new Date(ds); if (!isNaN(d)) { years.add(String(d.getFullYear())); months.add(String(d.getMonth() + 1).padStart(2, "0")); } }
+        (c.embryos || []).forEach(e => String(e["run id"] || "").split(",").forEach(r => { const v = r.trim(); if (v) runs.add(v); }));
       }
       const yearSel = document.getElementById("pfYearFilter");
       if (yearSel) {
@@ -1622,6 +1627,19 @@
       if (monthSel) {
         monthSel.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
         [...months].sort().forEach(m => monthSel.add(new Option(MN[parseInt(m) - 1], m)));
+      }
+      const runSel = document.getElementById("pfRunFilter");
+      if (runSel) {
+        runSel.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
+        [...runs].sort((a, b) => (parseInt(b) || 0) - (parseInt(a) || 0) || b.localeCompare(a))
+          .forEach(r => runSel.add(new Option(`Run ${r}`, r)));
+      }
+      // Populate bulk run filter the same way
+      const bulkRunSel = document.getElementById("bulkRunFilter");
+      if (bulkRunSel) {
+        bulkRunSel.querySelectorAll("option:not(:first-child)").forEach(o => o.remove());
+        [...runs].sort((a, b) => (parseInt(b) || 0) - (parseInt(a) || 0) || b.localeCompare(a))
+          .forEach(r => bulkRunSel.add(new Option(`Run ${r}`, r)));
       }
     }
 
@@ -1713,9 +1731,10 @@
       const monthFilter  = document.getElementById("bulkMonthFilter")?.value || "";
       const yearFilter   = document.getElementById("bulkYearFilter")?.value || "";
       const clientFilter = document.getElementById("bulkClientFilter")?.value || "";
+      const runFilter    = document.getElementById("bulkRunFilter")?.value || "";
       const statusEl     = document.getElementById("bulkSheetSearchStatus");
       const q = (query || "").trim();
-      const hasFilter = testFilter || monthFilter || yearFilter || clientFilter;
+      const hasFilter = testFilter || monthFilter || yearFilter || clientFilter || runFilter;
       if (q.length < 2 && !hasFilter) {
         state.bulkPatients = [];
         if (statusEl) statusEl.textContent = "";
@@ -1723,11 +1742,13 @@
         return;
       }
       const src = (typeof cases !== "undefined" && Array.isArray(cases)) ? cases : [];
+      const _runsOf = e => String(e["run id"] || "").split(",").map(x => x.trim()).filter(Boolean);
       const matched = src.filter(c => {
         const name = (c.patient || "").trim();
         if (!name) return false;
         if (testFilter && (c.test || "").toLowerCase() !== testFilter.toLowerCase()) return false;
         if (clientFilter && !(c.client || "").toLowerCase().includes(clientFilter.toLowerCase())) return false;
+        if (runFilter && !(c.embryos || []).some(e => _runsOf(e).includes(runFilter))) return false;
         if (monthFilter || yearFilter) {
           const e0 = c.embryos?.[0] || {};
           const ds = e0["date sample received"] || e0["date sample collected"] || "";

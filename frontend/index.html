@@ -210,6 +210,7 @@
                 <div class="pf-filter-field"><label class="pf-filter-label">Month</label><select id="pfMonthFilter" onchange="pfRunFilters()"><option value="">All months</option></select></div>
                 <div class="pf-filter-field"><label class="pf-filter-label">Year</label><select id="pfYearFilter" onchange="pfRunFilters()"><option value="">All years</option></select></div>
                 <div class="pf-filter-field" style="min-width:120px;"><label class="pf-filter-label">Client</label><select id="pfClientFilter" onchange="pfRunFilters()"><option value="">All clients</option></select></div>
+                <div class="pf-filter-field" style="min-width:110px;"><label class="pf-filter-label">Run</label><select id="pfRunFilter" onchange="pfRunFilters()"><option value="">All runs</option></select></div>
                 <span id="pfStatus" class="pf-status-badge"></span>
               </div>
               <div class="field-grid">
@@ -399,6 +400,10 @@
             <div class="pf-filter-field" style="min-width:110px;max-width:150px;">
               <label class="pf-filter-label">Client</label>
               <select id="bulkClientFilter" onchange="_bulkRunFilters()"><option value="">All clients</option></select>
+            </div>
+            <div class="pf-filter-field" style="min-width:100px;max-width:140px;">
+              <label class="pf-filter-label">Run</label>
+              <select id="bulkRunFilter" onchange="_bulkRunFilters()"><option value="">All runs</option></select>
             </div>
             <div class="bulk-top-sep"></div>
             <div style="flex-shrink:0;display:flex;align-items:center;gap:6px;">
