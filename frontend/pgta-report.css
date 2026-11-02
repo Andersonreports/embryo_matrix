@@ -84,8 +84,10 @@ body:has(#pgtaView:not(.hidden)) #viewTitleStrip {
 }
 .pf-dd-item:last-child { border-bottom: 0; }
 .pf-dd-item:hover, .pf-dd-item:focus { background: #edf8f7; outline: none; }
-.pf-dd-name { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: .1px; }
+.pf-dd-name { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: .1px; display: flex; align-items: baseline; gap: 8px; }
+.pf-dd-sid { font-size: 11px; font-weight: 500; color: #0b7c6b; font-family: monospace; background: #e8f5f3; padding: 1px 5px; border-radius: 4px; flex-shrink: 0; }
 .pf-dd-detail { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+.pf-dd-meta { font-size: 11px; color: #94a3b8; margin-top: 2px; line-height: 1.3; }
 .pf-dd-empty { padding: 12px 14px; font-size: 13px; color: #64748b; }
 
 /* Back button inside pgta page header */

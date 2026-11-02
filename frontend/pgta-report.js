@@ -1467,8 +1467,16 @@
           const item = document.createElement("button");
           item.type = "button";
           item.className = "pf-dd-item";
-          const detail = [p.patient_no, p.age ? `${p.age}y` : "", p.client_name, p.test].filter(Boolean).join(" · ");
-          item.innerHTML = `<div class="pf-dd-name">${esc(p.patient_name)}</div><div class="pf-dd-detail">${esc(detail)}</div>`;
+          const line1 = [p.patient_name, p.patient_no].filter(Boolean).join("  ·  ");
+          const line2 = [p.client_name, p.test, p.age ? `${p.age}y` : ""].filter(Boolean).join(" · ");
+          const line3 = [
+            p.sample_receipt_date ? `Recd ${p.sample_receipt_date}` : "",
+            p.embryo_count ? `${p.embryo_count} embryo${p.embryo_count !== 1 ? "s" : ""}` : "",
+            p.embryologist || "",
+          ].filter(Boolean).join(" · ");
+          item.innerHTML = `<div class="pf-dd-name">${esc(p.patient_name)}<span class="pf-dd-sid">${esc(p.patient_no)}</span></div>`
+            + (line2 ? `<div class="pf-dd-detail">${esc(line2)}</div>` : "")
+            + (line3 ? `<div class="pf-dd-meta">${esc(line3)}</div>` : "");
           item.onmousedown = e => {
             e.preventDefault();
             _pfApplyPatient(p);
@@ -1533,6 +1541,9 @@
         // Use first embryo row for sample-level fields
         const e = c.embryos?.[0] || {};
         const _f = (keys) => { for (const k of keys) { const v = e[k]; if (v && String(v).trim()) return String(v).trim(); } return ""; };
+        const embryoCount = (typeof embryoRowsOf === "function")
+          ? (c.embryos || []).reduce((s, em) => s + embryoRowsOf(em).length, 0)
+          : (c.embryos?.length || c.samples || 1);
         results.push({
           patient_name: name,
           gender: _f(["gender", "sex"]),
@@ -1544,6 +1555,8 @@
           referring_doctor: _f(["referring doctor", "doctor name", "referred by"]),
           client_name: clientName,
           test: c.test || "",
+          embryologist: c.embryologist || "",
+          embryo_count: embryoCount,
           _case: c,  // full case reference for embryo result population
         });
         if (results.length >= 80) break;
