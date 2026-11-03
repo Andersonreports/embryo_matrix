@@ -16,7 +16,7 @@ const dmyKey=v=>{const m=/(\d{1,2})\D(\d{1,2})\D(\d{4})/.exec(v||'');return m?`$
 const toIso=v=>{const m=/^(\d{1,2})\D(\d{1,2})\D(\d{2}|\d{4})$/.exec(String(v||'').trim());return m?`${m[3].length===2?'20'+m[3]:m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:''};
 const dotted=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||'');return m?`${m[3]}.${m[2]}.${m[1]}`:iso||''};
 const today=()=>new Date().toLocaleDateString('en-CA');
-let root=null,kind='wga',list=[],sheetWga=[],sheetSeq=[],picked=new Set,q='',fOpen=false,lastKey='',idxStart=1,seqIdxStart='',sampleType='EMBRYO BIOPSY D-5',_bxSheetUrl='',_bxSheetUrlFetching=false;
+let root=null,kind='wga',list=[],sheetWga=[],sheetSeq=[],picked=new Set,q='',fOpen=false,sortBy='newest',lastKey='',idxStart=1,seqIdxStart='',sampleType='EMBRYO BIOPSY D-5',_bxSheetUrl='',_bxSheetUrlFetching=false;
 // WGA barcodes are written V001, V002…; sequencing index IDs are plain numbers (321, 322…).
 const idxLabel=n=>`V${String(n).padStart(3,'0')}`,seqIdx=n=>String(n);
 // Filter strip under the search bar. Received is a preset (or a custom from/to range); the rest are pick-lists
@@ -84,6 +84,7 @@ function render(){
  const custom=flt.recv==='custom',fromK=custom?isoKey(flt.from):'',toK=custom?isoKey(flt.to):'',nFlt=defs.filter(([k])=>flt[k]).length+(flt.recv?1:0);
  const recvOk=r=>{if(!flt.recv)return true;if(custom)return(!fromK||dmyKey(r.received)>=fromK)&&(!toK||dmyKey(r.received)<=toK);const w=waitDays(r.received);return w!=null&&(flt.recv==='older7'?w>7:w<=+flt.recv)};
  const rows=all.filter(r=>recvOk(r)&&defs.every(([k])=>!flt[k]||val(r,k)===flt[k])&&(!needle||[r.patient,r.embryo,r.sampleId,r.test].join(' ').toLowerCase().includes(needle)));
+ rows.sort((a,b)=>{const ka=dmyKey(a.received),kb=dmyKey(b.received);return sortBy==='newest'?(kb.localeCompare(ka)||a._order-b._order):(ka.localeCompare(kb)||a._order-b._order)});
  const keys=new Set(all.map(r=>r.key));picked.forEach(k=>{if(!keys.has(k))picked.delete(k)});
  const sel=all.filter(r=>picked.has(r.key)),selPatients=new Set(sel.map(r=>r.patient)).size,noWga=kind==='seq'?sel.filter(r=>!r.wga).length:0,
   selTests=Object.entries(sel.reduce((m,r)=>(m[r.test||'No test']=(m[r.test||'No test']||0)+1,m),{})).map(([t,n])=>`${t}: ${n}`).join(' · '),
@@ -107,6 +108,7 @@ function render(){
   <div class="bx-top"><div class="prep-segments bx-kind" role="tablist">${Object.entries(KIND).map(([k,v])=>`<button type="button" class="prep-seg${k===kind?' active':''}" data-kind="${k}" role="tab" aria-selected="${k===kind}">${v.label}</button>`).join('')}</div>
    <div class="search-wrap bx-search"><span>⌕</span><input id="bxSearch" placeholder="Search patient, embryo or sample ID…" value="${esc(q)}"></div>
    <button type="button" class="secondary compact${fOpen?' active':''}" id="bxFltToggle" aria-expanded="${fOpen}">⚲ Filters <b class="filters-badge${nFlt?' has-active':''}">${nFlt}</b></button>
+   <button type="button" class="secondary compact" id="bxSortToggle" title="Toggle sort order">${sortBy==='newest'?'↓ Newest first':'↑ Oldest first'}</button>
    <a class="text-button bx-sheet-link" id="bxSheetLink" href="#" target="_blank" rel="noopener" title="Open the Edited samples Google Sheet">↗ Edits sheet</a></div>
   <div class="bx-filters${fOpen?'':' hidden'}">
    <select class="bx-pill${flt.recv?' on':''}" data-flt="recv" aria-label="Received">${RECV.map(([v,l])=>`<option value="${v}"${flt.recv===v?' selected':''}>Received: ${l}</option>`).join('')}</select>
@@ -202,6 +204,7 @@ function onClick(e){
  const t=e.target;
  const kb=t.closest('[data-kind]');if(kb){if(kb.dataset.kind!==kind){kind=kb.dataset.kind;picked.clear();render()}return}
  if(t.closest('#bxFltToggle')){fOpen=!fOpen;render();return}
+ if(t.id==='bxSortToggle'){sortBy=sortBy==='newest'?'oldest':'newest';render();return}
  if(t.id==='bxFltClear'){Object.keys(flt).forEach(k=>flt[k]='');render();return}
  if(t.id==='bxClear'){picked.clear();render();return}
  if(t.id==='bxMake'){openCreate();return}
