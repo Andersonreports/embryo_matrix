@@ -1338,15 +1338,27 @@ document.addEventListener('click',e=>{const img=e.target.closest('.stored-image 
 $('#lightboxClose').onclick=()=>$('#imageLightbox').close();
 $('#imageLightbox').addEventListener('click',e=>{if(e.target.id==='imageLightbox')$('#imageLightbox').close()});
 $('#patientDialog').addEventListener('click',e=>{if(e.target.id==='patientDialog')$('#patientDialog').close()});
-async function syncSheetNow(){try{const r=await fetch('/api/sync-sheet',{method:'POST'});if(!r.ok)return null;return await r.json()}catch(e){return null}}
+async function syncSheetNow(force=false){try{const url=force?'/api/sync-sheet?force=true':'/api/sync-sheet';const r=await fetch(url,{method:'POST'});if(!r.ok)return null;return await r.json()}catch(e){return null}}
 function updateIssueStat(status){const issue=$('#issueStat');if(issue)issue.textContent=((status?.skipped||0)+(status?.errors?.length||0))}
+function updateSyncStatusBar(status){
+  const bar=$('#syncStatusBar'),txt=$('#syncStatusText');if(!bar||!txt)return;
+  const when=status?.lastSyncedAt?new Date(status.lastSyncedAt):null;
+  const mins=when?Math.round((Date.now()-when)/60000):null;
+  const ago=mins===null?'':mins<1?'just now':mins===1?'1 min ago':`${mins} min ago`;
+  const errs=status?.errors?.length||0;
+  const errTip=errs&&status.errors?status.errors.join('\n'):'';
+  txt.innerHTML=errs
+    ?`<span class="sync-err" title="${escapeHtml(errTip)}">⚠ Sync error${errs>1?'s':''} (${ago}) — some data may be stale</span>`
+    :`<span class="sync-ok">Data synced ${escapeHtml(ago)}</span>`;
+  bar.hidden=false;
+}
 let caseRunMap={};
 async function loadCaseRuns(){try{const rows=await fetch('/api/case-runs').then(r=>r.json());caseRunMap=Object.fromEntries(rows.map(r=>[r.caseCode,r.runId]))}catch{}}
 // Reason-for-delay notes on the overdue-samples table, keyed by odRowKey (patient|sampleId|embryo).
 let sampleRemarkMap={};
 async function loadSampleRemarks(){try{const rows=await fetch('/api/sample-remarks').then(r=>r.json());sampleRemarkMap=Object.fromEntries(rows.map(r=>[r.rowKey,r.remark]))}catch{}}
 // fast: show the page as soon as the cases are loaded and run the sheet sync in the background (the coordinator Home refreshes itself if the sync brought changes).
-async function init(fast){experiments=(await kvGet('embryomatrix-experiments'))||[];renderExperiments();await Promise.all([setupCases(),loadCaseRuns(),loadSampleRemarks()]);const sync=syncSheetNow().then(async status=>{if(status){if(status.changed!==false){await setupCases();window.refreshBatchView?.()}updateIssueStat(status)}});if(fast){sync.then(()=>{const g=$('#genericView');if(currentUser.role==='coordinator'&&$('#coStats')&&g)renderCoordView(g)}).catch(()=>{});return}await sync}
+async function init(fast){experiments=(await kvGet('embryomatrix-experiments'))||[];renderExperiments();await Promise.all([setupCases(),loadCaseRuns(),loadSampleRemarks()]);const sync=syncSheetNow().then(async status=>{if(status){if(status.changed!==false){await setupCases();window.refreshBatchView?.()}updateIssueStat(status);updateSyncStatusBar(status)}});if(fast){sync.then(()=>{const g=$('#genericView');if(currentUser.role==='coordinator'&&$('#coStats')&&g)renderCoordView(g)}).catch(()=>{});return}await sync;const btn=$('#syncRefreshBtn');if(btn&&!btn._wired){btn._wired=true;btn.onclick=async()=>{btn.disabled=true;btn.textContent='Syncing…';const st=await syncSheetNow(true);if(st){if(st.changed!==false){await setupCases();window.refreshBatchView?.()}updateIssueStat(st);updateSyncStatusBar(st);if(st.changed!==false)toast('Data refreshed');else toast('Already up to date')}else{toast('Sync failed — check server')}btn.disabled=false;btn.textContent='↻ Refresh now'}}}
 loadWhoAmI().then(()=>{applyRoleAccess();if(currentUser.role!=='coordinator')homeUnit='embryos';if(currentUser.role==='coordinator'&&currentUser.signedIn){$('#homeView')?.classList.add('hidden');const gv=$('#genericView');if(gv){gv.classList.remove('hidden');gv.innerHTML='<div class="generic-card"><div class="chart-empty">Loading…</div></div>'}}if(currentUser.role==='embryologist'&&currentUser.signedIn){showView('fuHome');return}if(isStaff())showView('dashboard');return init(currentUser.role==='coordinator').catch(()=>{}).then(()=>{if(ROLE_VIEWS[currentUser.role]&&currentUser.signedIn)showView(roleHomeView())})});
 if(document.modelContext?.registerTool){document.modelContext.registerTool({name:'filter_patient_cases',title:'Filter patient cases',description:'Filter the visible patient registry by embryologist, client, test, region, or result.',inputSchema:{type:'object',properties:{embryologist:{type:'string'},client:{type:'string'},test:{type:'string'},region:{type:'string'},result:{type:'string'}},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:false},execute(input){for(const key of ['embryologist','client','test','region','result'])if(input[key]!==undefined)$(`#${key}Filter`).value=input[key];renderCases();return{visibleCases:$$('[data-case]').length,filters:input}}})}
 window.addEventListener('beforeinstallprompt',e=>e.preventDefault());

@@ -1891,15 +1891,16 @@ _SYNC_COOLDOWN_SECONDS = 60
 _last_manual_sync = 0.0
 
 @app.post("/api/sync-sheet")
-def sync_sheet_now(request: Request, db: Session = Depends(get_db)):
+def sync_sheet_now(request: Request, db: Session = Depends(get_db), force: bool = False):
     sources = parse_sources(settings.sheet_sources)
     if not sources:
         raise HTTPException(400, "No sheet sources configured")
     # Every page load asks for a sync; if one ran moments ago, reuse it instead of
     # re-fetching every workbook (several viewers opening at once would stack up).
+    # force=true (user clicking "Refresh") always runs a fresh fetch regardless of cooldown.
     global _last_manual_sync
     last = db.get(KVStore, "embryomatrix-sheet-sync-status")
-    if last and last.value and time.time() - _last_manual_sync < _SYNC_COOLDOWN_SECONDS:
+    if not force and last and last.value and time.time() - _last_manual_sync < _SYNC_COOLDOWN_SECONDS:
         return {**last.value, "changed": False, "cached": True}
     _last_manual_sync = time.time()
     result = sync_sources(db, sources)
