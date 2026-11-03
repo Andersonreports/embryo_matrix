@@ -47,7 +47,8 @@ function renderExperiments(items=experiments){
 function escapeHtml(s=''){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function safeClass(s=''){return String(s).toLowerCase().replace(/[^a-z0-9_-]/g,'')}
 const MONTH_TAB_NAMES=['january','february','march','april','may','june','july','august','september','october','november','december'];
-function tabMonthKey(label){const m=/^([a-z]+)\s+(\d{4})$/i.exec(String(label||'').trim());if(!m)return'';const idx=MONTH_TAB_NAMES.indexOf(m[1].toLowerCase());return idx<0?'':`${m[2]}-${String(idx+1).padStart(2,'0')}`}
+const MONTH_TAB_ABBR=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+function tabMonthKey(label){const m=/^([a-z]+)[\s\-]+(\d{4})$/i.exec(String(label||'').trim());if(!m)return'';const w=m[1].toLowerCase();const idx=MONTH_TAB_NAMES.indexOf(w)<0?MONTH_TAB_ABBR.indexOf(w):MONTH_TAB_NAMES.indexOf(w);return idx<0?'':`${m[2]}-${String(idx+1).padStart(2,'0')}`}
 function recordMonth(r){const label=String(r._importSource||'').trim();if(!label)return'';return tabMonthKey(label)||label}
 function isDateMonth(v){return /^\d{4}-\d{2}$/.test(v)}
 function monthLabel(v,fmt={month:'long',year:'numeric'}){return isDateMonth(v)?new Date(`${v}-02`).toLocaleDateString('en',fmt):v}
@@ -1346,10 +1347,12 @@ function updateSyncStatusBar(status){
   const mins=when?Math.round((Date.now()-when)/60000):null;
   const ago=mins===null?'':mins<1?'just now':mins===1?'1 min ago':`${mins} min ago`;
   const errs=status?.errors?.length||0;
+  const sources=(status?.sources||[]);
+  const tabTip=sources.length?`Synced tabs (${sources.length}):\n${sources.join('\n')}`:'No tab list available';
   const errTip=errs&&status.errors?status.errors.join('\n'):'';
   txt.innerHTML=errs
     ?`<span class="sync-err" title="${escapeHtml(errTip)}">⚠ Sync error${errs>1?'s':''} (${ago}) — some data may be stale</span>`
-    :`<span class="sync-ok">Data synced ${escapeHtml(ago)}</span>`;
+    :`<span class="sync-ok" title="${escapeHtml(tabTip)}" style="cursor:help">Data synced ${escapeHtml(ago)} · ${sources.length} tab${sources.length===1?'':'s'}</span>`;
   bar.hidden=false;
 }
 let caseRunMap={};
