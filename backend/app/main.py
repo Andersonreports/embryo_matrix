@@ -1407,8 +1407,7 @@ def _norm_name(v: str) -> str:
 
 def _client_sees(u, center: str = "", hospital: str = "", location: str = "") -> bool:
     """A client (fertility centre) login sees only rows of its own client, and of its own branch when it has one.
-    Rows are mapped onto the master client list (app/clients.py); a client that is not in that list falls back to
-    matching its name against the centre text."""
+    Rows are mapped onto the master client list (app/clients.py); unresolvable rows fall back to brand-in-text."""
     brand = _norm_name(u.client_name if u else "")
     if not brand:
         return False
@@ -1418,8 +1417,9 @@ def _client_sees(u, center: str = "", hospital: str = "", location: str = "") ->
         if _norm_name(res["brand"]) != brand:
             return False
         return not want_branch or bool(res["branch"] and _norm_name(res["branch"]["branch"]) == want_branch)
-    if brand in {_norm_name(d["brand"]) for d in client_directory()}:
-        return False  # a listed client whose name this row does not match
+    # resolve_client found no match — fall back to brand-in-text regardless of whether
+    # the client is in the directory (e.g. sheet says "OASIS FERTILITY CENTRE" but the
+    # directory only knows "OASIS FERTILITY - [Branch]", so resolve returns nothing).
     text = _norm_name(f"{center} {hospital}")
     return brand in text and (not want_branch or want_branch in _norm_name(f"{text} {location}"))
 
