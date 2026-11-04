@@ -1533,8 +1533,10 @@ def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = "", loo
     due = datetime.utcnow().date().isoformat()  # needs filling in now
     added = 0
     for c in cases.values():
-        if c["key"][:120] in have or not c["embryos"]:
+        ck = c["key"][:120]
+        if ck in have or not c["embryos"]:
             continue
+        have.add(ck)  # prevent duplicate inserts within the same sync batch
         r = c["r"]
         db.add(Followup(case_key=c["key"][:120], source="sheet", patient=c["patient"][:255], clinic=_field(r, "center name", "hospital clinic name", "client")[:255],
                         region=_field(r, "location", "region")[:120], embryologist=_emb_display(_field(r, "embryologist name", "embryologist") or emb_name)[:120], test=_field(r, "test name", "test")[:255],
