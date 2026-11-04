@@ -107,7 +107,7 @@ function render(){
  root.innerHTML=`<div class="bx">
   <div class="bx-top"><div class="prep-segments bx-kind" role="tablist">${Object.entries(KIND).map(([k,v])=>`<button type="button" class="prep-seg${k===kind?' active':''}" data-kind="${k}" role="tab" aria-selected="${k===kind}">${v.label}</button>`).join('')}</div>
    <div class="search-wrap bx-search"><span>⌕</span><input id="bxSearch" placeholder="Search patient, embryo or sample ID…" value="${esc(q)}"></div>
-   <button type="button" class="secondary compact${fOpen?' active':''}" id="bxFltToggle" aria-expanded="${fOpen}">⚲ Filters <b class="filters-badge${nFlt?' has-active':''}">${nFlt}</b></button>
+   <button type="button" class="secondary compact${fOpen?' active':''}" id="bxFltToggle" aria-expanded="${fOpen}"><span class="btn-ico"><img class="ico" src="/static/assets/icons/navigation__filter.svg" alt=""></span> Filters <b class="filters-badge${nFlt?' has-active':''}">${nFlt}</b></button>
    <button type="button" class="secondary compact" id="bxSortToggle" title="Toggle sort order">${sortBy==='newest'?'↓ Newest first':'↑ Oldest first'}</button>
    <a class="text-button bx-sheet-link" id="bxSheetLink" href="#" target="_blank" rel="noopener" title="Open the Edited samples Google Sheet">↗ Edits sheet</a></div>
   <div class="bx-filters${fOpen?'':' hidden'}">
