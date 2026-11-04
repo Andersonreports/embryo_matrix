@@ -173,13 +173,15 @@ const TILES=[
  ['pending','Still to record','followup__still-to-record','No outcome entered yet','blue'],
  ['completed','Completed','followup__completed','Final outcome known','teal'],
  ['na','No consent','followup__no-consent','Not followed up','grey']];
-let bkQ='',bkKey='n',bkDir=-1,bkAll=false,clQ='',clAll=false,filtersOpen=false,dashHome=false,taskSort='patient',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
+let bkQ='',bkKey='n',bkDir=-1,bkAll=false,clQ='',clAll=false,filtersOpen=false,dashHome=false,taskSort='patient',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false,taskBranch='';
 
 // ---------------- Tasks (card queue) ----------------
 function tasksHtml(){
  const mine=currentUser&&currentUser.role==='embryologist';if(mine&&!viewChosen)taskView='embryo';
  const embs=[...new Set(FU.items.map(f=>f.embryologist).filter(Boolean))].sort();
- const items=FU.items.filter(f=>!taskEmb||f.embryologist===taskEmb).map(f=>({f,s:taskStatus(f)}));
+ const branches=mine?[...new Set(FU.items.map(f=>f.region||'').filter(Boolean))].sort():[];
+ const useBranchFilter=mine&&branches.length>1;
+ const items=FU.items.filter(f=>!taskEmb||f.embryologist===taskEmb).filter(f=>!useBranchFilter||!taskBranch||(f.region||'')===taskBranch).map(f=>({f,s:taskStatus(f)}));
  const emN=x=>(x.f.embryos||[]).length,recN=x=>{const om=outcomeMap(x.f);return(x.f.embryos||[]).filter(e=>om[norm(e.label)]?.status).length};
  const consent=x=>x.s!=='na',sum=(arr,fn)=>arr.reduce((t,x)=>t+fn(x),0);
  const cnt=k=>k==='all'?sum(items,emN):k==='consent'?sum(items.filter(consent),emN):k==='recorded'?sum(items.filter(consent),recN):k==='pending'?sum(items.filter(consent),x=>emN(x)-recN(x)):k==='completed'?sum(items.filter(x=>x.s==='completed'),emN):sum(items.filter(x=>x.s==='na'),emN);
@@ -207,7 +209,7 @@ function tasksHtml(){
  const hero=mine?``:`<div class="fu-hero"><div><h2>${attention?`${attention} patient${attention===1?'':'s'} with outcomes still to record`:'You are all caught up'}</h2><p>Ask each center what happened to the embryos after transfer, then record it with <b>Record outcome</b>.</p></div>${isStaff()?'<div class="hero-btns"><button type="button" class="hero-btn" id="fuFromSheet">＋ Add patients from the sheet</button></div>':''}</div>`;
  return `${mine?'<div class="fb-page">':''}${hero}
  <div class="st-tiles">${tiles}</div>
- <div class="tk-bar"><div class="seg-toggle" id="fuView"><button type="button" class="${taskView==='patient'?'on':''}" data-v="patient">By patient</button><button type="button" class="${taskView==='embryo'?'on':''}" data-v="embryo">By embryo</button></div><div class="search-wrap fu-search"><span>⌕</span><input id="fuSearch" type="search" placeholder="Search patient, center or contact…" value="${esc(taskQuery)}"></div>${!mine&&embs.length>1?`<label class="tk-sort">Embryologist <select id="fuEmb"><option value="">All</option>${embs.map(n=>`<option${taskEmb===n?' selected':''}>${esc(n)}</option>`).join('')}</select></label>`:''}</div>
+ <div class="tk-bar"><div class="seg-toggle" id="fuView"><button type="button" class="${taskView==='patient'?'on':''}" data-v="patient">By patient</button><button type="button" class="${taskView==='embryo'?'on':''}" data-v="embryo">By embryo</button></div><div class="search-wrap fu-search"><span>⌕</span><input id="fuSearch" type="search" placeholder="Search patient, center or contact…" value="${esc(taskQuery)}"></div>${useBranchFilter?`<label class="tk-sort">Branch <select id="fuBranch"><option value="">All branches</option>${branches.map(b=>`<option${taskBranch===b?' selected':''}>${esc(b)}</option>`).join('')}</select></label>`:''}${!mine&&embs.length>1?`<label class="tk-sort">Embryologist <select id="fuEmb"><option value="">All</option>${embs.map(n=>`<option${taskEmb===n?' selected':''}>${esc(n)}</option>`).join('')}</select></label>`:''}</div>
  ${taskView==='embryo'?embryoTable(list,mine):`<div class="tk-list">${list.map(card).join('')||empty}</div>`}${mine?'</div>':''}`}
 function embryoTable(list,mine){
  const rows=[];list.forEach(({f,s})=>{const om=outcomeMap(f);(f.embryos||[]).forEach(e=>{const o=om[norm(e.label)]||{};rows.push({f,s,e,o})})});
@@ -220,6 +222,7 @@ function embryoTable(list,mine){
 function wireTasks(root,redraw){
  const tg=root.querySelector('#fuView');if(tg)tg.onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;taskView=b.dataset.v;viewChosen=true;redraw()};
  const ef=root.querySelector('#fuEmb');if(ef)ef.onchange=()=>{taskEmb=ef.value;redraw()};
+ const bf=root.querySelector('#fuBranch');if(bf)bf.onchange=()=>{taskBranch=bf.value;redraw()};
  const fs=root.querySelector('#fuFromSheet');if(fs)fs.onclick=()=>openSheetImport(redraw);
  root.querySelector('.st-tiles').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;taskFilter=b.dataset.k;redraw()};
  const s=root.querySelector('#fuSearch');s.oninput=()=>{taskQuery=s.value;const pos=s.selectionStart;redraw();const n=root.querySelector('#fuSearch');n.focus();n.setSelectionRange(pos,pos)};
