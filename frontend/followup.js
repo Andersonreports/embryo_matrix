@@ -3,6 +3,9 @@
 // for the embryologist role too, which cannot read the sample sheet).
 (function(){
 const STATUSES=['Not transferred','Transferred','Implantation successful','Implantation unsuccessful','Clinical pregnancy','Miscarriage','Live birth','Outcome unknown'];
+// Months from this point require explicit patient consent; earlier months are auto-consented (legacy).
+const CONSENT_FROM='2027-01';
+const needsConsent=m=>!m||m>=CONSENT_FROM;
 const TRANSFERRED=['Transferred','Implantation successful','Implantation unsuccessful','Clinical pregnancy','Miscarriage','Live birth'];
 const IMPLANTED=['Implantation successful','Clinical pregnancy','Miscarriage','Live birth'];
 const CLINICAL=['Clinical pregnancy','Miscarriage','Live birth'];
@@ -32,7 +35,7 @@ async function loadFollowups(force){
  return FU}
 const outcomeMap=f=>{const m={};(f.outcomes||[]).forEach(o=>{m[norm(o.embryo)]=o});return m};
 function taskStatus(f){
- if(f.consent==='No'||f.state==='not_applicable')return'na';
+ if((f.consent==='No'||f.state==='not_applicable')&&needsConsent(f.month))return'na';
  if(f.state==='completed')return'completed';
  const om=outcomeMap(f),vals=(f.embryos||[]).map(e=>om[norm(e.label)]?.status||'');
  if(vals.some(v=>TERMINAL.includes(v))&&!vals.some(v=>ACTIVE.includes(v)))return'completed';
@@ -125,13 +128,13 @@ function openRecordDialog(f,after,focusLabel){
    <label class="fu-f"><span>Follow-up email / phone</span><input id="fuDetail" value="${esc(f.contactDetail)}"></label>
    <label class="fu-f"><span>Expected transfer period</span><select id="fuPeriod"><option value="">—</option>${PERIODS.map(p=>`<option${f.expectedPeriod===p?' selected':''}>${p}</option>`).join('')}</select></label>
    <label class="fu-f"><span>Patient age</span><input id="fuAge" type="number" min="10" max="80" value="${f.age??''}"></label>
-   <label class="fu-f"><span>Follow-up consent</span><select id="fuConsent"><option${f.consent!=='No'?' selected':''}>Yes</option><option${f.consent==='No'?' selected':''}>No</option></select></label>
+   ${needsConsent(f.month)?`<label class="fu-f"><span>Follow-up consent</span><select id="fuConsent"><option${f.consent!=='No'?' selected':''}>Yes</option><option${f.consent==='No'?' selected':''}>No</option></select></label>`:`<label class="fu-f"><span>Follow-up consent</span><span class="fu-consent-locked">Yes <small>(auto — legacy patient)</small></span><input type="hidden" id="fuConsent" value="Yes"></label>`}
   </div>
   <label class="fu-f fu-wide"><span>Follow-up note (calls, clinic replies)</span><textarea id="fuNote" rows="2">${esc(f.note)}</textarea></label></section>
   <div class="fu-actions">
    <button type="button" class="primary" data-act="save">Save outcomes</button>
    <button type="button" class="secondary" data-act="completed">Mark completed</button>
-   <button type="button" class="secondary" data-act="not_applicable">Not applicable</button>
+   ${needsConsent(f.month)?'<button type="button" class="secondary" data-act="not_applicable">Not applicable</button>':''}
    ${f.state&&!isNew?'<button type="button" class="secondary" data-act="reopen">Reopen</button>':''}
   </div>
  </div>`;

@@ -1321,9 +1321,12 @@ def _create_followup_from_trf(db: Session, t: TrfSubmission, owner: str = ""):
             return
         months = _PERIOD_MONTHS.get(d.get("followupExpected", ""), 3)
         due = _add_months(t.submitted_at.date(), months).isoformat()
+        trf_month = t.submitted_at.strftime("%Y-%m")
+        if _legacy_month(trf_month):
+            consent = "Yes"  # pre-2027 TRFs: consent barrier does not apply
         db.add(Followup(
             case_key=key, source="trf", trf_ref=t.ref, patient=t.patient_name, clinic=t.clinic, region="",
-            embryologist=d.get("embryologistName", ""), test=", ".join(d.get("tests", [])), month=t.submitted_at.strftime("%Y-%m"),
+            embryologist=d.get("embryologistName", ""), test=", ".join(d.get("tests", [])), month=trf_month,
             age=_age_from_trf(d, t.submitted_at), embryos=[{"label": e.get("label", ""), "result": ""} for e in d.get("embryos", []) if e.get("label")],
             consent=consent, contact_name=d.get("followupContact", ""), contact_detail=d.get("followupPhoneEmail", ""),
             expected_period=d.get("followupExpected", ""), due_date=due, state="not_applicable" if consent == "No" else "",
@@ -1367,12 +1370,21 @@ def _rekey_followup(db: Session, old: str, new: str):
 def _hist_out(h: OutcomeHistory) -> dict:
     return {"status": h.status, "previous": h.previous_status, "date": h.event_date, "note": h.note, "tests": h.tests or {}, "by": h.changed_by, "at": _iso_utc(h.changed_at)}
 
+CONSENT_CUTOFF = "2027-01"  # months before this are auto-consented (no explicit patient consent required)
+
+def _legacy_month(month: str | None) -> bool:
+    """True when the case predates the consent requirement (before January 2027)."""
+    return bool(month) and month < CONSENT_CUTOFF
+
 def _fu_out(f: Followup, outs: list, hist: dict | None = None) -> dict:
+    legacy = _legacy_month(f.month)
+    consent = "Yes" if legacy else f.consent
+    state = "" if legacy and f.state == "not_applicable" else (f.state or "")
     return {
         "caseKey": f.case_key, "source": f.source, "trfRef": f.trf_ref, "patient": f.patient, "clinic": f.clinic, "region": f.region,
         "embryologist": _emb_display(f.embryologist), "test": f.test, "month": f.month, "age": f.age, "embryos": f.embryos or [],
-        "consent": f.consent, "contactName": f.contact_name, "contactDetail": f.contact_detail, "expectedPeriod": f.expected_period,
-        "dueDate": f.due_date, "state": f.state, "note": f.note, "updatedBy": f.updated_by, "updatedAt": _iso_utc(f.updated_at),
+        "consent": consent, "contactName": f.contact_name, "contactDetail": f.contact_detail, "expectedPeriod": f.expected_period,
+        "dueDate": f.due_date, "state": state, "note": f.note, "updatedBy": f.updated_by, "updatedAt": _iso_utc(f.updated_at),
         "createdAt": _iso_utc(f.created_at),
         "outcomes": [{"embryo": o.embryo_label, "status": _outcome_status(o.status), "date": o.event_date, "note": o.note, "tests": o.tests or {}, "by": o.updated_by, "at": _iso_utc(o.updated_at), "history": (hist or {}).get(o.embryo_label, [])} for o in outs],
     }

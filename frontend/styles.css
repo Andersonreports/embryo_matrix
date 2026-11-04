@@ -1696,6 +1696,7 @@ body.role-member .vault-del-btn,body.role-member .vg-actions,body.role-member .v
 
 /* Outcome editor + dashboard design */
 .fu-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px}.fu-sc{border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:#f7fbfa}.fu-sc strong{display:block;font:500 24px "Lora",serif}.fu-sc small{color:#5c6e6c;font-size:12px}
+.fu-consent-locked{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;background:#f0faf4;border:1px solid #b6e0c8;border-radius:10px;font-size:13px;font-weight:600;color:#166534}.fu-consent-locked small{font-weight:400;color:#4d9068}
 .fu-block{border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:14px;background:#fff}.fu-block-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}.fu-block-head h4{margin:0;font-size:15px}.fu-block-head small{color:#76868a;font-size:12px}
 .oe-list{display:grid;gap:10px}.oe-card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fbfdfc}.oe-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}.oe-head strong{font-size:15px}.oe-clear{margin-left:auto;border:0;background:transparent;color:#76868a;font-size:12px;cursor:pointer;text-decoration:underline}
 .oe-groups{display:flex;flex-wrap:wrap;gap:8px 18px}.oe-group small{display:block;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a9a97;margin-bottom:4px}.oe-opts{display:flex;flex-wrap:wrap;gap:6px}
