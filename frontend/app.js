@@ -2592,7 +2592,14 @@ const all=runReportRows(),months=[...new Set(all.map(r=>r.month))].sort().revers
 // ---------------- User management (admin / senior executive) ----------------
 const ROLE_LABELS={admin:'Admin',senior_executive:'Senior executive',team_lead:'Team lead',member:'Member',coordinator:'Coordinator',embryologist:'Embryologist'};
 const ROLE_NOTES={admin:'Full access, edits results, manages users',senior_executive:'Same access as admin',team_lead:'Views all sheets, uploads results, images and protocols; cannot edit results',member:'Samples, PGT-M, cases and image vault only',coordinator:'Home page only: status cards and sample list (read-only)',embryologist:'Own follow-up tasks and TRFs'};
-function usersMarkup(){return `<section class="users-admin"><div class="users-head"><div><h3>Logins</h3><span id="usersCount" class="users-count"></span></div><div class="users-tools"><input id="usersSearch" type="search" placeholder="Search users…" autocomplete="off"><button type="button" class="primary compact" id="userAddBtn">Add user</button></div></div><div class="users-form hidden" id="userForm"></div><div id="usersList"><div class="chart-empty">Loading…</div></div></section>`}
+function usersMarkup(){return `<section class="users-admin"><div class="users-head"><div><h3>Logins</h3><span id="usersCount" class="users-count"></span></div><div class="users-tools"><input id="usersSearch" type="search" placeholder="Search users…" autocomplete="off"><button type="button" class="primary compact" id="userAddBtn">Add user</button></div></div><div class="users-form hidden" id="userForm"></div><div id="usersList"><div class="chart-empty">Loading…</div></div></section>
+<section class="users-admin ca-section">
+ <div class="ca-head">
+  <div><h3>Client assignment audit</h3><p class="ca-sub">Every sheet row must map to <strong>exactly one</strong> registered client. Zero tolerance for leaks and gaps.</p></div>
+  <button type="button" class="primary compact" id="caRun">Run audit</button>
+ </div>
+ <div id="caResult" class="ca-result hidden"></div>
+</section>`}
 async function setupUsersView(){
  const listEl=$('#usersList'),formEl=$('#userForm');let data={roles:[],users:[]};
  const clientOpts=sel=>`<option value="">— No client —</option>`+(data.clients||[]).map(c=>`<option value="${escapeHtml(c.brand)}"${c.brand===sel?' selected':''}>${escapeHtml(c.brand)}</option>`).join('');
@@ -2623,6 +2630,35 @@ async function setupUsersView(){
   $('#nuSave').onclick=async()=>{try{await api('/api/users','POST',{username:$('#nuName').value,password:$('#nuPass').value,role:$('#nuRole').value,name:$('#nuSheet').value,client:$('#nuClient').value,branch:$('#nuBranch').value});toast('User added');formEl.classList.add('hidden');await load()}catch(err){toast(err.message)}}};
  $('#usersSearch').oninput=draw;
  load();
+ // ── Client assignment audit ─────────────────────────────────────────────
+ const caBtn=$('#caRun'),caRes=$('#caResult');
+ caBtn.onclick=async()=>{
+  caBtn.disabled=true;caBtn.textContent='Running…';caRes.classList.remove('hidden');
+  caRes.innerHTML='<div class="chart-empty">Scanning all sheet rows…</div>';
+  try{
+   const d=await (await fetch('/api/client-audit')).json();
+   const pct=(n,t)=>t?Math.round(n/t*100):'0';
+   const badge=(n,cls,label)=>`<span class="ca-badge ca-${cls}">${n} ${label}</span>`;
+   const totalRow=`<div class="ca-summary">
+    ${badge(d.claimed,'ok','rows assigned correctly')}
+    ${badge(d.unclaimed,d.unclaimed?'warn':'ok',`rows with no registered client`)}
+    ${badge(d.multi_claimed,d.multi_claimed?'err':'ok','rows claimed by 2+ clients')}
+   </div>`;
+   const multiBlock=d.multi_claimed?`<div class="ca-block ca-block-err">
+    <h4>⚠ Multi-claimed rows — PRIVACY RISK</h4>
+    <p>These rows would be visible to more than one client login. Fix by tightening the client directory or removing duplicate logins.</p>
+    <table class="ca-table"><thead><tr><th>Center</th><th>Patient</th><th>Location</th><th>Claimants</th></tr></thead><tbody>
+    ${(d.multi_claimed_rows||[]).map(r=>`<tr><td>${escapeHtml(r.center)}</td><td>${escapeHtml(r.patient)}</td><td>${escapeHtml(r.location)}</td><td>${escapeHtml(r.owners.join(', '))}</td></tr>`).join('')}
+    </tbody></table></div>`:'';
+   const unclaimedBlock=d.unclaimed_centers?.length?`<div class="ca-block ca-block-warn">
+    <h4>Centers with no registered client login</h4>
+    <p>These rows exist in the sheet but no client can see them. Register a client login for each center to give them portal access, or leave them if portal access is not needed.</p>
+    <table class="ca-table"><thead><tr><th>Center</th><th>Rows</th><th>Locations</th><th>Sample patients</th></tr></thead><tbody>
+    ${d.unclaimed_centers.map(c=>`<tr><td>${escapeHtml(c.center)}</td><td class="ca-num">${c.count}</td><td>${escapeHtml((c.locations||[]).join(', '))}</td><td>${escapeHtml((c.sample_patients||[]).join(', '))}</td></tr>`).join('')}
+    </tbody></table></div>`:'';
+   caRes.innerHTML=totalRow+(d.multi_claimed?multiBlock:'<div class="ca-ok">✓ No multi-claimed rows — no cross-client data leakage detected.</div>')+(d.unclaimed?unclaimedBlock:'<div class="ca-ok">✓ All rows are claimed by a registered client.</div>');
+  }catch(e){caRes.innerHTML=`<div class="chart-empty">Audit failed: ${escapeHtml(e.message)}</div>`}
+  caBtn.disabled=false;caBtn.textContent='Run audit'};
 }
 
 // The overview charts are drawn to their container's width, so redraw them when the window is resized.

@@ -2141,6 +2141,31 @@ body.vault-staff #vaultUpload{display:none!important}
 .user-act:disabled{opacity:.35;cursor:not-allowed;background:transparent}
 @media(max-width:720px){.users-tools{width:100%}.users-tools input{flex:1;width:auto}.user-role-note{display:none}.user-col{width:auto}}
 
+/* Client Assignment Audit */
+.ca-section{margin-top:32px}
+.ca-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.ca-head h3{font:600 20px "Lora",serif;margin:0 0 4px;color:#0b3444}
+.ca-sub{font-size:13px;color:var(--muted);margin:0}
+.ca-result{margin-top:8px}
+.ca-result.hidden{display:none}
+.ca-summary{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.ca-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:13px;font-weight:500}
+.ca-ok{background:#edfaf2;color:#166534;border:1px solid #bbf2d4}
+.ca-warn{background:#fefce8;color:#854d0e;border:1px solid #fde68a}
+.ca-err{background:#fef2f2;color:#991b1b;border:1px solid #fecaca}
+.ca-block{margin-bottom:20px;border-radius:14px;overflow:hidden;border:1px solid}
+.ca-block-err{border-color:#fecaca}.ca-block-warn{border-color:#fde68a}
+.ca-block h4{margin:0;padding:14px 20px;font-size:14px;font-weight:600}
+.ca-block-err h4{background:#fef2f2;color:#991b1b}
+.ca-block-warn h4{background:#fefce8;color:#854d0e}
+.ca-block p{margin:0;padding:10px 20px 14px;font-size:13px;color:var(--muted);border-bottom:1px solid var(--line)}
+.ca-table{width:100%;border-collapse:collapse}
+.ca-table th{padding:9px 16px;font-size:11px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#7b8a91;background:#fafafa;border-bottom:1px solid var(--line);text-align:left}
+.ca-table td{padding:9px 16px;border-bottom:1px solid #eef2f2;font-size:13px;vertical-align:top}
+.ca-table tbody tr:last-child td{border-bottom:0}
+.ca-num{font-variant-numeric:tabular-nums;font-weight:600;color:#0b3444}
+div.ca-ok{display:flex;align-items:center;gap:8px;padding:12px 16px;background:#edfaf2;border:1px solid #bbf2d4;border-radius:12px;font-size:13px;font-weight:500;color:#166534;margin-bottom:12px}
+
 .trf-sign-pending{margin:0 0 14px;padding:14px 18px;background:#fff8ec;border:1px solid #f0ddb8;border-radius:14px}
 .tsp-head{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}.tsp-head strong{font-size:14px}.tsp-head span{font-size:12.5px;color:#7a6a45}
 .tsp-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid #f0e3c8;flex-wrap:wrap}

@@ -1417,11 +1417,19 @@ def _client_sees(u, center: str = "", hospital: str = "", location: str = "") ->
         if _norm_name(res["brand"]) != brand:
             return False
         return not want_branch or bool(res["branch"] and _norm_name(res["branch"]["branch"]) == want_branch)
-    # resolve_client found no match — fall back to brand-in-text regardless of whether
-    # the client is in the directory (e.g. sheet says "OASIS FERTILITY CENTRE" but the
-    # directory only knows "OASIS FERTILITY - [Branch]", so resolve returns nothing).
-    text = _norm_name(f"{center} {hospital}")
-    return brand in text and (not want_branch or want_branch in _norm_name(f"{text} {location}"))
+    # resolve_client found no match — fall back to word-token matching on the raw strings.
+    # Tokenise into individual words (re.findall '[a-z0-9]+') so that "care" cannot match the
+    # single token "healthcare", and "nova" cannot match "innovation".
+    _tok = lambda s: set(re.findall(r'[a-z0-9]+', (s or "").lower()))
+    brand_words = _tok(u.client_name)
+    text_words = _tok(f"{center} {hospital}")
+    if not brand_words or not brand_words <= text_words:
+        return False
+    if not want_branch:
+        return True
+    branch_words = _tok(u.client_branch)
+    all_words = _tok(f"{center} {hospital} {location}")
+    return bool(branch_words and branch_words <= all_words)
 
 def _embryologist_sees(db: Session, user: dict, f: Followup) -> bool:
     """An embryologist login sees only the follow-ups of their own embryos: TRFs they submitted, or patients whose
@@ -1729,6 +1737,53 @@ def delete_user(username: str, request: Request, db: Session = Depends(get_db)):
     db.delete(u); db.commit()
     log_activity(db, "user_manage", f"Removed user {name}", request=request)
     return {"ok": True}
+
+@app.get("/api/client-audit")
+def client_assignment_audit(request: Request, db: Session = Depends(get_db)):
+    """Zero-tolerance audit: every sheet row must map to exactly one registered client.
+    Returns unclaimed rows (no client can see them) and multi-claimed rows (privacy risk)."""
+    _require_user_admin(request)
+    client_users = db.query(User).filter(User.client_name != None, User.client_name != "").all()
+    rows = list(_sheet_rows(db))
+
+    unclaimed: dict[str, dict] = {}   # center → {count, locations, sample_patients}
+    multi_claimed: list[dict] = []
+
+    for r in rows:
+        center = _field(r, "center name", "client") or ""
+        hospital = _field(r, "hospital clinic name") or ""
+        location = _field(r, "location") or ""
+        patient = _field(r, "patient name", "patient") or ""
+        owners = [u.username for u in client_users if _client_sees(u, center, hospital, location)]
+        if len(owners) == 0:
+            key = center or hospital or "(unknown)"
+            if key not in unclaimed:
+                unclaimed[key] = {"center": key, "count": 0, "locations": set(), "sample_patients": []}
+            unclaimed[key]["count"] += 1
+            if location:
+                unclaimed[key]["locations"].add(location)
+            if len(unclaimed[key]["sample_patients"]) < 3:
+                unclaimed[key]["sample_patients"].append(patient)
+        elif len(owners) > 1:
+            multi_claimed.append({"center": center, "patient": patient, "location": location, "owners": owners})
+
+    total = len(rows)
+    unclaimed_count = sum(v["count"] for v in unclaimed.values())
+    unclaimed_list = sorted(
+        [{"center": v["center"], "count": v["count"],
+          "locations": sorted(v["locations"]), "sample_patients": v["sample_patients"]}
+         for v in unclaimed.values()],
+        key=lambda x: -x["count"]
+    )
+    return {
+        "total_rows": total,
+        "claimed": total - unclaimed_count - len(multi_claimed),
+        "unclaimed": unclaimed_count,
+        "multi_claimed": len(multi_claimed),
+        "unclaimed_centers": unclaimed_list,
+        "multi_claimed_rows": multi_claimed[:50],
+        "registered_clients": [{"username": u.username, "brand": u.client_name, "branch": u.client_branch} for u in client_users],
+    }
 
 @app.get("/api/embryologist-links")
 def embryologist_links(request: Request, db: Session = Depends(get_db)):
