@@ -1407,21 +1407,28 @@ def _norm_name(v: str) -> str:
 
 def _client_sees(u, center: str = "", hospital: str = "", location: str = "") -> bool:
     """A client (fertility centre) login sees only rows of its own client, and of its own branch when it has one.
-    Rows are mapped onto the master client list (app/clients.py); unresolvable rows fall back to brand-in-text."""
-    brand = _norm_name(u.client_name if u else "")
-    if not brand:
+    Rows are mapped onto the master client list (app/clients.py); unresolvable rows fall back to brand-in-text.
+    The user's client_name is itself resolved through the directory so that canonical display names
+    (e.g. 'NOVA IVF FERTILITY CENTRE') match sheet spellings ('NOVA IVF FERTILITY') transparently."""
+    u_name = u.client_name if u else ""
+    if not u_name:
+        return False
+    # Resolve the user's registered client_name through the directory to get the canonical directory brand.
+    u_res = resolve_client(u_name, "", "")
+    effective_brand = _norm_name(u_res["brand"] if u_res else u_name)
+    if not effective_brand:
         return False
     want_branch = _norm_name(u.client_branch)
     res = resolve_client(center, hospital, location)
     if res:
-        if _norm_name(res["brand"]) != brand:
+        if _norm_name(res["brand"]) != effective_brand:
             return False
         return not want_branch or bool(res["branch"] and _norm_name(res["branch"]["branch"]) == want_branch)
     # resolve_client found no match — fall back to word-token matching on the raw strings.
     # Tokenise into individual words (re.findall '[a-z0-9]+') so that "care" cannot match the
     # single token "healthcare", and "nova" cannot match "innovation".
     _tok = lambda s: set(re.findall(r'[a-z0-9]+', (s or "").lower()))
-    brand_words = _tok(u.client_name)
+    brand_words = _tok(u_name)
     text_words = _tok(f"{center} {hospital}")
     if not brand_words or not brand_words <= text_words:
         return False
@@ -1672,10 +1679,89 @@ def _check_role(role: str) -> str:
 def _staff_count(db: Session, excluding: str = "") -> int:
     return db.query(User).filter(User.role.in_(list(USER_ADMIN_ROLES)), User.username != excluding).count()
 
+# Canonical client display names confirmed by admin from the client name mapping review.
+# When a new login is created with one of these names, _client_sees() resolves it through the
+# directory to find the matching sheet rows transparently.
+_CANONICAL_CLIENT_NAMES = [
+    "9M FERTILITY BY ANKURA HOSPITAL",
+    "A4 FERTILITY CENTRE",
+    "AKRUTI IVF CENTRE & WOMENS HOSPITAL",
+    "AKSHARA FERTILITY CENTRE",
+    "ALTRUS HEALTHCARE",
+    "AMMA IVF CENTRE",
+    "ANGEL FERTILITY CLINIC",
+    "ANU MY BABY HOSPITAL",
+    "APOLLO FERTILITY CENTRE",
+    "ARC INTERNATIONAL FERTILITY & RESEARCH CENTRE",
+    "BEDI HOSPITAL IVF",
+    "BHARATI FERTILITY CENTRE",
+    "BIRTH RIGHT FERTILITY BY RAINBOW HOSPITAL",
+    "CORION FERTILITY CLINIC",
+    "DESTINY IVF AND WOMEN'S CARE",
+    "DHARMADHIKARI'S SILVER LINING IVF",
+    "DR PURVA SAHAKARIS HOSPITAL & IVF CENTRE",
+    "DR. ARAVIND'S IVF",
+    "DR.CHINMAY PATAKI S WOMEN HOSPITAL LLP - DOMBIVILI",
+    "EMBRYONIC FERTILITY & IVF CENTRE",
+    "FERTICARE IVF CENTRE",
+    "FERTY 9 FERTILITY CENTER",
+    "GARBHAGUDI IVF CENTRE",
+    "ICCHAA FERTILITY",
+    "KAMALESWARI FERTILITY",
+    "MAA KAUVERY FERTILITY CENTRE",
+    "MALAR FERTILITY AND RESEARCH CENTRE",
+    "MEDICOVER FERTILITY CENTRE",
+    "MEENAKSHI FERTILITY CENTRE",
+    "MILANN FERTILITY CENTER",
+    "MOTHERHOOD HOSPITAL FERTILITY & IVF",
+    "NEWLIFE FERTILITY CENTRE",
+    "NOVA IVF FERTILITY CENTRE",
+    "PEARL SINGAPORE FERTILITY CENTRE",
+    "PN IVF ACCESS PVT LTD",
+    "PRASHANTH FERTILITY CENTRE",
+    "PRATIKSHA WOMEN AND CHILD CARE",
+    "PROGENESIS FERTILITY CENTER",
+    "PUNE IVF CENTRE",
+    "QUEENS TEST TUBE BABY CENTRE",
+    "RHEA HEALTH CARE PVT LTD",
+    "SANTASA FERTILITY & IVF",
+    "SHOBHA NURSING HOME",
+    "SHREE IVF CLINIC",
+    "SIGNATURE IVF FERTILITY",
+    "SODHI'S HEALTH CARE",
+    "SREE SWAPNA FERTILITY CENTRE",
+    "SRI CHAKRA FERTILITY CENTRE",
+    "SUDHA FERTILITY CENTRE",
+    "SUNSHINE FERTILITY & IVF CENTRE",
+    "SURYA FERTILITY CLINIC",
+    "THAAIMAI FERTILITY AND RESEARCH CENTRE",
+    "THE BOON IVF AND FERTILITY CENTRE",
+    "THE HIVE FERTILITY CENTRE",
+    "VASANTHA FERTILITY CARE AND HOSPITAL",
+    "VIJAYALAKSHMI MEDICAL CENTRE",
+    "VIRUKSHAM FERTILITY CENTRE",
+    "VRIKSH FERTILITY CENTRE",
+    "WOMB CARE FERTILITY & RESEARCH CENTRE",
+    "YAAMI FERTILITY AND IVF CENTER",
+    "YELLOW FERTILITY CENTER",
+    "ZIVAH FERTILITY CENTRE",
+]
+
+def _canonical_clients() -> list:
+    """Returns canonical client names with their branches (resolved from the directory).
+    Used for the new-login form dropdown so admins pick a standardised display name."""
+    dir_map = {d["brand"]: d["branches"] for d in client_directory()}
+    result = []
+    for name in _CANONICAL_CLIENT_NAMES:
+        res = resolve_client(name, "", "")
+        branches = dir_map.get(res["brand"], []) if res else []
+        result.append({"brand": name, "branches": branches})
+    return result
+
 @app.get("/api/users")
 def list_users(request: Request, db: Session = Depends(get_db)):
     _require_user_admin(request)
-    return {"roles": ALL_ROLES, "clients": client_directory(), "users": [_user_row(u) for u in db.query(User).order_by(User.username).all()]}
+    return {"roles": ALL_ROLES, "clients": client_directory(), "canonical_clients": _canonical_clients(), "users": [_user_row(u) for u in db.query(User).order_by(User.username).all()]}
 
 @app.post("/api/users")
 def create_user(payload: dict, request: Request, db: Session = Depends(get_db)):
