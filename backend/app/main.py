@@ -97,6 +97,8 @@ FULL_ACCESS_ROLES = {"admin", "senior_executive", "team_lead"}
 # Only these may edit an embryo's result/sheet cells and manage logins. Team leads see and upload
 # everything but cannot change results.
 RESULT_EDIT_ROLES = {"admin", "senior_executive"}
+# Who may approve uploaded results for release to clients.
+RESULT_APPROVE_ROLES = {"admin", "senior_executive"}
 USER_ADMIN_ROLES = {"admin", "senior_executive"}
 ALL_ROLES = ["admin", "senior_executive", "team_lead", "member", "coordinator", "embryologist"]
 # Role -> (method, path regex) pairs it may call. admin and team_lead may call everything;
@@ -369,6 +371,8 @@ def add_result_file(
     at: str = Form(""),
     samples: str = Form("[]"),
     sampleNames: str = Form("[]"),
+    columns: str = Form("[]"),
+    rows: str = Form("{}"),
     matched: int = Form(0),
     month: str = Form(""),
     file: UploadFile | None = File(None),
@@ -398,6 +402,13 @@ def add_result_file(
         "filePath": stored_name,
         # Month the result file belongs to (the folder it came from, e.g. "2026-01"). Drives the Month column and the Windows folder.
         "month": month if re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", month or "") else "",
+        # The result file's own columns and each embryo's row of values, for the Approve results page.
+        "columns": [str(c)[:120] for c in (json.loads(columns) if columns else [])][:80],
+        "rows": {str(k): [str(v)[:500] for v in (vals or [])][:80] for k, vals in (json.loads(rows) if rows else {}).items()},
+        # Results from this file reach client logins only once approved (embryo key -> {by, at}).
+        # Files uploaded before approvals existed have no "needsApproval" and count as approved.
+        "needsApproval": True,
+        "approvals": {},
     }
     files.append(entry)
     _save_result_files(db, row, files)
@@ -434,6 +445,70 @@ def set_result_file_month(file_id: str, payload: KVValue, request: Request, db: 
     _save_result_files(db, row, files)
     log_activity(db, "result_month", f"{hit.get('fileName')} → month {month or 'auto'}", request=request)
     return {"id": file_id, "month": month}
+
+def _clean_id(v) -> str:
+    """Same as cleanId() in app.js: the identity form result keys are built from."""
+    s = re.sub(r"(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$", "", str(v or "").upper(), flags=re.I)
+    return re.sub(r"[^A-Z0-9]", "", s)
+
+def _approval_gate(db: Session) -> dict:
+    """fileId -> set of approved "patient|tag", for every file whose results need approval."""
+    _, files = _result_files(db)
+    return {f["id"]: {"|".join(k.split("|")[:2]) for k in (f.get("approvals") or {})}
+            for f in files if f.get("needsApproval") and f.get("id")}
+
+@app.get("/api/result-approvals")
+def list_result_approvals(request: Request, db: Session = Depends(get_db)):
+    """Uploaded result files that need approval, each with its own columns and one row per embryo."""
+    _, files = _result_files(db)
+    out = []
+    for f in files:
+        if not f.get("needsApproval"):
+            continue
+        appr, rows, names = f.get("approvals") or {}, f.get("rows") or {}, f.get("sampleNames") or []
+        samples = [{"key": k, "name": names[i] if i < len(names) else "", "values": rows.get(k, []),
+                    "approved": appr.get(k)} for i, k in enumerate(f.get("samples") or [])]
+        out.append({"id": f["id"], "fileName": f.get("fileName"), "run": f.get("run"), "at": f.get("at"),
+                    "by": f.get("by"), "columns": f.get("columns") or [], "samples": samples})
+    out.sort(key=lambda x: str(x.get("at") or ""), reverse=True)
+    role = (request.state.user or {}).get("role")
+    return {"files": out, "canApprove": (not settings.builtin_login) or role in RESULT_APPROVE_ROLES}
+
+@app.post("/api/result-approvals")
+def set_result_approvals(payload: KVValue, request: Request, db: Session = Depends(get_db)):
+    """Approve (or, with approve=false, withdraw approval of) embryo results: {items: [{fileId, key}], approve}."""
+    user = request.state.user or {}
+    if settings.builtin_login and user.get("role") not in RESULT_APPROVE_ROLES:
+        raise HTTPException(403, "Only an admin or senior executive can approve results")
+    data = payload.value if isinstance(payload.value, dict) else {}
+    approve = data.get("approve", True) is not False
+    want: dict = {}
+    for it in data.get("items") or []:
+        if isinstance(it, dict) and it.get("fileId") and it.get("key"):
+            want.setdefault(str(it["fileId"]), set()).add(str(it["key"]))
+    row, files = _result_files(db)
+    files = [dict(f) for f in files]   # copies, so SQLAlchemy sees the JSON change
+    stamp = {"by": user.get("username") or "", "at": datetime.now(timezone.utc).isoformat()}
+    changed, names = 0, []
+    for f in files:
+        keys = want.get(f.get("id"))
+        if not keys or not f.get("needsApproval"):
+            continue
+        appr = dict(f.get("approvals") or {})
+        n0 = changed
+        for k in keys & set(f.get("samples") or []):
+            if approve and k not in appr:
+                appr[k] = stamp; changed += 1
+            elif not approve and k in appr:
+                del appr[k]; changed += 1
+        f["approvals"] = appr
+        if changed > n0:
+            names.append(f.get("fileName") or f["id"])
+    if changed:
+        _save_result_files(db, row, files)
+        log_activity(db, "result_approve" if approve else "result_unapprove",
+                     f"{changed} embryo result(s) {'approved' if approve else 'approval withdrawn'} · {', '.join(names)}", request=request)
+    return {"changed": changed}
 
 @app.get("/api/result-file-months")
 def result_file_months(db: Session = Depends(get_db)):
@@ -1483,10 +1558,13 @@ def _embryo_labels(raw: str) -> list:
         out.extend(f"{prefix}{n}" for n in nums)
     return list(dict.fromkeys(out))
 
-def _embryo_result(r: dict, label: str) -> str:
+def _embryo_result(r: dict, label: str, gate: dict | None = None) -> str:
     tag = "".join(ch for ch in label.upper() if ch.isalnum())
     d = (r.get("_embryoResults") or {}).get(tag)
     if not d:
+        return "No result"
+    # A result from a file that needs approval stays hidden from the client until it is approved.
+    if gate is not None and d.get("_fileId") in gate and f"{_clean_id(_field(r, 'patient name', 'patient'))}|{tag}" not in gate[d["_fileId"]]:
         return "No result"
     text_ = f"{d.get('conclusion', '')} {d.get('pgt result', '')}".lower()
     if str(d.get("qc", "")).upper() == "FAIL" or "inconclusive" in text_ or "no dna" in text_:
@@ -1512,6 +1590,7 @@ def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = "", loo
     if not want and not want_client:
         return
     cases: dict = {}
+    gate = _approval_gate(db)
     for r in _sheet_rows(db):
         canon = _canon_embryologist(_field(r, "embryologist name", "embryologist"))
         by_name = bool(want) and (canon == want or (loose and want in canon))
@@ -1525,9 +1604,25 @@ def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = "", loo
             continue
         c = cases.setdefault((_norm_name(patient), _norm_name(cid)), {"key": cid, "patient": patient, "r": r, "embryos": {}})
         for lab in _embryo_labels(_field(r, "embryo name", "embryo id", "embryo")):
-            c["embryos"].setdefault(lab, _embryo_result(r, lab))
+            c["embryos"].setdefault(lab, _embryo_result(r, lab, gate))
     if not cases:
         return
+    # A sheet follow-up made while its results were waiting for approval shows "No result"; fill each one in
+    # once approved. Only blank / "No result" entries are filled, so nothing the client typed is overwritten.
+    by_key = {c["key"][:120]: c for c in cases.values()}
+    refreshed = 0
+    for f in db.query(Followup).filter(Followup.source == "sheet", Followup.case_key.in_(list(by_key))).all():
+        fresh = by_key[f.case_key]["embryos"]
+        emb = [dict(e) for e in (f.embryos or [])]
+        hit = False
+        for e in emb:
+            v = fresh.get(e.get("label"))
+            if v and v != "No result" and str(e.get("result") or "").strip() in ("", "No result"):
+                e["result"] = v; hit = True
+        if hit:
+            f.embryos = emb; refreshed += 1
+    if refreshed:
+        db.commit()
     have = {k for (k,) in db.query(Followup.case_key).all()}
     due = datetime.utcnow().date().isoformat()  # needs filling in now
     added = 0

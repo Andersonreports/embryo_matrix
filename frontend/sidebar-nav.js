@@ -1,6 +1,6 @@
 // Sidebar navigation (trial). NAV_LAYOUT='sidebar' turns the top bar into a left
 // rail with nested children:
-//   Run status  → Overview / Embryo registry / Upload result
+//   Run status  → Overview / Embryo registry / Upload result / Approve results
 //   Run reports → Run summary / QC check / Embryologists (the report's layout modes)
 // The rail can be collapsed (state remembered; open by default).
 // Set NAV_LAYOUT='topbar' to restore the original top navigation — nothing else changes.
@@ -22,7 +22,7 @@
  const item=(attrs,icon,label)=>`<button type="button" class="nav-item nav-subitem" ${attrs}><span><img class="ico" src="/static/assets/icons/${icon}" alt=""></span> ${label}</button>`;
 
  // Run status children: plain views. app.js marks them active by data-view.
- const rs=sub(document.getElementById('runStatusNav'),[['overview','navigation__overview.png','Overview'],['samples','navigation__samples.png','Embryo registry'],['import','navigation__upload-result.png','Upload result']].map(([v,ic,l])=>item(`data-view="${v}"`,ic,l)).join(''));
+ const rs=sub(document.getElementById('runStatusNav'),[['overview','navigation__overview.png','Overview'],['samples','navigation__samples.png','Embryo registry'],['import','navigation__upload-result.png','Upload result'],['approve','stages-results__qc-pass.png','Approve results']].map(([v,ic,l])=>item(`data-view="${v}"`,ic,l)).join(''));
  rs?.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 
  // Run reports children: the three report layouts (#rrMode). No data-view, so app.js
