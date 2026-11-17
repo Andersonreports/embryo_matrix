@@ -515,11 +515,13 @@ def list_result_approvals(request: Request, db: Session = Depends(get_db)):
                     "approved": appr.get(k)} for i, k in enumerate(f.get("samples") or [])]
         out.append({"id": f["id"], "fileName": f.get("fileName"), "run": f.get("run"), "at": f.get("at"),
                     "by": f.get("by"), "columns": f.get("columns") or [], "samples": samples,
+                    "month": (lambda ym: f"{ym[0]}-{ym[1]:02d}" if ym else "")(_file_month(f, months)),
                     "columnsNote": "" if f.get("columns") else (f.get("columnsError") or ("" if f.get("filePath") else "the original file was not kept for this upload"))})
     out.sort(key=lambda x: str(x.get("at") or ""), reverse=True)
     role = (request.state.user or {}).get("role")
     span = sorted(recent)
-    return {"files": out, "stillReading": left, "months": [f"{y}-{m:02d}" for y, m in (span[0], span[-1])], "canApprove": (not settings.builtin_login) or role in RESULT_APPROVE_ROLES}
+    return {"files": out, "stillReading": left, "months": [f"{y}-{m:02d}" for y, m in (span[0], span[-1])],
+            "monthTabs": [f"{y}-{m:02d}" for y, m in reversed(span)], "canApprove": (not settings.builtin_login) or role in RESULT_APPROVE_ROLES}
 
 @app.post("/api/result-approvals")
 def set_result_approvals(payload: KVValue, request: Request, db: Session = Depends(get_db)):
