@@ -408,7 +408,6 @@ def add_result_file(
         "columns": [str(c)[:120] for c in (json.loads(columns) if columns else [])][:80],
         "rows": {str(k): [str(v)[:500] for v in (vals or [])][:80] for k, vals in (json.loads(rows) if rows else {}).items()},
         # Results from this file reach client logins only once approved (embryo key -> {by, at}).
-        # Files uploaded before approvals existed have no "needsApproval" and count as approved.
         "needsApproval": True,
         "approvals": {},
     }
@@ -453,11 +452,15 @@ def _clean_id(v) -> str:
     s = re.sub(r"(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$", "", str(v or "").upper(), flags=re.I)
     return re.sub(r"[^A-Z0-9]", "", s)
 
+def _needs_approval(f: dict) -> bool:
+    """Every uploaded result file goes through approval (files uploaded before approvals existed too)."""
+    return bool(f.get("id")) and f.get("needsApproval", True) is not False
+
 def _approval_gate(db: Session) -> dict:
     """fileId -> set of approved "patient|tag", for every file whose results need approval."""
     _, files = _result_files(db)
     return {f["id"]: {"|".join(k.split("|")[:2]) for k in (f.get("approvals") or {})}
-            for f in files if f.get("needsApproval") and f.get("id")}
+            for f in files if _needs_approval(f)}
 
 @app.get("/api/result-approvals")
 def list_result_approvals(request: Request, db: Session = Depends(get_db)):
@@ -465,13 +468,15 @@ def list_result_approvals(request: Request, db: Session = Depends(get_db)):
     _, files = _result_files(db)
     out = []
     for f in files:
-        if not f.get("needsApproval"):
+        if not _needs_approval(f):
             continue
         appr, rows, names = f.get("approvals") or {}, f.get("rows") or {}, f.get("sampleNames") or []
         samples = [{"key": k, "name": names[i] if i < len(names) else "", "values": rows.get(k, []),
                     "approved": appr.get(k)} for i, k in enumerate(f.get("samples") or [])]
         out.append({"id": f["id"], "fileName": f.get("fileName"), "run": f.get("run"), "at": f.get("at"),
-                    "by": f.get("by"), "columns": f.get("columns") or [], "samples": samples})
+                    "by": f.get("by"), "columns": f.get("columns") or [], "samples": samples,
+                    # Files uploaded before columns were saved: the page reads the stored file once and saves them back.
+                    "url": f"/uploads/{f['filePath']}" if f.get("filePath") and not f.get("columns") else ""})
     out.sort(key=lambda x: str(x.get("at") or ""), reverse=True)
     role = (request.state.user or {}).get("role")
     return {"files": out, "canApprove": (not settings.builtin_login) or role in RESULT_APPROVE_ROLES}
@@ -494,7 +499,7 @@ def set_result_approvals(payload: KVValue, request: Request, db: Session = Depen
     changed, names = 0, []
     for f in files:
         keys = want.get(f.get("id"))
-        if not keys or not f.get("needsApproval"):
+        if not keys or not _needs_approval(f):
             continue
         appr = dict(f.get("approvals") or {})
         n0 = changed
@@ -511,6 +516,26 @@ def set_result_approvals(payload: KVValue, request: Request, db: Session = Depen
         log_activity(db, "result_approve" if approve else "result_unapprove",
                      f"{changed} embryo result(s) {'approved' if approve else 'approval withdrawn'} · {', '.join(names)}", request=request)
     return {"changed": changed}
+
+@app.post("/api/result-files/{file_id}/columns")
+def backfill_result_columns(file_id: str, payload: KVValue, db: Session = Depends(get_db)):
+    """Save the columns of a result file uploaded before they were stored (read again from its stored copy)."""
+    data = payload.value if isinstance(payload.value, dict) else {}
+    cols, rows = data.get("columns") or [], data.get("rows") or {}
+    if not isinstance(cols, list) or not isinstance(rows, dict) or not cols:
+        raise HTTPException(422, "columns and rows are required")
+    row, files = _result_files(db)
+    files = [dict(f) for f in files]
+    hit = next((f for f in files if f.get("id") == file_id), None)
+    if not hit:
+        raise HTTPException(404, "Not found")
+    if hit.get("columns"):
+        return {"ok": True, "kept": True}
+    keys = set(hit.get("samples") or [])
+    hit["columns"] = [str(c)[:120] for c in cols][:80]
+    hit["rows"] = {str(k): [str(v)[:500] for v in (vals or [])][:80] for k, vals in rows.items() if k in keys and isinstance(vals, list)}
+    _save_result_files(db, row, files)
+    return {"ok": True}
 
 @app.get("/api/result-file-months")
 def result_file_months(db: Session = Depends(get_db)):

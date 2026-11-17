@@ -15,8 +15,28 @@
   try{const r=await fetch('/api/result-approvals');if(!r.ok)throw new Error(r.status);data=await r.json()}
   catch(e){container.innerHTML='<div class="generic-card wide-card"><div class="chart-empty">Could not load results waiting for approval.</div></div>';return}
   // drop selections that are gone / already approved
+  if(data.files.some(f=>f.url&&!f.columns.length&&!tried.has(f.id))){backfill();return}
   const live=new Set;data.files.forEach(f=>f.samples.forEach(s=>{if(!s.approved)live.add(id(f,s))}));picked=new Set([...picked].filter(k=>live.has(k)));
   render()}
+
+// Files uploaded before columns were saved: read the stored file once with the same reader the upload uses,
+ // take each embryo's row, and save the columns back so this happens only once per file.
+ const tried=new Set;
+ async function backfill(){
+  const todo=data.files.filter(f=>f.url&&!f.columns.length&&!tried.has(f.id));todo.forEach(f=>tried.add(f.id));
+  container.innerHTML=`<div class="generic-card wide-card"><div class="chart-empty">Reading the columns of ${todo.length} earlier result file(s)… this happens only once.</div></div>`;
+  try{
+   const allRows=(await kvGet('embryomatrix-imported-cases'))||[],known=new Set(allRows.flatMap(rowResultKeys)),
+    trackerTags=new Map([...known].map(k=>[k.split('|')[1],true])),trackerRows=allRows.filter(r=>!r._stale);
+   for(const f of todo){try{
+    const r=await fetch(f.url);if(!r.ok)continue;const file=new File([await r.blob()],f.fileName||'result.xlsx');
+    const p=await parseResultFile(file,trackerTags,trackerRows);matchResultsByName([p],known);
+    const hits=f.samples.map(s=>p.byKey.get(s.key)).filter(Boolean);if(!hits.length)continue;
+    const t=resultColumnsOf(hits),rows=Object.fromEntries(f.samples.map(s=>[s.key,p.byKey.has(s.key)?t.values(p.byKey.get(s.key)):[]]));
+    await fetch(`/api/result-files/${encodeURIComponent(f.id)}/columns`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:{columns:t.columns,rows}})});
+   }catch(e){console.warn('Could not read columns of',f.fileName,e)}}
+  }catch(e){console.warn(e)}
+  await load()}
 
  async function send(items,approve){
   if(busy||!items.length)return;busy=true;render();
