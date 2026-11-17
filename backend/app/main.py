@@ -21,6 +21,7 @@ from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage,
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn, NewSampleIn
 from .sheet_sync import parse_sources, sync_sources
 from . import auth, batches, cell_edits, edits_sheet, mailer, new_samples, storage, trf_fill, trf_pdf
+from . import pgta_report
 from .clients import resolve_client, directory as client_directory
 from sqlalchemy import inspect, text
 import mimetypes
@@ -57,6 +58,7 @@ UPLOADS = settings.uploads_dir
 UPLOADS.mkdir(parents=True, exist_ok=True)
 app.mount("/static/assets", StaticFiles(directory=ASSETS), name="assets")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+app.include_router(pgta_report.router)
 
 @app.get("/uploads/{path:path}")
 def serve_upload(path: str):
@@ -1407,9 +1409,12 @@ def _create_followup_from_trf(db: Session, t: TrfSubmission, owner: str = ""):
             return
         months = _PERIOD_MONTHS.get(d.get("followupExpected", ""), 3)
         due = _add_months(t.submitted_at.date(), months).isoformat()
+        trf_month = t.submitted_at.strftime("%Y-%m")
+        if _legacy_month(trf_month):
+            consent = "Yes"  # pre-2027 TRFs: consent barrier does not apply
         db.add(Followup(
             case_key=key, source="trf", trf_ref=t.ref, patient=t.patient_name, clinic=t.clinic, region="",
-            embryologist=d.get("embryologistName", ""), test=", ".join(d.get("tests", [])), month=t.submitted_at.strftime("%Y-%m"),
+            embryologist=d.get("embryologistName", ""), test=", ".join(d.get("tests", [])), month=trf_month,
             age=_age_from_trf(d, t.submitted_at), embryos=[{"label": e.get("label", ""), "result": ""} for e in d.get("embryos", []) if e.get("label")],
             consent=consent, contact_name=d.get("followupContact", ""), contact_detail=d.get("followupPhoneEmail", ""),
             expected_period=d.get("followupExpected", ""), due_date=due, state="not_applicable" if consent == "No" else "",
@@ -1453,12 +1458,21 @@ def _rekey_followup(db: Session, old: str, new: str):
 def _hist_out(h: OutcomeHistory) -> dict:
     return {"status": h.status, "previous": h.previous_status, "date": h.event_date, "note": h.note, "tests": h.tests or {}, "by": h.changed_by, "at": _iso_utc(h.changed_at)}
 
+CONSENT_CUTOFF = "2027-01"  # months before this are auto-consented (no explicit patient consent required)
+
+def _legacy_month(month: str | None) -> bool:
+    """True when the case predates the consent requirement (before January 2027)."""
+    return bool(month) and month < CONSENT_CUTOFF
+
 def _fu_out(f: Followup, outs: list, hist: dict | None = None) -> dict:
+    legacy = _legacy_month(f.month)
+    consent = "Yes" if legacy else f.consent
+    state = "" if legacy and f.state == "not_applicable" else (f.state or "")
     return {
         "caseKey": f.case_key, "source": f.source, "trfRef": f.trf_ref, "patient": f.patient, "clinic": f.clinic, "region": f.region,
         "embryologist": _emb_display(f.embryologist), "test": f.test, "month": f.month, "age": f.age, "embryos": f.embryos or [],
-        "consent": f.consent, "contactName": f.contact_name, "contactDetail": f.contact_detail, "expectedPeriod": f.expected_period,
-        "dueDate": f.due_date, "state": f.state, "note": f.note, "updatedBy": f.updated_by, "updatedAt": _iso_utc(f.updated_at),
+        "consent": consent, "contactName": f.contact_name, "contactDetail": f.contact_detail, "expectedPeriod": f.expected_period,
+        "dueDate": f.due_date, "state": state, "note": f.note, "updatedBy": f.updated_by, "updatedAt": _iso_utc(f.updated_at),
         "createdAt": _iso_utc(f.created_at),
         "outcomes": [{"embryo": o.embryo_label, "status": _outcome_status(o.status), "date": o.event_date, "note": o.note, "tests": o.tests or {}, "by": o.updated_by, "at": _iso_utc(o.updated_at), "history": (hist or {}).get(o.embryo_label, [])} for o in outs],
     }
@@ -1481,21 +1495,36 @@ def _norm_name(v: str) -> str:
 
 def _client_sees(u, center: str = "", hospital: str = "", location: str = "") -> bool:
     """A client (fertility centre) login sees only rows of its own client, and of its own branch when it has one.
-    Rows are mapped onto the master client list (app/clients.py); a client that is not in that list falls back to
-    matching its name against the centre text."""
-    brand = _norm_name(u.client_name if u else "")
-    if not brand:
+    Rows are mapped onto the master client list (app/clients.py); unresolvable rows fall back to brand-in-text.
+    The user's client_name is itself resolved through the directory so that canonical display names
+    (e.g. 'NOVA IVF FERTILITY CENTRE') match sheet spellings ('NOVA IVF FERTILITY') transparently."""
+    u_name = u.client_name if u else ""
+    if not u_name:
+        return False
+    # Resolve the user's registered client_name through the directory to get the canonical directory brand.
+    u_res = resolve_client(u_name, "", "")
+    effective_brand = _norm_name(u_res["brand"] if u_res else u_name)
+    if not effective_brand:
         return False
     want_branch = _norm_name(u.client_branch)
     res = resolve_client(center, hospital, location)
     if res:
-        if _norm_name(res["brand"]) != brand:
+        if _norm_name(res["brand"]) != effective_brand:
             return False
         return not want_branch or bool(res["branch"] and _norm_name(res["branch"]["branch"]) == want_branch)
-    if brand in {_norm_name(d["brand"]) for d in client_directory()}:
-        return False  # a listed client whose name this row does not match
-    text = _norm_name(f"{center} {hospital}")
-    return brand in text and (not want_branch or want_branch in _norm_name(f"{text} {location}"))
+    # resolve_client found no match — fall back to word-token matching on the raw strings.
+    # Tokenise into individual words (re.findall '[a-z0-9]+') so that "care" cannot match the
+    # single token "healthcare", and "nova" cannot match "innovation".
+    _tok = lambda s: set(re.findall(r'[a-z0-9]+', (s or "").lower()))
+    brand_words = _tok(u_name)
+    text_words = _tok(f"{center} {hospital}")
+    if not brand_words or not brand_words <= text_words:
+        return False
+    if not want_branch:
+        return True
+    branch_words = _tok(u.client_branch)
+    all_words = _tok(f"{center} {hospital} {location}")
+    return bool(branch_words and branch_words <= all_words)
 
 def _embryologist_sees(db: Session, user: dict, f: Followup) -> bool:
     """An embryologist login sees only the follow-ups of their own embryos: TRFs they submitted, or patients whose
@@ -1627,8 +1656,10 @@ def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = "", loo
     due = datetime.utcnow().date().isoformat()  # needs filling in now
     added = 0
     for c in cases.values():
-        if c["key"][:120] in have or not c["embryos"]:
+        ck = c["key"][:120]
+        if ck in have or not c["embryos"]:
             continue
+        have.add(ck)  # prevent duplicate inserts within the same sync batch
         r = c["r"]
         db.add(Followup(case_key=c["key"][:120], source="sheet", patient=c["patient"][:255], clinic=_field(r, "center name", "hospital clinic name", "client")[:255],
                         region=_field(r, "location", "region")[:120], embryologist=_emb_display(_field(r, "embryologist name", "embryologist") or emb_name)[:120], test=_field(r, "test name", "test")[:255],
@@ -1756,10 +1787,89 @@ def _check_role(role: str) -> str:
 def _staff_count(db: Session, excluding: str = "") -> int:
     return db.query(User).filter(User.role.in_(list(USER_ADMIN_ROLES)), User.username != excluding).count()
 
+# Canonical client display names confirmed by admin from the client name mapping review.
+# When a new login is created with one of these names, _client_sees() resolves it through the
+# directory to find the matching sheet rows transparently.
+_CANONICAL_CLIENT_NAMES = [
+    "9M FERTILITY BY ANKURA HOSPITAL",
+    "A4 FERTILITY CENTRE",
+    "AKRUTI IVF CENTRE & WOMENS HOSPITAL",
+    "AKSHARA FERTILITY CENTRE",
+    "ALTRUS HEALTHCARE",
+    "AMMA IVF CENTRE",
+    "ANGEL FERTILITY CLINIC",
+    "ANU MY BABY HOSPITAL",
+    "APOLLO FERTILITY CENTRE",
+    "ARC INTERNATIONAL FERTILITY & RESEARCH CENTRE",
+    "BEDI HOSPITAL IVF",
+    "BHARATI FERTILITY CENTRE",
+    "BIRTH RIGHT FERTILITY BY RAINBOW HOSPITAL",
+    "CORION FERTILITY CLINIC",
+    "DESTINY IVF AND WOMEN'S CARE",
+    "DHARMADHIKARI'S SILVER LINING IVF",
+    "DR PURVA SAHAKARIS HOSPITAL & IVF CENTRE",
+    "DR. ARAVIND'S IVF",
+    "DR.CHINMAY PATAKI S WOMEN HOSPITAL LLP - DOMBIVILI",
+    "EMBRYONIC FERTILITY & IVF CENTRE",
+    "FERTICARE IVF CENTRE",
+    "FERTY 9 FERTILITY CENTER",
+    "GARBHAGUDI IVF CENTRE",
+    "ICCHAA FERTILITY",
+    "KAMALESWARI FERTILITY",
+    "MAA KAUVERY FERTILITY CENTRE",
+    "MALAR FERTILITY AND RESEARCH CENTRE",
+    "MEDICOVER FERTILITY CENTRE",
+    "MEENAKSHI FERTILITY CENTRE",
+    "MILANN FERTILITY CENTER",
+    "MOTHERHOOD HOSPITAL FERTILITY & IVF",
+    "NEWLIFE FERTILITY CENTRE",
+    "NOVA IVF FERTILITY CENTRE",
+    "PEARL SINGAPORE FERTILITY CENTRE",
+    "PN IVF ACCESS PVT LTD",
+    "PRASHANTH FERTILITY CENTRE",
+    "PRATIKSHA WOMEN AND CHILD CARE",
+    "PROGENESIS FERTILITY CENTER",
+    "PUNE IVF CENTRE",
+    "QUEENS TEST TUBE BABY CENTRE",
+    "RHEA HEALTH CARE PVT LTD",
+    "SANTASA FERTILITY & IVF",
+    "SHOBHA NURSING HOME",
+    "SHREE IVF CLINIC",
+    "SIGNATURE IVF FERTILITY",
+    "SODHI'S HEALTH CARE",
+    "SREE SWAPNA FERTILITY CENTRE",
+    "SRI CHAKRA FERTILITY CENTRE",
+    "SUDHA FERTILITY CENTRE",
+    "SUNSHINE FERTILITY & IVF CENTRE",
+    "SURYA FERTILITY CLINIC",
+    "THAAIMAI FERTILITY AND RESEARCH CENTRE",
+    "THE BOON IVF AND FERTILITY CENTRE",
+    "THE HIVE FERTILITY CENTRE",
+    "VASANTHA FERTILITY CARE AND HOSPITAL",
+    "VIJAYALAKSHMI MEDICAL CENTRE",
+    "VIRUKSHAM FERTILITY CENTRE",
+    "VRIKSH FERTILITY CENTRE",
+    "WOMB CARE FERTILITY & RESEARCH CENTRE",
+    "YAAMI FERTILITY AND IVF CENTER",
+    "YELLOW FERTILITY CENTER",
+    "ZIVAH FERTILITY CENTRE",
+]
+
+def _canonical_clients() -> list:
+    """Returns canonical client names with their branches (resolved from the directory).
+    Used for the new-login form dropdown so admins pick a standardised display name."""
+    dir_map = {d["brand"]: d["branches"] for d in client_directory()}
+    result = []
+    for name in _CANONICAL_CLIENT_NAMES:
+        res = resolve_client(name, "", "")
+        branches = dir_map.get(res["brand"], []) if res else []
+        result.append({"brand": name, "branches": branches})
+    return result
+
 @app.get("/api/users")
 def list_users(request: Request, db: Session = Depends(get_db)):
     _require_user_admin(request)
-    return {"roles": ALL_ROLES, "clients": client_directory(), "users": [_user_row(u) for u in db.query(User).order_by(User.username).all()]}
+    return {"roles": ALL_ROLES, "clients": client_directory(), "canonical_clients": _canonical_clients(), "users": [_user_row(u) for u in db.query(User).order_by(User.username).all()]}
 
 @app.post("/api/users")
 def create_user(payload: dict, request: Request, db: Session = Depends(get_db)):
@@ -1821,6 +1931,53 @@ def delete_user(username: str, request: Request, db: Session = Depends(get_db)):
     db.delete(u); db.commit()
     log_activity(db, "user_manage", f"Removed user {name}", request=request)
     return {"ok": True}
+
+@app.get("/api/client-audit")
+def client_assignment_audit(request: Request, db: Session = Depends(get_db)):
+    """Zero-tolerance audit: every sheet row must map to exactly one registered client.
+    Returns unclaimed rows (no client can see them) and multi-claimed rows (privacy risk)."""
+    _require_user_admin(request)
+    client_users = db.query(User).filter(User.client_name != None, User.client_name != "").all()
+    rows = list(_sheet_rows(db))
+
+    unclaimed: dict[str, dict] = {}   # center → {count, locations, sample_patients}
+    multi_claimed: list[dict] = []
+
+    for r in rows:
+        center = _field(r, "center name", "client") or ""
+        hospital = _field(r, "hospital clinic name") or ""
+        location = _field(r, "location") or ""
+        patient = _field(r, "patient name", "patient") or ""
+        owners = [u.username for u in client_users if _client_sees(u, center, hospital, location)]
+        if len(owners) == 0:
+            key = center or hospital or "(unknown)"
+            if key not in unclaimed:
+                unclaimed[key] = {"center": key, "count": 0, "locations": set(), "sample_patients": []}
+            unclaimed[key]["count"] += 1
+            if location:
+                unclaimed[key]["locations"].add(location)
+            if len(unclaimed[key]["sample_patients"]) < 3:
+                unclaimed[key]["sample_patients"].append(patient)
+        elif len(owners) > 1:
+            multi_claimed.append({"center": center, "patient": patient, "location": location, "owners": owners})
+
+    total = len(rows)
+    unclaimed_count = sum(v["count"] for v in unclaimed.values())
+    unclaimed_list = sorted(
+        [{"center": v["center"], "count": v["count"],
+          "locations": sorted(v["locations"]), "sample_patients": v["sample_patients"]}
+         for v in unclaimed.values()],
+        key=lambda x: -x["count"]
+    )
+    return {
+        "total_rows": total,
+        "claimed": total - unclaimed_count - len(multi_claimed),
+        "unclaimed": unclaimed_count,
+        "multi_claimed": len(multi_claimed),
+        "unclaimed_centers": unclaimed_list,
+        "multi_claimed_rows": multi_claimed[:50],
+        "registered_clients": [{"username": u.username, "brand": u.client_name, "branch": u.client_branch} for u in client_users],
+    }
 
 @app.get("/api/embryologist-links")
 def embryologist_links(request: Request, db: Session = Depends(get_db)):
@@ -1997,15 +2154,16 @@ _SYNC_COOLDOWN_SECONDS = 60
 _last_manual_sync = 0.0
 
 @app.post("/api/sync-sheet")
-def sync_sheet_now(request: Request, db: Session = Depends(get_db)):
+def sync_sheet_now(request: Request, db: Session = Depends(get_db), force: bool = False):
     sources = parse_sources(settings.sheet_sources)
     if not sources:
         raise HTTPException(400, "No sheet sources configured")
     # Every page load asks for a sync; if one ran moments ago, reuse it instead of
     # re-fetching every workbook (several viewers opening at once would stack up).
+    # force=true (user clicking "Refresh") always runs a fresh fetch regardless of cooldown.
     global _last_manual_sync
     last = db.get(KVStore, "embryomatrix-sheet-sync-status")
-    if last and last.value and time.time() - _last_manual_sync < _SYNC_COOLDOWN_SECONDS:
+    if not force and last and last.value and time.time() - _last_manual_sync < _SYNC_COOLDOWN_SECONDS:
         return {**last.value, "changed": False, "cached": True}
     _last_manual_sync = time.time()
     result = sync_sources(db, sources)

@@ -3,6 +3,9 @@
 // for the embryologist role too, which cannot read the sample sheet).
 (function(){
 const STATUSES=['Not transferred','Transferred','Implantation successful','Implantation unsuccessful','Clinical pregnancy','Miscarriage','Live birth','Outcome unknown'];
+// Months from this point require explicit patient consent; earlier months are auto-consented (legacy).
+const CONSENT_FROM='2027-01';
+const needsConsent=m=>!m||m>=CONSENT_FROM;
 const TRANSFERRED=['Transferred','Implantation successful','Implantation unsuccessful','Clinical pregnancy','Miscarriage','Live birth'];
 const IMPLANTED=['Implantation successful','Clinical pregnancy','Miscarriage','Live birth'];
 const CLINICAL=['Clinical pregnancy','Miscarriage','Live birth'];
@@ -32,7 +35,7 @@ async function loadFollowups(force){
  return FU}
 const outcomeMap=f=>{const m={};(f.outcomes||[]).forEach(o=>{m[norm(o.embryo)]=o});return m};
 function taskStatus(f){
- if(f.consent==='No'||f.state==='not_applicable')return'na';
+ if((f.consent==='No'||f.state==='not_applicable')&&needsConsent(f.month))return'na';
  if(f.state==='completed')return'completed';
  const om=outcomeMap(f),vals=(f.embryos||[]).map(e=>om[norm(e.label)]?.status||'');
  if(vals.some(v=>TERMINAL.includes(v))&&!vals.some(v=>ACTIVE.includes(v)))return'completed';
@@ -126,13 +129,13 @@ function openRecordDialog(f,after,focusLabel){
    <label class="fu-f"><span>Follow-up email / phone</span><input id="fuDetail" value="${esc(f.contactDetail)}"></label>
    <label class="fu-f"><span>Expected transfer period</span><select id="fuPeriod"><option value="">—</option>${PERIODS.map(p=>`<option${f.expectedPeriod===p?' selected':''}>${p}</option>`).join('')}</select></label>
    <label class="fu-f"><span>Patient age</span><input id="fuAge" type="number" min="10" max="80" value="${f.age??''}"></label>
-   <label class="fu-f"><span>Follow-up consent</span><select id="fuConsent"><option${f.consent!=='No'?' selected':''}>Yes</option><option${f.consent==='No'?' selected':''}>No</option></select></label>
+   ${needsConsent(f.month)?`<label class="fu-f"><span>Follow-up consent</span><select id="fuConsent"><option${f.consent!=='No'?' selected':''}>Yes</option><option${f.consent==='No'?' selected':''}>No</option></select></label>`:`<label class="fu-f"><span>Follow-up consent</span><span class="fu-consent-locked">Yes <small>(auto — legacy patient)</small></span><input type="hidden" id="fuConsent" value="Yes"></label>`}
   </div>
   <label class="fu-f fu-wide"><span>Follow-up note (calls, clinic replies)</span><textarea id="fuNote" rows="2">${esc(f.note)}</textarea></label></section>
   <div class="fu-actions">
    <button type="button" class="primary" data-act="save">Save outcomes</button>
    <button type="button" class="secondary" data-act="completed">Mark completed</button>
-   <button type="button" class="secondary" data-act="not_applicable">Not applicable</button>
+   ${needsConsent(f.month)?'<button type="button" class="secondary" data-act="not_applicable">Not applicable</button>':''}
    ${f.state&&!isNew?'<button type="button" class="secondary" data-act="reopen">Reopen</button>':''}
   </div>
  </div>`;
@@ -161,7 +164,7 @@ async function postSave(body){
  const i=FU.items.findIndex(x=>x.caseKey===j.caseKey),hidden=!(j.embryos&&j.embryos.length);if(hidden){if(i>=0)FU.items.splice(i,1)}else if(i>=0)FU.items[i]=j;else FU.items.unshift(j);return j}
 
 // ---------------- Shared bits for the redesigned pages ----------------
-const IC=n=>`<img class="ico" src="/static/assets/icons/${n}.png" alt="">`;
+const IC=(n,ext='png')=>`<img class="ico" src="/static/assets/icons/${n}.${ext}" alt="">`;
 const SVG={heart:'<svg viewBox="0 0 24 24" width="30" height="30" fill="#e0457b"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.7 5 6 5c2 0 3.4 1 4 2.2h4C14.600 6 16 5 18 5c3.300 0 5.100 3.400 3.600 6.800C19.500 16.400 12 21 12 21z"/></svg>'};
 const relDue=(due)=>{if(!due)return'';const d=Math.round((new Date(due+'T00:00:00')-new Date(today()+'T00:00:00'))/864e5);return d<0?`Overdue by ${-d} day${d===-1?'':'s'}`:d===0?'Due today':d===1?'Due tomorrow':`Due in ${d} days`};
 const TILES=[
@@ -171,13 +174,15 @@ const TILES=[
  ['pending','Still to record','followup__still-to-record','No outcome entered yet','blue'],
  ['completed','Completed','followup__completed','Final outcome known','teal'],
  ['na','No consent','followup__no-consent','Not followed up','grey']];
-let bkQ='',bkKey='n',bkDir=-1,bkAll=false,clQ='',clAll=false,filtersOpen=false,dashHome=false,taskSort='patient',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false;
+let bkQ='',bkKey='n',bkDir=-1,bkAll=false,clQ='',clAll=false,filtersOpen=false,dashHome=false,taskSort='patient',taskView='patient',viewChosen=false,taskEmb='',onlyNeeds=false,taskBranch='';
 
 // ---------------- Tasks (card queue) ----------------
 function tasksHtml(){
  const mine=currentUser&&currentUser.role==='embryologist';if(mine&&!viewChosen)taskView='embryo';
  const embs=[...new Set(FU.items.map(f=>f.embryologist).filter(Boolean))].sort();
- const items=FU.items.filter(f=>!taskEmb||f.embryologist===taskEmb).map(f=>({f,s:taskStatus(f)}));
+ const branches=mine?[...new Set(FU.items.map(f=>f.region||'').filter(Boolean))].sort():[];
+ const useBranchFilter=mine&&branches.length>1;
+ const items=FU.items.filter(f=>!taskEmb||f.embryologist===taskEmb).filter(f=>!useBranchFilter||!taskBranch||(f.region||'')===taskBranch).map(f=>({f,s:taskStatus(f)}));
  const emN=x=>(x.f.embryos||[]).length,recN=x=>{const om=outcomeMap(x.f);return(x.f.embryos||[]).filter(e=>om[norm(e.label)]?.status).length};
  const consent=x=>x.s!=='na',sum=(arr,fn)=>arr.reduce((t,x)=>t+fn(x),0);
  const cnt=k=>k==='all'?sum(items,emN):k==='consent'?sum(items.filter(consent),emN):k==='recorded'?sum(items.filter(consent),recN):k==='pending'?sum(items.filter(consent),x=>emN(x)-recN(x)):k==='completed'?sum(items.filter(x=>x.s==='completed'),emN):sum(items.filter(x=>x.s==='na'),emN);
@@ -205,7 +210,7 @@ function tasksHtml(){
  const hero=mine?``:`<div class="fu-hero"><div><h2>${attention?`${attention} patient${attention===1?'':'s'} with outcomes still to record`:'You are all caught up'}</h2><p>Ask each center what happened to the embryos after transfer, then record it with <b>Record outcome</b>.</p></div>${isStaff()?'<div class="hero-btns"><button type="button" class="hero-btn" id="fuFromSheet">＋ Add patients from the sheet</button></div>':''}</div>`;
  return `${mine?'<div class="fb-page">':''}${hero}
  <div class="st-tiles">${tiles}</div>
- <div class="tk-bar"><div class="seg-toggle" id="fuView"><button type="button" class="${taskView==='patient'?'on':''}" data-v="patient">By patient</button><button type="button" class="${taskView==='embryo'?'on':''}" data-v="embryo">By embryo</button></div><div class="search-wrap fu-search"><span>⌕</span><input id="fuSearch" type="search" placeholder="Search patient, center or contact…" value="${esc(taskQuery)}"></div>${!mine&&embs.length>1?`<label class="tk-sort">Embryologist <select id="fuEmb"><option value="">All</option>${embs.map(n=>`<option${taskEmb===n?' selected':''}>${esc(n)}</option>`).join('')}</select></label>`:''}</div>
+ <div class="tk-bar"><div class="seg-toggle" id="fuView"><button type="button" class="${taskView==='patient'?'on':''}" data-v="patient">By patient</button><button type="button" class="${taskView==='embryo'?'on':''}" data-v="embryo">By embryo</button></div><div class="search-wrap fu-search"><span>⌕</span><input id="fuSearch" type="search" placeholder="Search patient, center or contact…" value="${esc(taskQuery)}"></div>${useBranchFilter?`<label class="tk-sort">Branch <select id="fuBranch"><option value="">All branches</option>${branches.map(b=>`<option${taskBranch===b?' selected':''}>${esc(b)}</option>`).join('')}</select></label>`:''}${!mine&&embs.length>1?`<label class="tk-sort">Embryologist <select id="fuEmb"><option value="">All</option>${embs.map(n=>`<option${taskEmb===n?' selected':''}>${esc(n)}</option>`).join('')}</select></label>`:''}</div>
  ${taskView==='embryo'?embryoTable(list,mine):`<div class="tk-list">${list.map(card).join('')||empty}</div>`}${mine?'</div>':''}`}
 function embryoTable(list,mine){
  const rows=[];list.forEach(({f,s})=>{const om=outcomeMap(f);(f.embryos||[]).forEach(e=>{const o=om[norm(e.label)]||{};rows.push({f,s,e,o})})});
@@ -218,6 +223,7 @@ function embryoTable(list,mine){
 function wireTasks(root,redraw){
  const tg=root.querySelector('#fuView');if(tg)tg.onclick=e=>{const b=e.target.closest('[data-v]');if(!b)return;taskView=b.dataset.v;viewChosen=true;redraw()};
  const ef=root.querySelector('#fuEmb');if(ef)ef.onchange=()=>{taskEmb=ef.value;redraw()};
+ const bf=root.querySelector('#fuBranch');if(bf)bf.onchange=()=>{taskBranch=bf.value;redraw()};
  const fs=root.querySelector('#fuFromSheet');if(fs)fs.onclick=()=>openSheetImport(redraw);
  root.querySelector('.st-tiles').onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;taskFilter=b.dataset.k;redraw()};
  const s=root.querySelector('#fuSearch');s.oninput=()=>{taskQuery=s.value;const pos=s.selectionStart;redraw();const n=root.querySelector('#fuSearch');n.focus();n.setSelectionRange(pos,pos)};
@@ -331,7 +337,7 @@ function dashHtml(){
  const clientTable=`<div class="fu-table-wrap"><table class="fu-table cl"><thead><tr><th>Client</th><th>Embryos</th><th>Outcomes recorded</th><th>Transferred</th><th>Implantation</th><th>Live birth</th></tr></thead><tbody>${shownC.map(x=>`<tr data-clinic="${esc(x.k)}"><td class="strong">${esc(x.k)}</td><td>${x.n}</td><td><div class="cl-bar"><i style="width:${x.n?x.rec/x.n*100:0}%"></i></div><small>${x.rec} of ${x.n}</small></td><td>${x.tr}</td><td>${x.tr?P(x.im,x.tr)+'%':'—'}</td><td>${x.tr?P(x.lb,x.tr)+'%':'—'}</td></tr>`).join('')||'<tr><td colspan="6" class="chart-empty">No client matches.</td></tr>'}</tbody></table></div>${!cq&&cl.length>10?`<div style="text-align:center;margin-top:10px"><button type="button" class="secondary compact" id="clAllBtn">${clAll?'Show top 10':`Show all ${cl.length} clients`}</button></div>`:''}<p class="fu-note" style="margin:8px 0 0">Click a client to filter the whole dashboard to it.</p>`;
  const ftChip=(k,label)=>{const an=rows.filter(r=>r.tests?.[k]?.where==='Anderson').length,ot=rows.filter(r=>r.tests?.[k]?.where==='Other lab').length;return `<button type="button" class="ft" data-ft="${k}" title="Click to list the embryos"><b>${label}</b><span><strong>${an+ot}</strong> done</span><small>${an} at Anderson · ${ot} at other labs</small><i class="ft-go">View list ›</i></button>`};
  window._ftRows=rows;
- return `<div class="db-h-row"><h3 class="db-h">The journey of the embryos</h3><div class="db-h-tools">${chips}${nOn?'<button type="button" class="db-fclear" id="fuClear">Clear all</button>':''}<button type="button" class="db-ftoggle db-addsample" id="fuAddSample"><b class="db-plus">+</b><span>Add sample</span></button><button type="button" class="db-ftoggle${filtersOpen?' on':''}" id="fuFToggle" aria-expanded="${filtersOpen}">${IC('navigation__filter')}<span>Filters</span>${nOn?`<b>${nOn}</b>`:''}<i>${filtersOpen?'▴':'▾'}</i></button></div>
+ return `<div class="db-h-row"><h3 class="db-h">The journey of the embryos</h3><div class="db-h-tools">${chips}${nOn?'<button type="button" class="db-fclear" id="fuClear">Clear all</button>':''}<button type="button" class="db-ftoggle db-addsample" id="fuAddSample"><b class="db-plus">+</b><span>Add sample</span></button><button type="button" class="db-ftoggle${filtersOpen?' on':''}" id="fuFToggle" aria-expanded="${filtersOpen}">${IC('navigation__filter','svg')}<span>Filters</span>${nOn?`<b>${nOn}</b>`:''}<i>${filtersOpen?'▴':'▾'}</i></button></div>
  <div class="db-pop"${filtersOpen?'':' hidden'}><div class="db-pop-head"><b>Filter the dashboard</b><button type="button" class="secondary compact" id="fuFClose">Done</button></div><div class="db-pop-grid">${sel('month','Month',monthLabel)}${sel('clinic','Center')}${sel('region','Region')}${sel('embryologist','Embryologist')}${sel('test','Test')}${sel('age','Age group')}${sel('result','Embryo result')}</div>${nOn?'<button type="button" class="db-fclear" id="fuClear2">Clear all filters</button>':''}</div>
 </div>
  <div class="journey">${journey}</div>

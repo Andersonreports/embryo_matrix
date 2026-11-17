@@ -50,9 +50,22 @@ def fetch_workbook_tabs(sheet_id: str) -> list[tuple[str, list[dict]]]:
     Apps Script web app (apps_script/Code.gs) when SHEET_API_URL is configured,
     since it works even when the sheet isn't shared "Anyone with the link" and
     doesn't depend on this server being able to reach docs.google.com directly.
-    Falls back to the public xlsx export otherwise."""
+    Falls back to the public xlsx export when the Apps Script fails or returns
+    an empty response (e.g. auth redirect, quota exhaustion, redeployment needed)."""
     if settings.sheet_api_url:
-        return _fetch_via_apps_script(sheet_id)
+        try:
+            tabs = _fetch_via_apps_script(sheet_id)
+            if tabs:  # non-empty means Apps Script is working; trust it
+                return tabs
+            # Empty tab list from Apps Script is suspicious (should always have at least one tab).
+            # Fall through to XLSX so we don't silently serve stale data.
+        except Exception as e:
+            # Apps Script failed (network error, auth redirect returning HTML, etc.).
+            # Try XLSX export before propagating the error.
+            try:
+                return _fetch_via_xlsx_export(sheet_id)
+            except Exception:
+                raise e  # raise the original Apps Script error, not the XLSX one
     return _fetch_via_xlsx_export(sheet_id)
 
 
@@ -63,7 +76,10 @@ def _fetch_via_apps_script(sheet_id: str) -> list[tuple[str, list[dict]]]:
     url = f"{settings.sheet_api_url}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url, headers={"User-Agent": "EmbryoMatrix-Sync/1.0"})
     with urllib.request.urlopen(req, timeout=60) as resp:
-        payload = json.loads(resp.read().decode("utf-8"))
+        raw = resp.read()
+    if not raw.strip():
+        raise RuntimeError("Apps Script returned an empty response — likely an auth redirect or quota exhaustion; redeploy may be needed")
+    payload = json.loads(raw.decode("utf-8"))
     if payload.get("error"):
         raise RuntimeError(f"Apps Script error: {payload['error']}")
     tabs = []
