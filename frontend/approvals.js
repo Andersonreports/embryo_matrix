@@ -5,7 +5,7 @@
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const fmt=iso=>{const d=new Date(iso);return isNaN(d)?'':d.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})};
  const say=m=>{if(typeof toast==='function')toast(m)};
- let data={files:[],canApprove:false},filter='pending',q='',picked=new Set,openFiles=new Set,container=null,busy=false;
+ let pollTimer,data={files:[],canApprove:false},filter='pending',q='',picked=new Set,openFiles=new Set,container=null,busy=false;
  const id=(f,s)=>`${f.id}\u0001${s.key}`;
  const matches=(f,s)=>{if(filter==='pending'&&s.approved)return false;if(filter==='approved'&&!s.approved)return false;
   if(!q)return true;return [f.fileName,f.run,s.name,...(s.values||[])].join(' ').toLowerCase().includes(q)};
@@ -15,28 +15,9 @@
   try{const r=await fetch('/api/result-approvals');if(!r.ok)throw new Error(r.status);data=await r.json()}
   catch(e){container.innerHTML='<div class="generic-card wide-card"><div class="chart-empty">Could not load results waiting for approval.</div></div>';return}
   // drop selections that are gone / already approved
-  if(data.files.some(f=>f.url&&!f.columns.length&&!tried.has(f.id))){backfill();return}
+  clearTimeout(pollTimer);if(data.stillReading)pollTimer=setTimeout(()=>{if(container&&container.querySelector('.ap-card'))load()},1500);
   const live=new Set;data.files.forEach(f=>f.samples.forEach(s=>{if(!s.approved)live.add(id(f,s))}));picked=new Set([...picked].filter(k=>live.has(k)));
   render()}
-
-// Files uploaded before columns were saved: read the stored file once with the same reader the upload uses,
- // take each embryo's row, and save the columns back so this happens only once per file.
- const tried=new Set;
- async function backfill(){
-  const todo=data.files.filter(f=>f.url&&!f.columns.length&&!tried.has(f.id));todo.forEach(f=>tried.add(f.id));
-  container.innerHTML=`<div class="generic-card wide-card"><div class="chart-empty">Reading the columns of ${todo.length} earlier result file(s)… this happens only once.</div></div>`;
-  try{
-   const allRows=(await kvGet('embryomatrix-imported-cases'))||[],known=new Set(allRows.flatMap(rowResultKeys)),
-    trackerTags=new Map([...known].map(k=>[k.split('|')[1],true])),trackerRows=allRows.filter(r=>!r._stale);
-   for(const f of todo){try{
-    const r=await fetch(f.url);if(!r.ok)continue;const file=new File([await r.blob()],f.fileName||'result.xlsx');
-    const p=await parseResultFile(file,trackerTags,trackerRows);matchResultsByName([p],known);
-    const hits=f.samples.map(s=>p.byKey.get(s.key)).filter(Boolean);if(!hits.length)continue;
-    const t=resultColumnsOf(hits),rows=Object.fromEntries(f.samples.map(s=>[s.key,p.byKey.has(s.key)?t.values(p.byKey.get(s.key)):[]]));
-    await fetch(`/api/result-files/${encodeURIComponent(f.id)}/columns`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:{columns:t.columns,rows}})});
-   }catch(e){console.warn('Could not read columns of',f.fileName,e)}}
-  }catch(e){console.warn(e)}
-  await load()}
 
  async function send(items,approve){
   if(busy||!items.length)return;busy=true;render();
@@ -52,6 +33,7 @@
   const allOn=selectable.length&&selectable.every(k=>picked.has(k));
   container.innerHTML=`<div class="generic-card wide-card ap-card">
    <p class="ap-intro">Results from uploaded files reach the client only after they are approved here. Each file shows its own columns.${can?'':' <b>Only an admin or senior executive can approve.</b>'}</p>
+   ${data.stillReading?`<div class="ap-reading">Reading the columns of ${data.stillReading} earlier result file(s)… this happens only once.</div>`:''}
    <div class="ap-toolbar">
     <div class="ap-tabs" role="tablist">${[['pending','Pending',pending],['approved','Approved',approved],['all','All',all.length]].map(([k,l,n])=>`<button type="button" class="ap-tab${filter===k?' on':''}" data-filter="${k}">${l} <b>${n}</b></button>`).join('')}</div>
     <div class="search-wrap ap-search"><span>⌕</span><input id="apSearch" placeholder="Search file, run, patient or any value…" value="${esc(q)}"></div>
@@ -68,7 +50,7 @@
   return `<section class="ap-file">
    <header class="ap-file-head">
     <div><span class="rf-run${f.run?'':' none'}">${esc(f.run||'No run no.')}</span> <strong title="${esc(f.fileName)}">${esc(f.fileName)}</strong>
-     <small>Uploaded ${esc(fmt(f.at))}${f.by?` by ${esc(f.by)}`:''} · ${f.samples.filter(s=>s.approved).length}/${f.samples.length} approved</small></div>
+     <small>Uploaded ${esc(fmt(f.at))}${f.by?` by ${esc(f.by)}`:''} · ${f.samples.filter(s=>s.approved).length}/${f.samples.length} approved${f.columnsNote?` · <span class="ap-note">Columns not shown: ${esc(f.columnsNote)}</span>`:''}</small></div>
     ${can&&pend.length?`<button type="button" class="secondary compact" data-approve-file="${esc(f.id)}"${busy?' disabled':''}>Approve all ${pend.length} in this file</button>`:''}
    </header>
    <div class="ap-scroll"><table class="ap-table${can?"":" ro"}"><thead><tr>

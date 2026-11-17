@@ -20,6 +20,7 @@ from .placement import Placement, safe as _safe_name
 from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage, ProtocolDocument, ActivityLog, TrfSubmission, SampleTrf, CaseRunAssignment, User, Followup, EmbryoOutcome, OutcomeHistory, SampleRemark
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn, NewSampleIn
 from .sheet_sync import parse_sources, sync_sources
+from . import result_columns
 from . import auth, batches, cell_edits, edits_sheet, mailer, new_samples, storage, trf_fill, trf_pdf
 from . import pgta_report
 from .clients import resolve_client, directory as client_directory
@@ -465,6 +466,7 @@ def _approval_gate(db: Session) -> dict:
 @app.get("/api/result-approvals")
 def list_result_approvals(request: Request, db: Session = Depends(get_db)):
     """Uploaded result files that need approval, each with its own columns and one row per embryo."""
+    left = _fill_missing_columns(db, budget_seconds=20)
     _, files = _result_files(db)
     out = []
     for f in files:
@@ -475,11 +477,10 @@ def list_result_approvals(request: Request, db: Session = Depends(get_db)):
                     "approved": appr.get(k)} for i, k in enumerate(f.get("samples") or [])]
         out.append({"id": f["id"], "fileName": f.get("fileName"), "run": f.get("run"), "at": f.get("at"),
                     "by": f.get("by"), "columns": f.get("columns") or [], "samples": samples,
-                    # Files uploaded before columns were saved: the page reads the stored file once and saves them back.
-                    "url": f"/uploads/{f['filePath']}" if f.get("filePath") and not f.get("columns") else ""})
+                    "columnsNote": "" if f.get("columns") else (f.get("columnsError") or ("" if f.get("filePath") else "the original file was not kept for this upload"))})
     out.sort(key=lambda x: str(x.get("at") or ""), reverse=True)
     role = (request.state.user or {}).get("role")
-    return {"files": out, "canApprove": (not settings.builtin_login) or role in RESULT_APPROVE_ROLES}
+    return {"files": out, "stillReading": left, "canApprove": (not settings.builtin_login) or role in RESULT_APPROVE_ROLES}
 
 @app.post("/api/result-approvals")
 def set_result_approvals(payload: KVValue, request: Request, db: Session = Depends(get_db)):
@@ -493,6 +494,11 @@ def set_result_approvals(payload: KVValue, request: Request, db: Session = Depen
     for it in data.get("items") or []:
         if isinstance(it, dict) and it.get("fileId") and it.get("key"):
             want.setdefault(str(it["fileId"]), set()).add(str(it["key"]))
+    with _rf_lock:
+        db.expire_all()
+        return _apply_approvals(db, request, user, want, approve)
+
+def _apply_approvals(db: Session, request: Request, user: dict, want: dict, approve: bool):
     row, files = _result_files(db)
     files = [dict(f) for f in files]   # copies, so SQLAlchemy sees the JSON change
     stamp = {"by": user.get("username") or "", "at": datetime.now(timezone.utc).isoformat()}
@@ -517,25 +523,36 @@ def set_result_approvals(payload: KVValue, request: Request, db: Session = Depen
                      f"{changed} embryo result(s) {'approved' if approve else 'approval withdrawn'} · {', '.join(names)}", request=request)
     return {"changed": changed}
 
-@app.post("/api/result-files/{file_id}/columns")
-def backfill_result_columns(file_id: str, payload: KVValue, db: Session = Depends(get_db)):
-    """Save the columns of a result file uploaded before they were stored (read again from its stored copy)."""
-    data = payload.value if isinstance(payload.value, dict) else {}
-    cols, rows = data.get("columns") or [], data.get("rows") or {}
-    if not isinstance(cols, list) or not isinstance(rows, dict) or not cols:
-        raise HTTPException(422, "columns and rows are required")
-    row, files = _result_files(db)
-    files = [dict(f) for f in files]
-    hit = next((f for f in files if f.get("id") == file_id), None)
-    if not hit:
-        raise HTTPException(404, "Not found")
-    if hit.get("columns"):
-        return {"ok": True, "kept": True}
-    keys = set(hit.get("samples") or [])
-    hit["columns"] = [str(c)[:120] for c in cols][:80]
-    hit["rows"] = {str(k): [str(v)[:500] for v in (vals or [])][:80] for k, vals in rows.items() if k in keys and isinstance(vals, list)}
-    _save_result_files(db, row, files)
-    return {"ok": True}
+# Result-file entries live in one JSON value; every read-modify-write of it from these endpoints takes this lock,
+# so an approval click and the column filler can't overwrite each other.
+_rf_lock = threading.Lock()
+
+def _fill_missing_columns(db: Session, budget_seconds: float = 20) -> int:
+    """Result files uploaded before columns were saved at upload: read each stored file once and save its columns.
+    Stops after budget_seconds; returns how many files are still to read (the page asks again)."""
+    start = time.time()
+    _, files = _result_files(db)
+    todo = [f for f in files if _needs_approval(f) and not f.get("columns") and f.get("filePath") and not f.get("columnsError")]
+    for n, f in enumerate(todo):
+        if time.time() - start > budget_seconds:
+            return len(todo) - n
+        try:
+            data = storage.read_decompressed(UPLOADS / f["filePath"])
+            cols, rows = result_columns.read_columns(data, f.get("fileName") or f["filePath"], f.get("sampleNames") or [], f.get("samples") or [])
+            upd = {"columns": cols, "rows": rows}
+        except FileNotFoundError:
+            upd = {"columnsError": "the stored copy of this file is missing"}
+        except Exception as exc:
+            upd = {"columnsError": f"could not read its columns ({exc})"[:200]}
+        with _rf_lock:
+            db.expire_all()
+            row, cur = _result_files(db)
+            cur = [dict(x) for x in cur]
+            hit = next((x for x in cur if x.get("id") == f["id"]), None)
+            if hit is not None and not hit.get("columns"):
+                hit.update(upd)
+                _save_result_files(db, row, cur)
+    return 0
 
 @app.get("/api/result-file-months")
 def result_file_months(db: Session = Depends(get_db)):

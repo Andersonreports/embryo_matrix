@@ -42,3 +42,5 @@
 .ap-empty{padding:40px 0}
 @media(max-width:700px){.ap-toolbar{align-items:stretch}.ap-toolbar .primary{width:100%}}
 .ap-table.ro th.ap-status,.ap-table.ro td.ap-status{left:0}
+.ap-reading{background:#e1edf4;color:#2f5f80;border-radius:8px;padding:10px 14px;margin:0 0 14px;font-size:13px;font-weight:600}
+.ap-note{color:#a04f3d}
