@@ -67,3 +67,7 @@
 .ap-table tbody tr:hover td[data-frozen]{background:#f7faf6}
 .ap-table tbody tr.ap-picked td[data-frozen]{background:#e9f5f4}
 .ap-table .ap-freeze-edge{box-shadow:3px 0 5px -2px rgba(15,35,48,.18)}
+/* A sample row opens the patient detail dialog on click (not the tick box / approve controls). */
+.ap-table tbody tr.ap-row{cursor:pointer}
+.ap-table tbody tr.ap-row:hover{background:#eef6f3}
+.ap-table tbody tr.ap-row:hover td[data-frozen],.ap-table tbody tr.ap-row:hover td.ap-chk,.ap-table tbody tr.ap-row:hover td.ap-status,.ap-table tbody tr.ap-row:hover td.ap-act{background:#eef6f3}

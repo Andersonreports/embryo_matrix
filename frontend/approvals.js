@@ -86,7 +86,7 @@
    <div class="ap-scroll"><table class="ap-table${can?'':' ro'}"><thead><tr>
     ${can?`<th class="ap-chk" data-lead="1"><input type="checkbox" data-file-all="${esc(f.id)}"${pend.length?'':' disabled'} title="Select every pending embryo of this file"></th>`:''}
     <th class="ap-status" data-lead="1">Status</th>${cols.length?order.map(i=>{const c=cols[i],on=frozen.has(colKey(c));return `<th${on?' class="ap-frozen"':''}><span class="ap-th">${esc(c)}<button type="button" class="ap-pin${on?' on':''}" data-pin="${esc(colKey(c))}" title="${on?'Unfreeze this column':'Freeze this column'}" aria-label="${on?'Unfreeze':'Freeze'} ${esc(c)}">${PIN}</button></span></th>`}).join(''):'<th>Sample</th>'}${can?'<th class="ap-act"></th>':''}
-   </tr></thead><tbody>${shown.map(s=>{const k=id(f,s),vals=s.values||[],red=new Set(s.red||[]);return `<tr class="${s.approved?'ap-done':''}">
+   </tr></thead><tbody>${shown.map(s=>{const k=id(f,s),vals=s.values||[],red=new Set(s.red||[]);return `<tr class="ap-row${s.approved?' ap-done':''}" data-open="${esc(s.key)}" data-name="${esc(s.name||'')}" title="Open patient details">
     ${can?`<td class="ap-chk">${s.approved?'':`<input type="checkbox" data-pick="${esc(k)}" aria-label="Select ${esc(s.name||'embryo')}">`}</td>`:''}
     <td class="ap-status">${s.approved?`<span class="ap-pill ok" title="${esc(`Approved by ${s.approved.by||'unknown'} · ${fmt(s.approved.at)}`)}">Approved</span>`:'<span class="ap-pill wait">Pending</span>'}</td>
     ${cols.length?order.map(i=>{const v=vals[i]??'',cls=[v.length>40?'ap-wrap':'',red.has(i)?'ap-red':''].filter(Boolean).join(' ');return `<td${cls?` class="${cls}"`:''}${v.length>40?` title="${esc(v)}"`:''}>${esc(v)}</td>`}).join(''):`<td>${esc(s.name||s.key)}</td>`}
@@ -101,7 +101,14 @@
    const card=e.target.closest('.ap-card');if(!card)return;
    // the whole tick-box cell toggles its box (a bigger target than the 16px box itself)
    const cell=e.target.closest('td.ap-chk');if(cell&&e.target.tagName!=='INPUT'){const cb=cell.querySelector('input[data-pick]');if(cb){cb.checked=!cb.checked;cb.dispatchEvent(new Event('change',{bubbles:true}))}return}
-   const t=e.target.closest('button');if(!t)return;
+   const t=e.target.closest('button');
+   if(!t){
+    // a plain click anywhere on a sample row (not a control) opens that patient's detail dialog
+    if(e.target.closest('input,label,a,.ap-pin'))return;
+    const row=e.target.closest('tr.ap-row[data-open]');
+    if(row&&typeof window.openApprovalSample==='function'){window.openApprovalSample(row.dataset.open,row.dataset.name);if(window.getSelection)window.getSelection().removeAllRanges()}
+    return;
+   }
    if(t.dataset.pin!==undefined){const k=t.dataset.pin;frozen.has(k)?frozen.delete(k):frozen.add(k);saveFrozen();render();return}
    if(t.dataset.month!==undefined){if(t.dataset.month!==month){month=t.dataset.month;picked.clear()}render();return}
    if(t.dataset.filter){filter=t.dataset.filter;render();return}

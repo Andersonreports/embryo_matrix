@@ -1054,9 +1054,10 @@ body:has(#genericView:not(.hidden) .run-page) #genericView{padding-top:18px}
 .qc-panel{position:absolute;top:calc(100% + 10px);right:0;z-index:30;width:min(420px,calc(100vw - 32px));max-height:min(620px,78vh);display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 16px 40px rgba(16,36,50,.16);overflow:hidden}
 .qc-panel.hidden{display:none}
 .qc-panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px 10px}
+.qc-panel-head>div{min-width:0;flex:1 1 auto}
 .qc-panel-head h3{margin:0;font:500 17px "Lora"}
 .qc-panel-head p{margin:2px 0 0;font-size:12px;color:var(--muted)}
-.qc-read-all{border:0;background:transparent;color:var(--green);font:600 12px "Inter";cursor:pointer;padding:6px 8px;border-radius:8px;white-space:nowrap}
+.qc-read-all{flex:0 0 auto;border:0;background:transparent;color:var(--green);font:600 12px "Inter";cursor:pointer;padding:6px 8px;border-radius:8px;white-space:nowrap}
 .qc-read-all:hover{background:var(--mint)}
 .qc-tools{display:grid;gap:8px;padding:0 16px 12px;border-bottom:1px solid #edf0eb}
 .qc-tools input{width:100%;padding:8px 11px;font-size:12px}
