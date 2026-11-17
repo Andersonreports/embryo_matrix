@@ -1236,7 +1236,12 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show'
 // same key resolvedEmbryos builds per embryo, so we can map a clicked row back to its case and reuse
 // the patient dialog. Called from approvals.js.
 function approvalCaseIndex(){const idx=new Map();for(const c of cases){for(const r of resolvedEmbryos(c)){const id=resultIdentity(r),ek=`${cleanId(id.patient)}|${cleanId(id.embryo)}`;if(ek&&ek!=='|'&&!idx.has(ek))idx.set(ek,{c,focus:embryoDisplayId(r)})}}return idx}
-window.openApprovalSample=function(key,name){const idx=approvalCaseIndex();let hit=idx.get(key);if(!hit&&name){const id=resultIdentity({'sample name':name});hit=idx.get(`${cleanId(id.patient)}|${cleanId(id.embryo)}`)}if(hit){openPatient(hit.c);return true}toast('No matching patient found for this result yet');return false};
+// A result's key is "PATIENT|TAG|SAMPLEID", exactly what rowResultKeys() gives the sheet row it was attached to at upload,
+// so the case is found by that same key (a POC / AF row with no tag of its own registers "PATIENT|*|SAMPLEID").
+// The patient + embryo index above is only a fallback for keys no sheet row offers any more.
+window.openApprovalSample=function(key,name){const [pat,tag,sid]=String(key||'').split('|'),wild=`${pat}|*|${sid}`;
+ for(const c of cases)for(const r of (c.embryos||[])){const ks=rowResultKeys(r);if(ks.includes(key)||(sid&&ks.includes(wild))){const e=resolvedEmbryos(c).find(x=>cleanId(resultIdentity(x).embryo)===tag);openPatient(c,e?embryoDisplayId(e):'');return true}}
+ const idx=approvalCaseIndex();let hit=idx.get(`${pat}|${tag}`);if(!hit&&name){const id=resultIdentity({'sample name':name});hit=idx.get(`${cleanId(id.patient)}|${cleanId(id.embryo)}`)}if(hit){openPatient(hit.c,hit.focus);return true}toast('No matching patient found for this result yet');return false};
 // Which views each role may open (admin and team lead: all). The server enforces the same split on the API.
 // Staff (admin, senior executive, team lead) see everything. Only admin and senior executive may edit
 // result cells or manage users; team leads can upload but not edit (the API enforces it too).
