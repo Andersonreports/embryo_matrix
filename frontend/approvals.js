@@ -4,6 +4,7 @@
 (function(){
  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const fmt=iso=>{const d=new Date(iso);return isNaN(d)?'':d.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})};
+ const monLabel=ym=>{const [y,m]=String(ym).split('-');return `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]||m} ${y}`};
  const say=m=>{if(typeof toast==='function')toast(m)};
  let pollTimer,data={files:[],canApprove:false},filter='pending',q='',picked=new Set,openFiles=new Set,container=null,busy=false;
  const id=(f,s)=>`${f.id}\u0001${s.key}`;
@@ -32,7 +33,7 @@
   const selectable=groups.flatMap(({f,rows})=>rows.filter(s=>!s.approved).map(s=>id(f,s)));
   const allOn=selectable.length&&selectable.every(k=>picked.has(k));
   container.innerHTML=`<div class="generic-card wide-card ap-card">
-   <p class="ap-intro">Results from uploaded files reach the client only after they are approved here. Each file shows its own columns.${can?'':' <b>Only an admin or senior executive can approve.</b>'}</p>
+   <p class="ap-intro">Results from uploaded files reach the client only after they are approved here. Each file shows its own columns.${data.months?` Showing result files of <b>${esc(monLabel(data.months[0]))} – ${esc(monLabel(data.months[1]))}</b> (the last 4 months).`:''}${can?'':' <b>Only an admin or senior executive can approve.</b>'}</p>
    ${data.stillReading?`<div class="ap-reading">Reading the columns of ${data.stillReading} earlier result file(s)… this happens only once.</div>`:''}
    <div class="ap-toolbar">
     <div class="ap-tabs" role="tablist">${[['pending','Pending',pending],['approved','Approved',approved],['all','All',all.length]].map(([k,l,n])=>`<button type="button" class="ap-tab${filter===k?' on':''}" data-filter="${k}">${l} <b>${n}</b></button>`).join('')}</div>

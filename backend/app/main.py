@@ -453,24 +453,62 @@ def _clean_id(v) -> str:
     s = re.sub(r"(?:-NICS.*|_L\d+(?:_R\d+)?(?:_\d{4}-\d{2}-\d{2})?)$", "", str(v or "").upper(), flags=re.I)
     return re.sub(r"[^A-Z0-9]", "", s)
 
-def _needs_approval(f: dict) -> bool:
-    """Every uploaded result file goes through approval (files uploaded before approvals existed too)."""
-    return bool(f.get("id")) and f.get("needsApproval", True) is not False
+APPROVAL_MONTHS = 4   # Approve results lists the current month and the 3 before it
+
+def _recent_months(n: int = APPROVAL_MONTHS) -> set:
+    y, m = datetime.now().year, datetime.now().month
+    out = set()
+    for _ in range(n):
+        out.add((y, m))
+        y, m = (y, m - 1) if m > 1 else (y - 1, 12)
+    return out
+
+def _file_month(f: dict, rf_months: dict):
+    """(year, month) of a result file: the same month as the Upload result list, else its upload date."""
+    ym = rf_months.get(str(f.get("id")))
+    if ym:
+        return tuple(ym)
+    try:
+        d = datetime.fromisoformat(str(f.get("at") or "").replace("Z", "+00:00"))
+        return (d.year, d.month)
+    except ValueError:
+        return None
+
+def _needs_approval(f: dict, rf_months: dict | None = None) -> bool:
+    """New uploads always go through approval. Files uploaded before approvals existed (no flag) do too, but only
+    when they belong to the recent months the page lists; older ones count as approved."""
+    if not f.get("id") or f.get("needsApproval") is False:
+        return False
+    if f.get("needsApproval") is True or rf_months is None:
+        return True
+    return _file_month(f, rf_months) in _recent_months()
+
+_gate_months: dict = {"at": 0.0, "months": {}}
 
 def _approval_gate(db: Session) -> dict:
     """fileId -> set of approved "patient|tag", for every file whose results need approval."""
     _, files = _result_files(db)
+    months = {}
+    if any(f.get("needsApproval") is None for f in files):   # only earlier uploads need the month map (cached: client pages call this)
+        if time.time() - _gate_months["at"] > 300:
+            _gate_months.update(at=time.time(), months=Placement(db).rf_months)
+        months = _gate_months["months"]
     return {f["id"]: {"|".join(k.split("|")[:2]) for k in (f.get("approvals") or {})}
-            for f in files if _needs_approval(f)}
+            for f in files if _needs_approval(f, months)}
 
 @app.get("/api/result-approvals")
 def list_result_approvals(request: Request, db: Session = Depends(get_db)):
     """Uploaded result files that need approval, each with its own columns and one row per embryo."""
-    left = _fill_missing_columns(db, budget_seconds=20)
+    months = Placement(db).rf_months
+    recent = _recent_months()
+    left = _fill_missing_columns(db, budget_seconds=20, months=months)
     _, files = _result_files(db)
     out = []
     for f in files:
-        if not _needs_approval(f):
+        # only the recent months are listed (a new upload still waiting for approval is listed whatever its month)
+        if not _needs_approval(f, months):
+            continue
+        if _file_month(f, months) not in recent and not (f.get("needsApproval") is True and len(f.get("approvals") or {}) < len(f.get("samples") or [])):
             continue
         appr, rows, names = f.get("approvals") or {}, f.get("rows") or {}, f.get("sampleNames") or []
         samples = [{"key": k, "name": names[i] if i < len(names) else "", "values": rows.get(k, []),
@@ -480,7 +518,8 @@ def list_result_approvals(request: Request, db: Session = Depends(get_db)):
                     "columnsNote": "" if f.get("columns") else (f.get("columnsError") or ("" if f.get("filePath") else "the original file was not kept for this upload"))})
     out.sort(key=lambda x: str(x.get("at") or ""), reverse=True)
     role = (request.state.user or {}).get("role")
-    return {"files": out, "stillReading": left, "canApprove": (not settings.builtin_login) or role in RESULT_APPROVE_ROLES}
+    span = sorted(recent)
+    return {"files": out, "stillReading": left, "months": [f"{y}-{m:02d}" for y, m in (span[0], span[-1])], "canApprove": (not settings.builtin_login) or role in RESULT_APPROVE_ROLES}
 
 @app.post("/api/result-approvals")
 def set_result_approvals(payload: KVValue, request: Request, db: Session = Depends(get_db)):
@@ -500,12 +539,13 @@ def set_result_approvals(payload: KVValue, request: Request, db: Session = Depen
 
 def _apply_approvals(db: Session, request: Request, user: dict, want: dict, approve: bool):
     row, files = _result_files(db)
+    months = Placement(db).rf_months
     files = [dict(f) for f in files]   # copies, so SQLAlchemy sees the JSON change
     stamp = {"by": user.get("username") or "", "at": datetime.now(timezone.utc).isoformat()}
     changed, names = 0, []
     for f in files:
         keys = want.get(f.get("id"))
-        if not keys or not _needs_approval(f):
+        if not keys or not _needs_approval(f, months):
             continue
         appr = dict(f.get("approvals") or {})
         n0 = changed
@@ -527,12 +567,14 @@ def _apply_approvals(db: Session, request: Request, user: dict, want: dict, appr
 # so an approval click and the column filler can't overwrite each other.
 _rf_lock = threading.Lock()
 
-def _fill_missing_columns(db: Session, budget_seconds: float = 20) -> int:
+def _fill_missing_columns(db: Session, budget_seconds: float = 20, months: dict | None = None) -> int:
     """Result files uploaded before columns were saved at upload: read each stored file once and save its columns.
     Stops after budget_seconds; returns how many files are still to read (the page asks again)."""
     start = time.time()
     _, files = _result_files(db)
-    todo = [f for f in files if _needs_approval(f) and not f.get("columns") and f.get("filePath") and not f.get("columnsError")]
+    recent = _recent_months()
+    todo = [f for f in files if _needs_approval(f, months) and _file_month(f, months or {}) in recent
+            and not f.get("columns") and f.get("filePath") and not f.get("columnsError")]
     for n, f in enumerate(todo):
         if time.time() - start > budget_seconds:
             return len(todo) - n
