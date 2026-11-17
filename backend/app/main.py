@@ -412,6 +412,8 @@ def add_result_file(
         "needsApproval": True,
         "approvals": {},
     }
+    if stored_name:
+        entry.update({k: v for k, v in _read_file_columns(entry).items() if k != "columnsError"})
     files.append(entry)
     _save_result_files(db, row, files)
     return {"value": files}
@@ -511,7 +513,8 @@ def list_result_approvals(request: Request, db: Session = Depends(get_db)):
         if _file_month(f, months) not in recent and not (f.get("needsApproval") is True and len(f.get("approvals") or {}) < len(f.get("samples") or [])):
             continue
         appr, rows, names = f.get("approvals") or {}, f.get("rows") or {}, f.get("sampleNames") or []
-        samples = [{"key": k, "name": names[i] if i < len(names) else "", "values": rows.get(k, []),
+        red = f.get("red") or {}
+        samples = [{"key": k, "name": names[i] if i < len(names) else "", "values": rows.get(k, []), "red": red.get(k, []),
                     "approved": appr.get(k)} for i, k in enumerate(f.get("samples") or [])]
         out.append({"id": f["id"], "fileName": f.get("fileName"), "run": f.get("run"), "at": f.get("at"),
                     "by": f.get("by"), "columns": f.get("columns") or [], "samples": samples,
@@ -569,31 +572,37 @@ def _apply_approvals(db: Session, request: Request, user: dict, want: dict, appr
 # so an approval click and the column filler can't overwrite each other.
 _rf_lock = threading.Lock()
 
+def _read_file_columns(f: dict) -> dict:
+    """Columns, values and red cells of a stored result file, as fields to merge into its entry ("styled" = colours read)."""
+    try:
+        data = storage.read_decompressed(UPLOADS / f["filePath"])
+        cols, rows, red = result_columns.read_columns(data, f.get("fileName") or f["filePath"], f.get("sampleNames") or [], f.get("samples") or [])
+        return {"columns": cols, "rows": rows, "red": red, "styled": True}
+    except FileNotFoundError:
+        err = "the stored copy of this file is missing"
+    except Exception as exc:
+        err = f"could not read its columns ({exc})"[:200]
+    # a file whose columns came with the upload keeps them; it only goes without red marks
+    return {"styled": True} if f.get("columns") else {"columnsError": err}
+
 def _fill_missing_columns(db: Session, budget_seconds: float = 20, months: dict | None = None) -> int:
-    """Result files uploaded before columns were saved at upload: read each stored file once and save its columns.
+    """Read each stored result file once for its columns and red cells (files uploaded before these were saved).
     Stops after budget_seconds; returns how many files are still to read (the page asks again)."""
     start = time.time()
     _, files = _result_files(db)
     recent = _recent_months()
     todo = [f for f in files if _needs_approval(f, months) and _file_month(f, months or {}) in recent
-            and not f.get("columns") and f.get("filePath") and not f.get("columnsError")]
+            and not f.get("styled") and f.get("filePath") and not f.get("columnsError")]
     for n, f in enumerate(todo):
         if time.time() - start > budget_seconds:
             return len(todo) - n
-        try:
-            data = storage.read_decompressed(UPLOADS / f["filePath"])
-            cols, rows = result_columns.read_columns(data, f.get("fileName") or f["filePath"], f.get("sampleNames") or [], f.get("samples") or [])
-            upd = {"columns": cols, "rows": rows}
-        except FileNotFoundError:
-            upd = {"columnsError": "the stored copy of this file is missing"}
-        except Exception as exc:
-            upd = {"columnsError": f"could not read its columns ({exc})"[:200]}
+        upd = _read_file_columns(f)
         with _rf_lock:
             db.expire_all()
             row, cur = _result_files(db)
             cur = [dict(x) for x in cur]
             hit = next((x for x in cur if x.get("id") == f["id"]), None)
-            if hit is not None and not hit.get("columns"):
+            if hit is not None and not hit.get("styled"):
                 hit.update(upd)
                 _save_result_files(db, row, cur)
     return 0

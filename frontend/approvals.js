@@ -72,10 +72,10 @@
    <div class="ap-scroll"><table class="ap-table${can?'':' ro'}"><thead><tr>
     ${can?`<th class="ap-chk"><input type="checkbox" data-file-all="${esc(f.id)}"${pend.length?'':' disabled'} title="Select every pending embryo of this file"></th>`:''}
     <th class="ap-status">Status</th>${cols.length?cols.map(c=>`<th>${esc(c)}</th>`).join(''):'<th>Sample</th>'}${can?'<th class="ap-act"></th>':''}
-   </tr></thead><tbody>${shown.map(s=>{const k=id(f,s),vals=s.values||[];return `<tr class="${s.approved?'ap-done':''}">
+   </tr></thead><tbody>${shown.map(s=>{const k=id(f,s),vals=s.values||[],red=new Set(s.red||[]);return `<tr class="${s.approved?'ap-done':''}">
     ${can?`<td class="ap-chk">${s.approved?'':`<input type="checkbox" data-pick="${esc(k)}" aria-label="Select ${esc(s.name||'embryo')}">`}</td>`:''}
     <td class="ap-status">${s.approved?`<span class="ap-pill ok" title="${esc(`Approved by ${s.approved.by||'unknown'} · ${fmt(s.approved.at)}`)}">Approved</span>`:'<span class="ap-pill wait">Pending</span>'}</td>
-    ${cols.length?cols.map((c,i)=>{const v=vals[i]??'';return `<td${v.length>40?` class="ap-wrap" title="${esc(v)}"`:''}>${esc(v)}</td>`}).join(''):`<td>${esc(s.name||s.key)}</td>`}
+    ${cols.length?cols.map((c,i)=>{const v=vals[i]??'',cls=[v.length>40?'ap-wrap':'',red.has(i)?'ap-red':''].filter(Boolean).join(' ');return `<td${cls?` class="${cls}"`:''}${v.length>40?` title="${esc(v)}"`:''}>${esc(v)}</td>`}).join(''):`<td>${esc(s.name||s.key)}</td>`}
     ${can?`<td class="ap-act">${s.approved?`<button type="button" class="ap-undo" data-unapprove="${esc(k)}"${busy?' disabled':''}>Undo</button>`:`<button type="button" class="ap-btn" data-approve="${esc(k)}"${busy?' disabled':''}>Approve</button>`}</td>`:''}
    </tr>`}).join('')}</tbody></table></div>
    ${shown.length<rows.length?`<button type="button" class="text-button ap-more" data-open-file="${esc(f.id)}">Show all ${rows.length} rows</button>`:''}

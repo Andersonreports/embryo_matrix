@@ -53,3 +53,5 @@
 .ap-month.on span,.ap-month.on small{color:#fff}
 .ap-table td.ap-chk{cursor:pointer}
 @media(max-width:700px){.ap-month{min-width:0;flex:1 1 40%}}
+/* text that is red in the result file stays red here */
+.ap-table td.ap-red,.ap-table tr.ap-done td.ap-red{color:#e00000}
