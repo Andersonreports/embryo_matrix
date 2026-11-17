@@ -8,6 +8,10 @@
  const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
  const monLabel=ym=>{const [y,m]=String(ym).split('-');return MON[+m-1]?`${MON[+m-1]} ${y}`:'No month'};
  const say=m=>{if(typeof toast==='function')toast(m)};
+ // Frozen (pinned) columns, by column name, so the same column stays pinned in every file. Remembered per browser.
+ const FKEY='em-approve-frozen',PIN=typeof PIN_ICON!=='undefined'?PIN_ICON:'📌';
+ let frozen=new Set;try{frozen=new Set(JSON.parse(localStorage.getItem(FKEY)||'[]'))}catch{}
+ const colKey=c=>String(c||'').trim().toLowerCase(),saveFrozen=()=>{try{localStorage.setItem(FKEY,JSON.stringify([...frozen]))}catch{}};
  let pollTimer,data={files:[],canApprove:false},filter='pending',q='',month='',picked=new Set,openFiles=new Set,container=null,busy=false;
  const SEP='|~|',id=(f,s)=>`${f.id}${SEP}${s.key}`;
  const itemOf=k=>{const i=k.indexOf(SEP);return{fileId:k.slice(0,i),key:k.slice(i+SEP.length)}};
@@ -50,7 +54,15 @@
    </div>
    ${groups.length?groups.map(({f,rows})=>fileBlock(f,rows,can)).join(''):`<div class="chart-empty ap-empty">${mf.length?(filter==='pending'&&!q?`Every result of ${esc(monLabel(month))} is approved.`:'Nothing matches.'):`No result files for ${esc(monLabel(month))}.`}</div>`}
   </div>`;
-  syncPicks()}
+  syncPicks();freezeAll()}
+
+ // Pin the tick box, Status and every frozen column to the left edge while the table scrolls sideways.
+ function freezeAll(){
+  container.querySelectorAll('.ap-table').forEach(table=>{
+   const heads=[...table.querySelectorAll('thead th')],n=heads.filter(th=>th.dataset.lead||th.classList.contains('ap-frozen')).length;
+   table.querySelectorAll('[data-frozen]').forEach(el=>{el.style.left='';el.removeAttribute('data-frozen');el.classList.remove('ap-freeze-edge')});
+   let x=0;const lefts=heads.slice(0,n).map(th=>{const l=x;x+=th.getBoundingClientRect().width;return l});
+   table.querySelectorAll('tr').forEach(tr=>lefts.forEach((l,i)=>{const c=tr.children[i];if(!c)return;c.style.left=`${l}px`;c.setAttribute('data-frozen','1');c.classList.toggle('ap-freeze-edge',i===lefts.length-1)}))})}
 
  // Reflect the current selection on the page without redrawing it: row ticks, file / all boxes, button count.
  function syncPicks(){
@@ -63,6 +75,8 @@
 
  function fileBlock(f,rows,can){
   const open=openFiles.has(f.id)||rows.length<=60,shown=open?rows:rows.slice(0,60),pend=rows.filter(s=>!s.approved),cols=f.columns||[];
+  // column order: frozen columns first (in the file's own order), then the rest
+  const order=[...cols.keys()].sort((a,b)=>(frozen.has(colKey(cols[b]))-frozen.has(colKey(cols[a])))||a-b);
   return `<section class="ap-file">
    <header class="ap-file-head">
     <div><span class="rf-run${f.run?'':' none'}">${esc(f.run||'No run no.')}</span> <strong title="${esc(f.fileName)}">${esc(f.fileName)}</strong>
@@ -70,12 +84,12 @@
     ${can&&pend.length?`<button type="button" class="secondary compact" data-approve-file="${esc(f.id)}"${busy?' disabled':''}>Approve all ${pend.length} in this file</button>`:''}
    </header>
    <div class="ap-scroll"><table class="ap-table${can?'':' ro'}"><thead><tr>
-    ${can?`<th class="ap-chk"><input type="checkbox" data-file-all="${esc(f.id)}"${pend.length?'':' disabled'} title="Select every pending embryo of this file"></th>`:''}
-    <th class="ap-status">Status</th>${cols.length?cols.map(c=>`<th>${esc(c)}</th>`).join(''):'<th>Sample</th>'}${can?'<th class="ap-act"></th>':''}
+    ${can?`<th class="ap-chk" data-lead="1"><input type="checkbox" data-file-all="${esc(f.id)}"${pend.length?'':' disabled'} title="Select every pending embryo of this file"></th>`:''}
+    <th class="ap-status" data-lead="1">Status</th>${cols.length?order.map(i=>{const c=cols[i],on=frozen.has(colKey(c));return `<th${on?' class="ap-frozen"':''}><span class="ap-th">${esc(c)}<button type="button" class="ap-pin${on?' on':''}" data-pin="${esc(colKey(c))}" title="${on?'Unfreeze this column':'Freeze this column'}" aria-label="${on?'Unfreeze':'Freeze'} ${esc(c)}">${PIN}</button></span></th>`}).join(''):'<th>Sample</th>'}${can?'<th class="ap-act"></th>':''}
    </tr></thead><tbody>${shown.map(s=>{const k=id(f,s),vals=s.values||[],red=new Set(s.red||[]);return `<tr class="${s.approved?'ap-done':''}">
     ${can?`<td class="ap-chk">${s.approved?'':`<input type="checkbox" data-pick="${esc(k)}" aria-label="Select ${esc(s.name||'embryo')}">`}</td>`:''}
     <td class="ap-status">${s.approved?`<span class="ap-pill ok" title="${esc(`Approved by ${s.approved.by||'unknown'} · ${fmt(s.approved.at)}`)}">Approved</span>`:'<span class="ap-pill wait">Pending</span>'}</td>
-    ${cols.length?cols.map((c,i)=>{const v=vals[i]??'',cls=[v.length>40?'ap-wrap':'',red.has(i)?'ap-red':''].filter(Boolean).join(' ');return `<td${cls?` class="${cls}"`:''}${v.length>40?` title="${esc(v)}"`:''}>${esc(v)}</td>`}).join(''):`<td>${esc(s.name||s.key)}</td>`}
+    ${cols.length?order.map(i=>{const v=vals[i]??'',cls=[v.length>40?'ap-wrap':'',red.has(i)?'ap-red':''].filter(Boolean).join(' ');return `<td${cls?` class="${cls}"`:''}${v.length>40?` title="${esc(v)}"`:''}>${esc(v)}</td>`}).join(''):`<td>${esc(s.name||s.key)}</td>`}
     ${can?`<td class="ap-act">${s.approved?`<button type="button" class="ap-undo" data-unapprove="${esc(k)}"${busy?' disabled':''}>Undo</button>`:`<button type="button" class="ap-btn" data-approve="${esc(k)}"${busy?' disabled':''}>Approve</button>`}</td>`:''}
    </tr>`}).join('')}</tbody></table></div>
    ${shown.length<rows.length?`<button type="button" class="text-button ap-more" data-open-file="${esc(f.id)}">Show all ${rows.length} rows</button>`:''}
@@ -88,6 +102,7 @@
    // the whole tick-box cell toggles its box (a bigger target than the 16px box itself)
    const cell=e.target.closest('td.ap-chk');if(cell&&e.target.tagName!=='INPUT'){const cb=cell.querySelector('input[data-pick]');if(cb){cb.checked=!cb.checked;cb.dispatchEvent(new Event('change',{bubbles:true}))}return}
    const t=e.target.closest('button');if(!t)return;
+   if(t.dataset.pin!==undefined){const k=t.dataset.pin;frozen.has(k)?frozen.delete(k):frozen.add(k);saveFrozen();render();return}
    if(t.dataset.month!==undefined){if(t.dataset.month!==month){month=t.dataset.month;picked.clear()}render();return}
    if(t.dataset.filter){filter=t.dataset.filter;render();return}
    if(t.id==='apApproveSel'){const n=picked.size;if(n>1&&!confirm(`Approve ${n} embryo results? The client will be able to see them.`))return;send([...picked].map(itemOf),true);return}
@@ -102,6 +117,7 @@
    if(t.id==='apAll'){setMany(visible().flatMap(({f,rows})=>rows.filter(s=>!s.approved).map(s=>id(f,s))),t.checked);syncPicks()}});
   let timer;container.addEventListener('input',e=>{if(e.target.id!=='apSearch')return;clearTimeout(timer);const v=e.target.value;timer=setTimeout(()=>{q=v.trim().toLowerCase();const pos=e.target.selectionStart;render();const s=container.querySelector('#apSearch');if(s){s.focus();try{s.setSelectionRange(pos,pos)}catch{}}},200)})}
 
+ window.addEventListener('resize',()=>{if(container&&container.querySelector('.ap-card'))freezeAll()});
  window.renderApproveResultsView=function(g){
   container=g;if(!g._apWired){wire();g._apWired=true}
   g.innerHTML='<div class="generic-card wide-card"><div class="chart-empty">Loading…</div></div>';load()};

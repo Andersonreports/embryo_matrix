@@ -55,3 +55,15 @@
 @media(max-width:700px){.ap-month{min-width:0;flex:1 1 40%}}
 /* text that is red in the result file stays red here */
 .ap-table td.ap-red,.ap-table tr.ap-done td.ap-red{color:#e00000}
+/* column freeze */
+.ap-th{display:inline-flex;align-items:center;gap:6px}
+.ap-pin{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:0;border-radius:6px;background:transparent;color:#a9b4ae;cursor:pointer;flex-shrink:0}
+.ap-pin svg{width:14px;height:14px}
+.ap-pin:hover{background:#eef3f2;color:#0a7180}
+.ap-pin.on{background:#0a7180;color:#fff}
+.ap-table [data-frozen]{position:sticky;z-index:2;background:#fff}
+.ap-table thead [data-frozen]{z-index:4}
+.ap-table thead th.ap-frozen{color:#0a7180}
+.ap-table tbody tr:hover td[data-frozen]{background:#f7faf6}
+.ap-table tbody tr.ap-picked td[data-frozen]{background:#e9f5f4}
+.ap-table .ap-freeze-edge{box-shadow:3px 0 5px -2px rgba(15,35,48,.18)}
