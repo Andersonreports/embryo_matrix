@@ -14,6 +14,8 @@ class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    # Login identity: sign-in is by email + password (username is only shown to say who is logged in).
+    email: Mapped[str | None] = mapped_column(String(190), index=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     role: Mapped[str] = mapped_column(String(30), default="lab_user")
     lab_id: Mapped[int | None] = mapped_column(ForeignKey("labs.id"), nullable=True)

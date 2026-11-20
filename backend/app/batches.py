@@ -17,7 +17,7 @@ from threading import Lock
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
-from . import edits_sheet
+from . import edits_sheet, integration_client
 
 LOG_PATH = Path(__file__).parent / "data" / "batches.json"
 _lock = Lock()
@@ -86,7 +86,38 @@ def create(kind: str, meta: dict, kit: dict, samples: list, user: str) -> dict:
         items.append(entry)
         _save(items)
     threading.Thread(target=retry_pending, daemon=True).start()
+    _push_async(entry["id"])  # best-effort push to IT's integration service (inert unless configured)
     return entry
+
+
+def push_to_integration(batch_id: str) -> None:
+    """Best-effort: send a batch's samples to IT's integration service (add_batch_data / add_sequence_data).
+    Runs in a background thread off create()/apply_results()/add_sample(). Completely inert until the
+    integration is configured (INTEGRATION_ENABLED + token), so this never affects the edits-sheet flow
+    or the user's action. Records the outcome on the batch (itSentAt / itSent / itError)."""
+    if not integration_client.configured():
+        return
+    with _lock:
+        b = next((x for x in _load() if x["id"] == batch_id), None)
+    if not b:
+        return
+    try:
+        sent, errors = integration_client.push_batch(b)
+    except Exception as ex:  # never let a background push surface
+        sent, errors = 0, [str(ex)]
+    with _lock:
+        items = _load()
+        cur = next((x for x in items if x["id"] == batch_id), None)
+        if cur:
+            cur["itSentAt"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+            cur["itSent"] = sent
+            cur["itError"] = "; ".join(errors)[:500]
+            _save(items)
+
+
+def _push_async(batch_id: str) -> None:
+    if integration_client.configured():
+        threading.Thread(target=push_to_integration, args=(batch_id,), daemon=True).start()
 
 
 def delete(batch_id: str) -> bool:
@@ -96,9 +127,42 @@ def delete(batch_id: str) -> bool:
         if not hit:
             return False
         _save([b for b in items if b["id"] != batch_id])
-    if hit.get("sent") and edits_sheet.configured():
+    if hit.get("sent") and edits_sheet.configured() and not hit.get("imported"):
         threading.Thread(target=_post_delete, args=(hit,), daemon=True).start()
     return True
+
+
+def _sample_key(patient, tag) -> str:
+    return f"{re.sub(r'[^A-Z]', '', str(patient or '').upper())}|{re.sub(r'[^A-Za-z0-9]', '', str(tag or '')).upper()}"
+
+
+def add_sample(batch_id: str, sample: dict, user: str) -> dict:
+    """Add one sample to an existing batch (e.g. a row missed in the first import). Renumbers S. No.
+    and, for batches made here, re-sends the block to the edits sheet. Imported batches stay local."""
+    with _lock:
+        items = _load()
+        b = next((x for x in items if x["id"] == batch_id), None)
+        if not b:
+            raise ValueError("Batch not found")
+        kind = b["kind"]
+        keys = [k for k, _ in SAMPLE_COLS[kind]] + ["sampleId", "test", "key", "editSid", "editTag"]
+        row = {k: _clean(sample.get(k)) for k in keys}
+        if not row.get("embryo") and not row.get("patient"):
+            raise ValueError("Enter at least a patient name or an embryo tag")
+        if not row.get("key"):
+            row["key"] = _sample_key(row.get("patient"), row.get("embryo"))
+        b.setdefault("samples", []).append(row)
+        for i, r in enumerate(b["samples"]):
+            r["sno"] = str(i + 1)
+        b["samplesEditedAt"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        b["samplesEditedBy"] = user
+        if not b.get("imported"):
+            b["sent"], b["error"] = False, ""
+        _save(items)
+    if not b.get("imported"):
+        threading.Thread(target=retry_pending, daemon=True).start()
+    _push_async(b["id"])
+    return b
 
 
 def _post_delete(b: dict) -> None:
@@ -118,10 +182,13 @@ def _body(b: dict) -> dict:
 def retry_pending() -> int:
     """Send every unsent batch, oldest first; returns how many are still waiting."""
     if not edits_sheet.configured():
-        return len([b for b in _load() if not (b.get("sent") and b.get("layout") == "block")])
+        return len([b for b in _load() if not b.get("imported") and not (b.get("sent") and b.get("layout") == "block")])
     with _lock:
         items = _load()
         for b in items:
+            # Imported historical batches live only here; never write them to the edits sheet.
+            if b.get("imported"):
+                continue
             # Batches sent before the block layout (one flat row per sample) are written again as a block.
             if b.get("sent") and b.get("layout") == "block":
                 continue
@@ -132,7 +199,7 @@ def retry_pending() -> int:
                 b["error"] = str(ex)
                 break
         _save(items)
-        return len([b for b in items if not (b.get("sent") and b.get("layout") == "block")])
+        return len([b for b in items if not b.get("imported") and not (b.get("sent") and b.get("layout") == "block")])
 
 
 # ---- The batch block: one layout for the .xlsx download and the edits sheet ----
@@ -426,4 +493,5 @@ def apply_results(data: bytes, user: str) -> dict:
         b["resultsAt"], b["resultsBy"] = datetime.now().strftime("%Y-%m-%d %H:%M"), user
         _save(items)
     threading.Thread(target=retry_pending, daemon=True).start()
+    _push_async(b["id"])
     return {"batch": b, "changed": changed, "matched": len(seen), "unmatched": unmatched}

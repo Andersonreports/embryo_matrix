@@ -1,6 +1,7 @@
 import asyncio
 import html
 import json
+import logging
 import re
 import secrets
 import threading
@@ -21,7 +22,8 @@ from .models import Lab, PatientCase, EmbryoSample, PGTTest, KVStore, CaseImage,
 from .schemas import LabCreate, CaseCreate, SampleCreate, TestCreate, KVValue, CellEditIn, NewSampleIn
 from .sheet_sync import parse_sources, sync_sources
 from . import result_columns
-from . import auth, batches, cell_edits, edits_sheet, mailer, new_samples, storage, trf_fill, trf_pdf
+from . import auth, batches, cell_edits, edits_sheet, mailer, new_samples, storage, trf_fill, trf_pdf, userstore
+from . import integration_client
 from . import pgta_report
 from .clients import resolve_client, directory as client_directory
 from sqlalchemy import inspect, text
@@ -31,6 +33,8 @@ Base.metadata.create_all(bind=engine)
 
 from .migrations import run as _run_migrations
 _run_migrations()
+# Logins live in two separate databases (clients -> PostgreSQL, team -> MySQL); create their tables.
+userstore.init()
 
 def _seed_activity_from_upload_log():
     db = SessionLocal()
@@ -99,11 +103,15 @@ def log_activity(db: Session, action: str, detail: str = "", user: dict | None =
 FULL_ACCESS_ROLES = {"admin", "senior_executive", "team_lead"}
 # Only these may edit an embryo's result/sheet cells and manage logins. Team leads see and upload
 # everything but cannot change results.
-RESULT_EDIT_ROLES = {"admin", "senior_executive"}
+RESULT_EDIT_ROLES = {"admin", "senior_executive", "team_lead"}
 # Who may approve uploaded results for release to clients.
 RESULT_APPROVE_ROLES = {"admin", "senior_executive"}
 USER_ADMIN_ROLES = {"admin", "senior_executive"}
-ALL_ROLES = ["admin", "senior_executive", "team_lead", "member", "coordinator", "embryologist"]
+ALL_ROLES = ["admin", "senior_executive", "team_lead", "member", "coordinator", "reporting_person", "embryologist"]
+# The report released date column (NGS report date). The reporting_person role may edit ONLY this
+# column via /api/cell-edits; result editors may edit it and the other EDITABLE_COLUMNS.
+REPORT_DATE_COLUMN = "ngs report"
+REPORT_DATE_ROLES = {"reporting_person"}
 # Role -> (method, path regex) pairs it may call. admin and team_lead may call everything;
 # a role not listed here can only sign in/out and ask who it is.
 _ROLE_RULES = {
@@ -122,6 +130,15 @@ _ROLE_RULES = {
     "coordinator": [
         ("GET", r"/api/(store/.+|cases|cases/[^/]+/images|images|case-runs|dashboard|cell-edits|edits-sheet|result-file-months|sync-sheet/status|sample-remarks)"),
         ("GET", r"/uploads/.+"), ("POST", r"/api/sync-sheet"),
+    ],
+    # Reporting person: Run status tabs + Report preparation (pgta tool). May set the report
+    # released date via cell-edits (the endpoint column-gates it to "ngs report"); read-only elsewhere.
+    "reporting_person": [
+        ("GET", r"/api/(store/.+|cases|cases/[^/]+/images|images|case-runs|dashboard|cell-edits|edits-sheet|result-files|result-file-months|sync-sheet/status|sample-remarks)"),
+        ("GET", r"/uploads/.+"), ("POST", r"/api/sync-sheet"),
+        ("POST", r"/api/cell-edits"), ("DELETE", r"/api/cell-edits"),
+        ("GET", r"/api/pgta/.+"), ("POST", r"/api/pgta/.+"),
+        ("PATCH", r"/api/sample-remarks/[^/]+"),
     ],
     "embryologist": [
         ("POST", r"/api/(trf|trf-image|trf/preview-pdf)"), ("GET", r"/api/trf-image/[^/]+"),
@@ -162,16 +179,15 @@ async def identify_user(request: Request, call_next):
     if settings.builtin_login:
         # Own login: identity comes only from the signed session cookie; the X-Auth headers are ignored.
         sess = auth.read_token(request.cookies.get(auth.COOKIE, ""))
-        if sess:  # the role is re-read on every request so a role change or removal applies at once
-            with SessionLocal() as _db:
-                _u = _db.query(User.role).filter(User.username == sess["username"]).first()
-            sess = {"username": sess["username"], "role": _u[0]} if _u else None
+        if sess:  # re-resolve on every request (by the username+email pair) so a role change or removal applies at once
+            v = userstore.find_by_credentials(sess["username"], sess.get("email", ""))
+            sess = {"username": v.username, "role": v.role, "email": v.email or ""} if v else None
         request.state.user = sess or {}
         # /uploads/ holds patient files. Lab-PC sync still pulls them anonymously over the LAN,
         # but a request relayed by a tunnel/reverse proxy (these headers) must sign in, so
         # publishing the app can't hand result files and TRFs to anyone holding a URL.
         proxied = "x-forwarded-for" in request.headers or "cf-connecting-ip" in request.headers
-        if not sess and path not in ("/login", "/api/login", "/api/health") and not path.startswith("/static/login"):
+        if not sess and path not in ("/login", "/api/login", "/otp", "/api/login/verify", "/api/login/resend", "/api/health") and not path.startswith("/static/login"):
             if path.startswith("/api/") or (proxied and path.startswith("/uploads/")):
                 return JSONResponse({"detail": "Sign in required"}, status_code=401)
             if path == "/":
@@ -200,6 +216,36 @@ def service_worker():
 def login_page():
     return FileResponse(STATIC / "login.html")
 
+def _mask_email(addr: str) -> str:
+    """j***@andersondiagnostics.in - enough to recognise the inbox, not enough to reveal it."""
+    addr = (addr or "").strip()
+    if "@" not in addr:
+        return addr
+    local, _, domain = addr.partition("@")
+    shown = (local[0] + "***") if local else "***"
+    return f"{shown}@{domain}"
+
+def _send_login_code(email: str, code: str) -> bool:
+    """Email the 6-digit sign-in code. Returns True if actually sent. With SMTP not yet
+    configured nothing goes out (the caller then falls back to showing the code for testing)."""
+    if not mailer.configured():
+        return False
+    text = (f"Your EmbryoMatrix sign-in code is {code}\n\n"
+            f"Enter it on the verification screen to finish signing in. "
+            f"The code expires in {auth.OTP_SECONDS // 60} minutes.\n\n"
+            f"If you did not try to sign in, you can ignore this email.")
+    html = (f"<p>Your EmbryoMatrix sign-in code is:</p>"
+            f"<p style='font-size:26px;font-weight:700;letter-spacing:4px;margin:8px 0'>{code}</p>"
+            f"<p>Enter it on the verification screen to finish signing in. "
+            f"The code expires in {auth.OTP_SECONDS // 60} minutes.</p>"
+            f"<p style='color:#6b7f7d;font-size:13px'>If you did not try to sign in, you can ignore this email.</p>")
+    try:
+        mailer.send([email], "Your EmbryoMatrix sign-in code", text, html)
+        return True
+    except Exception:
+        logging.getLogger(__name__).exception("Failed to email the sign-in code")
+        return False
+
 @app.post("/api/login")
 async def login(request: Request, db: Session = Depends(get_db)):
     ip = (request.client.host if request.client else "")
@@ -208,20 +254,78 @@ async def login(request: Request, db: Session = Depends(get_db)):
     if len(recent) >= 10:
         raise HTTPException(429, "Too many attempts - try again in a few minutes")
     body = await request.json()
-    u = db.query(User).filter(User.username == str(body.get("username", "")).strip().lower()).first()
+    # Login identity is username + email + password. A mailbox can be shared (one team address, or
+    # one client centre's address), so email alone is not unique - the username tells people apart.
+    username = str(body.get("username", "")).strip()
+    email = str(body.get("email", "")).strip()
+    u = userstore.find_by_credentials(username, email)
     if not u or not auth.verify_password(str(body.get("password", "")), u.password_hash):
         _login_fails[ip] = recent + [now]
-        raise HTTPException(401, "Wrong username or password")
+        raise HTTPException(401, "Wrong username, email or password")
+    # Second factor is for CLIENTS only, and only when they have an email to send the code to.
+    # Staff (every other role) sign in with email + password alone.
+    if u.is_client and (u.email or "").strip():
+        key, code = auth.start_pending(u.username, u.role, u.email)
+        sent = _send_login_code(u.email, code)
+        out = {"ok": True, "otp": True, "sentTo": _mask_email(u.email)}
+        if not sent:
+            out["devCode"] = code  # SMTP not configured yet: surface the code so the flow is testable
+        resp = JSONResponse(out)
+        resp.set_cookie(auth.PENDING, key, max_age=auth.OTP_SECONDS, httponly=True, samesite="lax")
+        return resp
     log_activity(db, "login", "", user={"username": u.username, "role": u.role})
+    resp = JSONResponse({"ok": True, "otp": False})
+    resp.set_cookie(auth.COOKIE, auth.make_token(u.username, u.role, u.email or ""), max_age=auth.SESSION_SECONDS, httponly=True, samesite="lax")
+    return resp
+
+@app.post("/api/login/verify")
+async def login_verify(request: Request, db: Session = Depends(get_db)):
+    ip = (request.client.host if request.client else "")
+    now = time.time()
+    recent = [t for t in _login_fails.get(ip, []) if now - t < 600]
+    if len(recent) >= 10:
+        raise HTTPException(429, "Too many attempts - try again in a few minutes")
+    key = request.cookies.get(auth.PENDING, "")
+    if not auth.peek_pending(key):
+        raise HTTPException(400, "Your code has expired - please sign in again")
+    body = await request.json()
+    sess = auth.verify_pending(key, str(body.get("code", "")))
+    if not sess:
+        _login_fails[ip] = recent + [now]
+        raise HTTPException(401, "Wrong or expired code")
+    log_activity(db, "login", "", user=sess)
     resp = JSONResponse({"ok": True})
-    resp.set_cookie(auth.COOKIE, auth.make_token(u.username, u.role), max_age=auth.SESSION_SECONDS, httponly=True, samesite="lax")
+    resp.set_cookie(auth.COOKIE, auth.make_token(sess["username"], sess["role"], sess.get("email", "")), max_age=auth.SESSION_SECONDS, httponly=True, samesite="lax")
+    resp.delete_cookie(auth.PENDING)
+    return resp
+
+@app.post("/api/login/resend")
+def login_resend(request: Request):
+    key = request.cookies.get(auth.PENDING, "")
+    pend = auth.peek_pending(key)
+    if not pend:
+        raise HTTPException(400, "Your code has expired - please sign in again")
+    code = auth.rotate_code(key)
+    if code is None:
+        raise HTTPException(429, "Too many codes requested - please sign in again")
+    sent = _send_login_code(pend["email"], code)
+    out = {"ok": True, "sentTo": _mask_email(pend["email"])}
+    if not sent:
+        out["devCode"] = code
+    resp = JSONResponse(out)
+    resp.set_cookie(auth.PENDING, key, max_age=auth.OTP_SECONDS, httponly=True, samesite="lax")
     return resp
 
 @app.post("/api/logout")
 def logout():
     resp = JSONResponse({"ok": True})
     resp.delete_cookie(auth.COOKIE)
+    resp.delete_cookie(auth.PENDING)
     return resp
+
+@app.get("/otp")
+def otp_page():
+    return FileResponse(STATIC / "otp.html")
 
 @app.get("/")
 def home():
@@ -231,13 +335,17 @@ def home():
 def health():
     return {"status": "ok", "application": settings.app_name}
 
+def _session_user(user: dict):
+    """The UserView for the signed-in session. Resolved by the (username, email) pair, because a
+    username is not unique on its own - two logins can share one and the email tells them apart."""
+    return userstore.find_by_credentials((user or {}).get("username", "") or "", (user or {}).get("email", "") or "")
+
 @app.get("/api/whoami")
 def whoami(request: Request, db: Session = Depends(get_db)):
     user = request.state.user or {}
     out = {"username": user.get("username") or "", "role": user.get("role") or "", "signedIn": settings.builtin_login}
     if user.get("role") == "embryologist":  # a client login: the TRF's hospital / centre name is filled in from this
-        u = db.query(User).filter(User.username == (user.get("username") or "").lower()).first()
-        out["clientLabel"] = _client_label(u)
+        out["clientLabel"] = _client_label(_session_user(user))
     return out
 
 def _client_label(u) -> str:
@@ -760,6 +868,20 @@ def get_new_samples_missing_trf():
         g["embryos"] += 1
     return sorted(by.values(), key=lambda g: g["addedAt"], reverse=True)
 
+@app.post("/api/batches/{batch_id}/samples")
+def add_batch_sample(batch_id: str, payload: dict, request: Request, db: Session = Depends(get_db)):
+    """Add a sample that was missed to an existing batch (its S. No. are renumbered). For batches made
+    here the block is re-sent to the edits sheet; imported historical batches just update locally."""
+    user = _require_lab_user(request)
+    try:
+        b = batches.add_sample(batch_id, payload.get("sample") or payload, user.get("username") or "Unknown")
+    except ValueError as ex:
+        raise HTTPException(400, str(ex))
+    s = b["samples"][-1]
+    log_activity(db, "batch_add_sample", f"{'WGA batch' if b['kind'] == 'wga' else 'Seq run'} {b['meta']['batchNo']}"
+                 f" · added {s.get('embryo') or s.get('patient') or 'sample'}", request=request)
+    return b
+
 @app.post("/api/new-samples/trf")
 async def upload_sample_trf(request: Request, sampleId: str = Form(...), patient: str = Form(""),
                             file: UploadFile = File(...), db: Session = Depends(get_db)):
@@ -792,7 +914,7 @@ async def upload_sample_trf(request: Request, sampleId: str = Form(...), patient
 
 @app.post("/api/cell-edits")
 def post_cell_edit(payload: CellEditIn, request: Request, db: Session = Depends(get_db)):
-    _require_result_editor(request)
+    _require_can_edit_column(request, payload.column)
     user = request.state.user or {}
     try:
         entry = cell_edits.save_edit(
@@ -814,7 +936,7 @@ def post_cell_edit(payload: CellEditIn, request: Request, db: Session = Depends(
 
 @app.delete("/api/cell-edits")
 def remove_cell_edit(sampleId: str, column: str, embryo: str = "", request: Request = None, db: Session = Depends(get_db)):
-    _require_result_editor(request)
+    _require_can_edit_column(request, column)
     ok = cell_edits.delete_edit(sampleId, embryo, column)
     edits_sheet.push_revert(sampleId, embryo, column)
     if ok:
@@ -828,7 +950,17 @@ def _require_admin(request: Request):
 
 def _require_result_editor(request: Request):
     if (request.state.user or {}).get("role") not in RESULT_EDIT_ROLES:
-        raise HTTPException(403, "Only an admin or senior executive can edit results")
+        raise HTTPException(403, "Only an admin, senior executive or team lead can edit results")
+
+def _require_can_edit_column(request: Request, column: str):
+    """Result editors may edit any editable column; a reporting_person may edit ONLY the
+    report released date (NGS report date)."""
+    role = (request.state.user or {}).get("role")
+    if role in RESULT_EDIT_ROLES:
+        return
+    if role in REPORT_DATE_ROLES and (column or "").strip().lower() == REPORT_DATE_COLUMN:
+        return
+    raise HTTPException(403, "You can only edit the report released date")
 
 @app.delete("/api/upload-log")
 def reset_upload_log(request: Request, db: Session = Depends(get_db)):
@@ -849,6 +981,21 @@ def reset_activity_log(request: Request, db: Session = Depends(get_db)):
     # startup seed from the upload log doesn't refill an empty table).
     log_activity(db, "log_reset", "Activity log cleared", request=request)
     return {"ok": True}
+
+def _prune_activity_log(db: Session) -> int:
+    """Delete activity_log rows older than the configured retention window (default 7 days). Only
+    this app's own table is touched - no other server logs. Leaves a marker row behind if the prune
+    would empty the table, so the startup seeder does not refill it from the saved upload log."""
+    days = settings.activity_log_retention_days
+    if days <= 0:
+        return 0
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    n = db.query(ActivityLog).filter(ActivityLog.at < cutoff).delete(synchronize_session=False)
+    if n and not db.query(ActivityLog.id).first():
+        db.add(ActivityLog(username="", role="", action="log_retention",
+                           detail=f"Entries older than {days} days auto-cleared"))
+    db.commit()
+    return n
 
 @app.post("/api/cases/{case_code}/images")
 def upload_case_images(
@@ -1162,7 +1309,7 @@ async def submit_trf(request: Request, db: Session = Depends(get_db)):
     data = _clean_trf(raw if isinstance(raw, dict) else {})
     cu = request.state.user or {}
     if cu.get("role") == "embryologist":  # a client login can only send TRFs in its own name
-        label = _client_label(db.query(User).filter(User.username == (cu.get("username") or "").lower()).first())
+        label = _client_label(_session_user(cu))
         if label:
             data["hospital"] = label
     missing = [label for key, label in (("hospital", "Hospital / IVF centre"), ("referringDoctor", "Referring doctor"),
@@ -1629,7 +1776,7 @@ def _embryologist_sees(db: Session, user: dict, f: Followup) -> bool:
     uname = user.get("username") or ""
     if f.owner and f.owner == uname:
         return True
-    u = db.query(User).filter(User.username == uname.lower()).first()
+    u = _session_user(user)
     if u and u.client_name and _client_sees(u, f.clinic, "", f.region):
         return True
     mine = _canon_embryologist((u.embryologist_name if u and u.embryologist_name else uname))
@@ -1768,7 +1915,7 @@ def _sync_sheet_followups(db: Session, emb_name: str, client_name: str = "", loo
 def list_followups(request: Request, db: Session = Depends(get_db)):
     user = request.state.user or {}
     if user.get("role") == "embryologist":
-        u = db.query(User).filter(User.username == (user.get("username") or "").lower()).first()
+        u = _session_user(user)
         if u:
             try:
                 if u.embryologist_name or u.client_name:
@@ -1822,7 +1969,7 @@ def my_embryos(request: Request, db: Session = Depends(get_db)):
     user = request.state.user or {}
     if user.get("role") != "embryologist":
         raise HTTPException(403, "Only a client login has an embryo list")
-    u = db.query(User).filter(User.username == (user.get("username") or "").lower()).first()
+    u = _session_user(user)
     if u and (u.embryologist_name or u.client_name):
         want, want_client, loose = _norm_name(u.embryologist_name or ""), _norm_name(u.client_name or ""), False
     else:
@@ -1870,8 +2017,22 @@ def _require_user_admin(request: Request):
     if (request.state.user or {}).get("role") not in USER_ADMIN_ROLES:
         raise HTTPException(403, "Only an admin or senior executive can manage users")
 
-def _user_row(u: User):
-    return {"username": u.username, "role": u.role, "name": u.embryologist_name or "", "client": u.client_name or "", "branch": u.client_branch or ""}
+def _user_row(u: "userstore.UserView"):
+    return {"username": u.username, "email": u.email or "", "role": u.role, "name": u.embryologist_name or "", "client": u.client_name or "", "branch": u.client_branch or "", "emp_id": u.anderson_emp_id or ""}
+
+_EMAIL_RE = re.compile(r"^[^@\s,;<>]+@[^@\s,;<>]+\.[^@\s,;<>]+$")
+
+def _clean_email(raw, exclude_username: str = "") -> str | None:
+    """Validate + normalise a login email. '' clears it. Emails are NOT required to be unique: a
+    team or a client centre may share one mailbox. What must be unique is the (username, email)
+    pair - enforced in create_user. exclude_username is accepted for call-site compatibility but
+    no longer used."""
+    email = str(raw or "").strip().lower()
+    if not email:
+        return None
+    if not _EMAIL_RE.match(email):
+        raise HTTPException(400, "Enter a valid email address")
+    return email
 
 def _check_role(role: str) -> str:
     role = str(role or "").strip()
@@ -1880,7 +2041,7 @@ def _check_role(role: str) -> str:
     return role
 
 def _staff_count(db: Session, excluding: str = "") -> int:
-    return db.query(User).filter(User.role.in_(list(USER_ADMIN_ROLES)), User.username != excluding).count()
+    return userstore.count_role(list(USER_ADMIN_ROLES), excluding)
 
 # Canonical client display names confirmed by admin from the client name mapping review.
 # When a new login is created with one of these names, _client_sees() resolves it through the
@@ -1961,10 +2122,112 @@ def _canonical_clients() -> list:
         result.append({"brand": name, "branches": branches})
     return result
 
+# ---------------------------------------------------------------------------
+# IT genetics integration (integration_client.py). All of this is inert until the integration is
+# configured (INTEGRATION_ENABLED + INTEGRATION_TOKEN in backend/.env) - the user auto-push below
+# no-ops, and the proxy routes answer 503. The live Google-Sheet flows are untouched. Auth token is
+# still PENDING with IT; see integration_client.py's TOKEN note.
+# ---------------------------------------------------------------------------
+
+def _push_user_to_integration(action: str, u, password: str = "", actor: str = "") -> None:
+    """Best-effort mirror of a user create/update to IT's user store. Background + guarded, so it never
+    blocks or fails the admin action. password is plaintext and only sent when we actually have it."""
+    if not integration_client.configured() or not u:
+        return
+    def run():
+        try:
+            rec = integration_client.user_payload(
+                username=u.username, password=password or "", client_name=u.client_name or "",
+                client_branch=u.client_branch or "", embryologist_name=u.embryologist_name or "",
+                role=u.role or "", actor=actor)
+            (integration_client.insert_user if action == "insert" else integration_client.update_user)(rec)
+        except Exception:
+            logging.getLogger(__name__).warning("integration user %s push failed", action, exc_info=True)
+    threading.Thread(target=run, daemon=True).start()
+
+
+def _integration_call(fn, *args, **kwargs):
+    """Run a client call for a proxy route, turning its states into HTTP: 503 when the integration is
+    off (token pending), 502 when IT's service errors."""
+    if not integration_client.configured():
+        raise HTTPException(503, "Integration service is not enabled yet (pending IT auth token)")
+    try:
+        return fn(*args, **kwargs)
+    except integration_client.IntegrationError as ex:
+        raise HTTPException(502, str(ex))
+
+
+@app.get("/api/integration/status")
+def integration_status(request: Request):
+    _require_user_admin(request)
+    return {"enabled": settings.integration_enabled, "configured": integration_client.configured(),
+            "base_url": settings.integration_base_url,
+            "auth": ("static-token" if settings.integration_token.strip()
+                     else "service-credentials" if (settings.integration_username and settings.integration_password)
+                     else "none")}
+
+@app.get("/api/integration/batches")
+def integration_batches(request: Request):
+    _require_lab_user(request)
+    return _integration_call(integration_client.get_batches_data)
+
+@app.get("/api/integration/sequence")
+def integration_sequence(request: Request):
+    _require_lab_user(request)
+    return _integration_call(integration_client.get_sequence_data)
+
+@app.post("/api/integration/samples/without-wga")
+def integration_samples_without_wga(payload: dict, request: Request):
+    _require_lab_user(request)
+    return _integration_call(integration_client.get_nipgs_sample_data_without_wga,
+                             str(payload.get("username", "")), str(payload.get("email", "")), str(payload.get("client_name", "")))
+
+@app.post("/api/integration/samples/without-sequence")
+def integration_samples_without_sequence(payload: dict, request: Request):
+    _require_lab_user(request)
+    return _integration_call(integration_client.get_nipgs_sample_data_without_sequence,
+                             str(payload.get("username", "")), str(payload.get("email", "")), str(payload.get("client_name", "")))
+
+@app.get("/api/integration/users")
+def integration_users(request: Request):
+    _require_user_admin(request)
+    return _integration_call(integration_client.get_embryo_matrix_users_list)
+
+@app.get("/api/integration/embryologists")
+def integration_embryologists(request: Request, username: str = "", email: str = "", client_name: str = ""):
+    _require_user_admin(request)
+    return _integration_call(integration_client.get_embryologist_data, username, email, client_name)
+
+@app.get("/api/integration/file")
+def integration_file(request: Request, file: str):
+    _require_lab_user(request)
+    body, ctype = _integration_call(integration_client.get_genetics_file_viewer, file)
+    return Response(body, media_type=ctype or "application/pdf")
+
+# IT-side auth passthrough (unauthenticated: this is the login flow itself). Inert until configured.
+@app.post("/api/integration/login")
+async def integration_login(request: Request):
+    body = await request.json()
+    return _integration_call(integration_client.login_user,
+                             str(body.get("username", "")), str(body.get("email", "")), str(body.get("password", "")))
+
+@app.post("/api/integration/verify-user")
+async def integration_verify_user(request: Request):
+    body = await request.json()
+    return _integration_call(integration_client.verify_user,
+                             str(body.get("username", "")), str(body.get("email", "")))
+
+@app.post("/api/integration/verify-otp")
+async def integration_verify_otp(request: Request):
+    body = await request.json()
+    return _integration_call(integration_client.verify_otp_user, str(body.get("username", "")),
+                             str(body.get("email", "")), str(body.get("otp", "")), str(body.get("hash", "")))
+
+
 @app.get("/api/users")
 def list_users(request: Request, db: Session = Depends(get_db)):
     _require_user_admin(request)
-    return {"roles": ALL_ROLES, "clients": client_directory(), "canonical_clients": _canonical_clients(), "users": [_user_row(u) for u in db.query(User).order_by(User.username).all()]}
+    return {"roles": ALL_ROLES, "clients": client_directory(), "canonical_clients": _canonical_clients(), "users": [_user_row(u) for u in userstore.list_all()]}
 
 @app.post("/api/users")
 def create_user(payload: dict, request: Request, db: Session = Depends(get_db)):
@@ -1975,55 +2238,88 @@ def create_user(payload: dict, request: Request, db: Session = Depends(get_db)):
         raise HTTPException(400, "Username: 2-80 letters, digits or . _ @ -")
     if len(password) < 6:
         raise HTTPException(400, "Password must be at least 6 characters")
-    if db.query(User).filter(User.username == name).first():
-        raise HTTPException(409, "That username already exists")
     role = _check_role(payload.get("role"))
-    u = User(username=name, password_hash=auth.hash_password(password), role=role,
-             embryologist_name=str(payload.get("name", "")).strip()[:120] or None,
-             client_name=str(payload.get("client", "")).strip()[:120] or None,
-             client_branch=(str(payload.get("branch", "")).strip()[:120] or None) if str(payload.get("client", "")).strip() else None)
-    db.add(u); db.commit()
+    email = _clean_email(payload.get("email"))
+    # A username is not unique on its own (two people may share one across different clients); the
+    # (username, email) pair is what must be unique.
+    if userstore.credentials_exist(name, email or ""):
+        raise HTTPException(409, "That username + email combination already exists")
+    client_name = str(payload.get("client", "")).strip()[:120] or None
+    # Client details only belong to a client login; drop them for any other role.
+    if role != userstore.CLIENT_ROLE:
+        client_name = None
+    # Anderson employee ID: required for a staff (team) login, never for a client (clients live in a
+    # separate table that has no such column).
+    emp_raw = str(payload.get("anderson_emp_id", payload.get("emp_id", ""))).strip()
+    anderson_emp_id = None
+    if role != userstore.CLIENT_ROLE:
+        if not emp_raw:
+            raise HTTPException(400, "Anderson employee ID is required for a staff login")
+        if not emp_raw.isdigit():
+            raise HTTPException(400, "Anderson employee ID must be a number")
+        anderson_emp_id = int(emp_raw)
+    u = userstore.create(username=name, email=email, password_hash=auth.hash_password(password), role=role,
+                         embryologist_name=str(payload.get("name", "")).strip()[:120] or None,
+                         client_name=client_name,
+                         client_branch=(str(payload.get("branch", "")).strip()[:120] or None) if client_name else None,
+                         anderson_emp_id=anderson_emp_id)
     log_activity(db, "user_manage", f"Added user {name} as {role}", request=request)
+    _push_user_to_integration("insert", u, password=password, actor=(request.state.user or {}).get("username", ""))
     return _user_row(u)
 
 @app.patch("/api/users/{username}")
-def update_user(username: str, payload: dict, request: Request, db: Session = Depends(get_db)):
+def update_user(username: str, payload: dict, request: Request, db: Session = Depends(get_db), for_email: str = ""):
     _require_user_admin(request)
-    u = db.query(User).filter(User.username == username.strip().lower()).first()
+    # A username can be shared, so the exact login is pinned by its current email (for_email).
+    u = userstore.find_by_credentials(username, for_email)
     if not u:
         raise HTTPException(404, "No such user")
+    changes: dict = {}
     notes = []
     if "role" in payload and payload["role"] != u.role:
         role = _check_role(payload["role"])
         if u.role in USER_ADMIN_ROLES and role not in USER_ADMIN_ROLES and _staff_count(db, u.username) == 0:
             raise HTTPException(400, "At least one admin or senior executive must remain")
-        notes.append(f"role {u.role} → {role}"); u.role = role
+        changes["role"] = role; notes.append(f"role {u.role} → {role}")
+        # Leaving the client role drops its client linkage; entering it lets the fields below apply.
+        if role != userstore.CLIENT_ROLE:
+            changes["client_name"] = None; changes["client_branch"] = None
     if payload.get("password"):
         if len(str(payload["password"])) < 6:
             raise HTTPException(400, "Password must be at least 6 characters")
-        u.password_hash = auth.hash_password(str(payload["password"])); notes.append("password reset")
+        changes["password_hash"] = auth.hash_password(str(payload["password"])); notes.append("password reset")
+    if "email" in payload:
+        new_email = _clean_email(payload["email"], exclude_username=u.username)
+        if new_email != u.email:
+            notes.append("email updated")
+        changes["email"] = new_email
     if "name" in payload:
-        u.embryologist_name = str(payload["name"]).strip()[:120] or None
-    if "client" in payload:
-        u.client_name = str(payload["client"]).strip()[:120] or None
-    if "branch" in payload or "client" in payload:
-        u.client_branch = (str(payload.get("branch", "")).strip()[:120] or None) if u.client_name else None
-    db.commit()
+        changes["embryologist_name"] = str(payload["name"]).strip()[:120] or None
+    # Client name/branch only apply when the account is (or is becoming) a client login.
+    becomes_client = changes.get("role", u.role) == userstore.CLIENT_ROLE
+    if "client" in payload and becomes_client:
+        changes["client_name"] = str(payload["client"]).strip()[:120] or None
+    if ("branch" in payload or "client" in payload) and becomes_client:
+        cn = changes.get("client_name", u.client_name)
+        changes["client_branch"] = (str(payload.get("branch", "")).strip()[:120] or None) if cn else None
+    u = userstore.update(u.username, changes, u.email or "")
     log_activity(db, "user_manage", f"Changed user {u.username}: " + (", ".join(notes) or "details"), request=request)
+    _push_user_to_integration("update", u, password=str(payload.get("password", "")), actor=(request.state.user or {}).get("username", ""))
     return _user_row(u)
 
 @app.delete("/api/users/{username}")
-def delete_user(username: str, request: Request, db: Session = Depends(get_db)):
+def delete_user(username: str, request: Request, db: Session = Depends(get_db), for_email: str = ""):
     _require_user_admin(request)
     name = username.strip().lower()
-    if name == (request.state.user or {}).get("username"):
-        raise HTTPException(400, "You cannot remove your own login")
-    u = db.query(User).filter(User.username == name).first()
+    u = userstore.find_by_credentials(name, for_email)
     if not u:
         raise HTTPException(404, "No such user")
+    me = request.state.user or {}
+    if u.username == (me.get("username") or "") and (u.email or "") == (me.get("email") or ""):
+        raise HTTPException(400, "You cannot remove your own login")
     if u.role in USER_ADMIN_ROLES and _staff_count(db, name) == 0:
         raise HTTPException(400, "At least one admin or senior executive must remain")
-    db.delete(u); db.commit()
+    userstore.delete(u.username, u.email or "")
     log_activity(db, "user_manage", f"Removed user {name}", request=request)
     return {"ok": True}
 
@@ -2032,7 +2328,7 @@ def client_assignment_audit(request: Request, db: Session = Depends(get_db)):
     """Zero-tolerance audit: every sheet row must map to exactly one registered client.
     Returns unclaimed rows (no client can see them) and multi-claimed rows (privacy risk)."""
     _require_user_admin(request)
-    client_users = db.query(User).filter(User.client_name != None, User.client_name != "").all()
+    client_users = userstore.clients_with_name()
     rows = list(_sheet_rows(db))
 
     unclaimed: dict[str, dict] = {}   # center → {count, locations, sample_patients}
@@ -2077,17 +2373,21 @@ def client_assignment_audit(request: Request, db: Session = Depends(get_db)):
 @app.get("/api/embryologist-links")
 def embryologist_links(request: Request, db: Session = Depends(get_db)):
     """Which sheet embryologist name each embryologist login sees the embryos of."""
-    return [{"username": u.username, "name": u.embryologist_name or "", "client": u.client_name or ""} for u in db.query(User).filter(User.role == "embryologist").order_by(User.username).all()]
+    return [{"username": u.username, "email": u.email or "", "name": u.embryologist_name or "", "client": u.client_name or ""} for u in userstore.list_embryologists()]
 
 @app.post("/api/embryologist-links")
 def set_embryologist_link(payload: dict, request: Request, db: Session = Depends(get_db)):
-    u = db.query(User).filter(User.username == str(payload.get("username", "")).strip().lower(), User.role == "embryologist").first()
-    if not u:
+    name = str(payload.get("username", "")).strip().lower()
+    email = str(payload.get("email", "")).strip()
+    u = userstore.find_by_credentials(name, email) if email else userstore.find_by_username(name)
+    if not u or u.role != userstore.CLIENT_ROLE:
         raise HTTPException(404, "No such embryologist login")
-    u.embryologist_name = str(payload.get("name", "")).strip()[:120] or None
-    u.client_name = str(payload.get("client", "")).strip()[:120] or None
-    u.client_branch = (str(payload.get("branch", "")).strip()[:120] or None) if u.client_name else None
-    db.commit()
+    client_name = str(payload.get("client", "")).strip()[:120] or None
+    u = userstore.update(u.username, {
+        "embryologist_name": str(payload.get("name", "")).strip()[:120] or None,
+        "client_name": client_name,
+        "client_branch": (str(payload.get("branch", "")).strip()[:120] or None) if client_name else None,
+    }, u.email or "")
     log_activity(db, "followup_save", f"Login {u.username} linked to embryologist '{u.embryologist_name or '—'}' / centre '{u.client_name or '—'}'", request=request)
     return {"username": u.username, "name": u.embryologist_name or "", "client": u.client_name or ""}
 
@@ -2308,3 +2608,22 @@ async def _startup_sheet_sync():
             db.close()
         await _background_sheet_sync()
     _background_tasks.add(asyncio.create_task(first_then_periodic()))
+
+@app.on_event("startup")
+async def _startup_log_retention():
+    """Prune the app's activity_log on startup and then once a day, keeping only the configured
+    retention window so the table can't overflow. Independent of sheet sync, and limited to this
+    app's own table."""
+    if settings.activity_log_retention_days <= 0:
+        return
+    async def prune_loop():
+        while True:
+            db = SessionLocal()
+            try:
+                await asyncio.to_thread(_prune_activity_log, db)
+            except Exception:
+                pass
+            finally:
+                db.close()
+            await asyncio.sleep(24 * 3600)
+    _background_tasks.add(asyncio.create_task(prune_loop()))

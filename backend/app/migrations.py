@@ -49,7 +49,15 @@ def _migrate_followup_owner():
             conn.execute(text("ALTER TABLE users ADD COLUMN client_branch VARCHAR(120)"))
 
 
+def _migrate_user_email():
+    insp = inspect(engine)
+    if "users" in insp.get_table_names() and "email" not in {c["name"] for c in insp.get_columns("users")}:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR(190)"))
+
+
 def run():
     _migrate_added_columns()
     _migrate_outcome_tests()
     _migrate_followup_owner()
+    _migrate_user_email()

@@ -8,7 +8,10 @@ from threading import Lock
 
 import openpyxl
 
-EDITABLE_COLUMNS = {"dna conc unpurified", "dna conc purified", "karyotype", "pgt result"}
+EDITABLE_COLUMNS = {"dna conc unpurified", "dna conc purified", "karyotype", "pgt result",
+                    # Report released date (NGS report date) - set from the registry by result editors
+                    # and by the Reporting person role. Saved per submission (embryo left blank).
+                    "ngs report"}
 
 EDITS_PATH = Path(__file__).parent / "data" / "cell_edits.xlsx"
 _HEADERS = ["Sample ID", "Embryo", "Column", "Value", "Edited By", "Edited At"]

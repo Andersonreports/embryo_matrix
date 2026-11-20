@@ -232,7 +232,20 @@ class Placement:
             return "_ResultFiles"
         base = f"{ym[0]}/{ym[1]:02d} - {MONTHS[ym[1] - 1]}"
         label = _run_key(f.get("run"))
-        return f"{base}/RUN_{safe(label)}/Results" if label else f"{base}/No run number/Results"
+        if label:
+            return f"{base}/RUN_{safe(label)}/Results"
+        # Some result files have no run number in the name (named per-patient) - group them by
+        # the test named in the file instead of the generic "No run number" folder.
+        fn = str(f.get("fileName") or "")
+        low = fn.lower()
+        if "embryosure" in low:
+            return f"{base}/EmbryoSure/Results"
+        if "nipgt" in low:
+            return f"{base}/NIPGT/Results"
+        # Any other file with no run number: name the folder after the file itself
+        # (extension stripped) so it stays identifiable, instead of a generic bucket.
+        stem = safe(re.sub(r"\.[A-Za-z0-9]+$", "", fn).strip(), "No run number")
+        return f"{base}/{stem}/Results"
 
     def result_folder(self, run_label) -> str:
         base = self.run_folder(run_label) if run_label else None
