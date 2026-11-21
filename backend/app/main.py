@@ -2129,26 +2129,48 @@ def _canonical_clients() -> list:
 # still PENDING with IT; see integration_client.py's TOKEN note.
 # ---------------------------------------------------------------------------
 
-def _push_user_to_integration(action: str, u, password: str = "", actor: str = "") -> None:
-    """Best-effort mirror of a CLIENT user create/update to IT's user store. Background + guarded, so it
-    never blocks or fails the admin action. password is plaintext and only sent when we actually have it.
-    IT's user endpoints are client-side only (embryo_matrix_data: client_name/branch/embryologist_name),
-    which maps to our client_users (PG) table; internal staff logins (team_users/MySQL) are NEVER sent."""
-    if not integration_client.configured() or not u:
-        return
-    if not getattr(u, "is_client", False):  # staff/team logins have no place in IT's client store
-        return
-    def run():
-        try:
-            rec = integration_client.user_payload(
-                username=u.username, email=u.email or "", password=password or "",
-                client_name=u.client_name or "", client_branch=u.client_branch or "",
-                embryologist_name=u.embryologist_name or "", role=u.role or "", actor=actor,
-                user_id=u.id)
-            (integration_client.insert_user if action == "insert" else integration_client.update_user)(rec)
-        except Exception:
-            logging.getLogger(__name__).warning("integration user %s push failed", action, exc_info=True)
-    threading.Thread(target=run, daemon=True).start()
+# CLIENT logins are owned by IT's integration: when it's configured, we create/update them THROUGH the
+# API (insert_user / update_user), which writes into the SAME client_users PostgreSQL we read for login
+# and lists - so we never write a client row directly (no double-write). TEAM logins always go straight
+# to the DB (userstore -> MySQL) and are never sent to IT. While the integration is OFF, clients fall
+# back to the direct DB path too, so nothing changes until it's switched on.
+#
+# PASSWORD: IT's API field is plaintext "password"; IT stores it in client_users.password_hash, which our
+# login then verifies. IT's hashing MUST therefore match ours - VERIFY a client created via the API can
+# actually log in before enabling the integration. (DELETE has no API endpoint yet, so client deletion
+# still goes direct; ask IT for a delete_user keyed by id.)
+
+def _client_api_create(*, username, email, password, client_name, client_branch, embryologist_name, actor):
+    """Create a CLIENT login through IT's integration, then read the row back (same PG) as a UserView.
+    No id is sent - the DB generates it on insert. Raises HTTPException on failure."""
+    rec = integration_client.user_payload(
+        username=username, email=email or "", password=password,
+        client_name=client_name or "", client_branch=client_branch or "",
+        embryologist_name=embryologist_name or "", role=userstore.CLIENT_ROLE, actor=actor)
+    try:
+        integration_client.insert_user(rec)
+    except integration_client.IntegrationError as ex:
+        raise HTTPException(502, f"Could not create the client through the integration service: {ex}")
+    u = userstore.find_by_credentials(username, email or "")
+    if not u:
+        raise HTTPException(502, "The integration service accepted the client, but it is not visible in client_users.")
+    return u
+
+
+def _client_api_update(u, *, new_email, new_password, client_name, client_branch, embryologist_name, actor):
+    """Update a CLIENT login through IT's integration, keyed by its id, then read the row back (same PG).
+    Only for a client that stays a client - a role change crossing the client/team line goes through
+    userstore (it moves the row between databases)."""
+    email = (new_email if new_email is not None else u.email) or ""
+    rec = integration_client.user_payload(
+        username=u.username, email=email, password=new_password or "",
+        client_name=client_name or "", client_branch=client_branch or "",
+        embryologist_name=embryologist_name or "", role=userstore.CLIENT_ROLE, actor=actor, user_id=u.id)
+    try:
+        integration_client.update_user(rec)
+    except integration_client.IntegrationError as ex:
+        raise HTTPException(502, f"Could not update the client through the integration service: {ex}")
+    return userstore.find_by_credentials(u.username, email)
 
 
 def _integration_call(fn, *args, **kwargs):
@@ -2263,13 +2285,19 @@ def create_user(payload: dict, request: Request, db: Session = Depends(get_db)):
         if not emp_raw.isdigit():
             raise HTTPException(400, "Anderson employee ID must be a number")
         anderson_emp_id = int(emp_raw)
-    u = userstore.create(username=name, email=email, password_hash=auth.hash_password(password), role=role,
-                         embryologist_name=str(payload.get("name", "")).strip()[:120] or None,
-                         client_name=client_name,
-                         client_branch=(str(payload.get("branch", "")).strip()[:120] or None) if client_name else None,
-                         anderson_emp_id=anderson_emp_id)
+    emb_name = str(payload.get("name", "")).strip()[:120] or None
+    branch = (str(payload.get("branch", "")).strip()[:120] or None) if client_name else None
+    actor = (request.state.user or {}).get("username", "")
+    if role == userstore.CLIENT_ROLE and integration_client.configured():
+        # Client logins are created THROUGH IT's integration (writes the same client_users PG); we never
+        # write a client row directly. Team logins always go straight to the DB below.
+        u = _client_api_create(username=name, email=email, password=password, client_name=client_name,
+                               client_branch=branch, embryologist_name=emb_name, actor=actor)
+    else:
+        u = userstore.create(username=name, email=email, password_hash=auth.hash_password(password), role=role,
+                             embryologist_name=emb_name, client_name=client_name, client_branch=branch,
+                             anderson_emp_id=anderson_emp_id)
     log_activity(db, "user_manage", f"Added user {name} as {role}", request=request)
-    _push_user_to_integration("insert", u, password=password, actor=(request.state.user or {}).get("username", ""))
     return _user_row(u)
 
 @app.patch("/api/users/{username}")
@@ -2307,9 +2335,18 @@ def update_user(username: str, payload: dict, request: Request, db: Session = De
     if ("branch" in payload or "client" in payload) and becomes_client:
         cn = changes.get("client_name", u.client_name)
         changes["client_branch"] = (str(payload.get("branch", "")).strip()[:120] or None) if cn else None
-    u = userstore.update(u.username, changes, u.email or "")
+    actor = (request.state.user or {}).get("username", "")
+    if u.is_client and changes.get("role", u.role) == userstore.CLIENT_ROLE and integration_client.configured():
+        # Client staying a client -> update THROUGH IT's integration (same client_users PG). A role change
+        # that crosses the client/team line falls through to userstore.update, which moves the row.
+        u = _client_api_update(
+            u, new_email=changes.get("email", None), new_password=str(payload.get("password", "")),
+            client_name=changes.get("client_name", u.client_name),
+            client_branch=changes.get("client_branch", u.client_branch),
+            embryologist_name=changes.get("embryologist_name", u.embryologist_name), actor=actor)
+    else:
+        u = userstore.update(u.username, changes, u.email or "")
     log_activity(db, "user_manage", f"Changed user {u.username}: " + (", ".join(notes) or "details"), request=request)
-    _push_user_to_integration("update", u, password=str(payload.get("password", "")), actor=(request.state.user or {}).get("username", ""))
     return _user_row(u)
 
 @app.delete("/api/users/{username}")
