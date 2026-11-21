@@ -2329,7 +2329,8 @@ def list_users(request: Request, db: Session = Depends(get_db)):
         # Clients are API-only: list them from IT, not the local store. Fall back to any local client
         # rows if IT can't be reached, so the screen still renders.
         try:
-            recs = integration_client.user_records(integration_client.get_embryo_matrix_users_list())
+            # Short timeout: IT's read endpoints have been hanging; don't make the admin screen wait.
+            recs = integration_client.user_records(integration_client.get_embryo_matrix_users_list(timeout=8))
             rows += [_user_row(_client_view_from_rec(r)) for r in recs]
         except integration_client.IntegrationError:
             rows += [_user_row(u) for u in local if u.is_client]

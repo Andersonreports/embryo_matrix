@@ -151,19 +151,19 @@ def _conn_reason(ex: Exception) -> str:
     return str(getattr(ex, "reason", None) or ex) or ex.__class__.__name__
 
 
-def _send(method: str, url: str, data: bytes | None, token: str):
+def _send(method: str, url: str, data: bytes | None, token: str, timeout: int | None = None):
     """One raw HTTP call with the given bearer token. Returns (body_bytes, content_type) or lets the
     urllib error propagate so the caller can decide whether to refresh-and-retry."""
     headers = {"Authorization": f"Bearer {token}", "User-Agent": USER_AGENT}
     if data is not None:
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(url, data=data, headers=headers, method=method.upper())
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+    with urllib.request.urlopen(req, timeout=timeout or TIMEOUT) as resp:
         return resp.read(), resp.headers.get("Content-Type", "")
 
 
 def _request(method: str, path: str, *, json_body: dict | None = None, params: dict | None = None,
-             expect_json: bool = True):
+             expect_json: bool = True, timeout: int | None = None):
     """Make one call to the integration service. Returns parsed JSON (expect_json) or (bytes, content_type).
     Raises IntegrationError on any problem. Does NOT check configured() - callers that run unconditionally
     (the proxy routes) surface a clear 'not configured' error; best-effort callers guard with configured().
@@ -175,11 +175,11 @@ def _request(method: str, path: str, *, json_body: dict | None = None, params: d
     data = json.dumps(json_body).encode("utf-8") if json_body is not None else None
     can_refresh = not settings.integration_token.strip()  # only minted tokens can be refreshed
     try:
-        body, ctype = _send(method, url, data, _bearer_token())
+        body, ctype = _send(method, url, data, _bearer_token(), timeout)
     except urllib.error.HTTPError as ex:
         if ex.code == 401 and can_refresh:
             try:
-                body, ctype = _send(method, url, data, _bearer_token(force_refresh=True))
+                body, ctype = _send(method, url, data, _bearer_token(force_refresh=True), timeout)
             except urllib.error.HTTPError as ex2:
                 raise IntegrationError(_http_detail(method, path, ex2))
             except OSError as ex2:  # URLError, socket timeout, other connectivity errors
@@ -284,8 +284,8 @@ def update_user(embryo_matrix_data: dict) -> dict:
     return _request("POST", "/genetics/update_user", json_body={"embryo_matrix_data": embryo_matrix_data})
 
 
-def get_embryo_matrix_users_list() -> dict:
-    return _request("GET", "/genetics/get_embryo_matrix_users_list")
+def get_embryo_matrix_users_list(timeout: int | None = None) -> dict:
+    return _request("GET", "/genetics/get_embryo_matrix_users_list", timeout=timeout)
 
 
 def get_embryologist_data(username: str = "", email: str = "", client_name: str = "") -> dict:
