@@ -258,17 +258,15 @@ async def login(request: Request, db: Session = Depends(get_db)):
     # one client centre's address), so email alone is not unique - the username tells people apart.
     username = str(body.get("username", "")).strip()
     email = str(body.get("email", "")).strip()
-    u = userstore.find_by_credentials(username, email)
-    if not u:
-        _login_fails[ip] = recent + [now]
-        raise HTTPException(401, "Wrong username, email or password")
     password = str(body.get("password", ""))
-    # CLIENT login via IT's integration (gated: only when the integration is switched on). IT checks the
-    # password and sends the OTP itself; we hold its OTP hash in a pending record for the verify step.
-    # Staff, and clients while the integration is off, fall through to the local path below unchanged.
-    if u.is_client and integration_client.configured():
+    u = userstore.find_by_credentials(username, email)  # finds staff (team store), and any local client
+    staff = u is not None and not u.is_client
+    # CLIENT login via IT (gated). Clients are API-only: they may NOT exist in our local stores, so we
+    # don't require a local row. Staff always use the local path below; everyone else, when the
+    # integration is on, authenticates through IT (which validates the password and sends the OTP).
+    if integration_client.configured() and not staff:
         try:
-            ok, it_hash, msg = integration_client.client_login_start(u.username, u.email or email, password)
+            ok, it_hash, msg = integration_client.client_login_start(username, email, password)
         except integration_client.IntegrationError:
             raise HTTPException(502, "The sign-in service is temporarily unavailable. Please try again.")
         if not ok:
@@ -276,11 +274,14 @@ async def login(request: Request, db: Session = Depends(get_db)):
             raise HTTPException(401, "Wrong username, email or password")
         if not it_hash:
             raise HTTPException(502, "Could not start verification. Please try again.")
-        key = auth.start_pending_external(u.username, u.role, u.email or email, it_hash)
-        resp = JSONResponse({"ok": True, "otp": True, "sentTo": _mask_email(u.email or email)})
+        key = auth.start_pending_external(username, userstore.CLIENT_ROLE, email, it_hash)
+        resp = JSONResponse({"ok": True, "otp": True, "sentTo": _mask_email(email)})
         resp.set_cookie(auth.PENDING, key, max_age=auth.OTP_SECONDS, httponly=True, samesite="lax")
         return resp
-    # LOCAL path: verify the password here.
+    # LOCAL path (staff always; clients only when the integration is off). Verify the password here.
+    if not u:
+        _login_fails[ip] = recent + [now]
+        raise HTTPException(401, "Wrong username, email or password")
     if not auth.verify_password(password, u.password_hash):
         _login_fails[ip] = recent + [now]
         raise HTTPException(401, "Wrong username, email or password")
@@ -2190,8 +2191,9 @@ def _canonical_clients() -> list:
 # still goes direct; ask IT for a delete_user keyed by id.)
 
 def _client_api_create(*, username, email, password, client_name, client_branch, embryologist_name, actor):
-    """Create a CLIENT login through IT's integration, then read the row back (same PG) as a UserView.
-    No id is sent - the DB generates it on insert. Raises HTTPException on failure."""
+    """Create a CLIENT login through IT's integration. Clients are API-only - we do NOT read client_users
+    directly - so we return a view built from what we submitted. The DB-generated id is fetched from IT's
+    reads later, when an operation needs it. Raises HTTPException on failure."""
     rec = integration_client.user_payload(
         username=username, email=email or "", password=password,
         client_name=client_name or "", client_branch=client_branch or "",
@@ -2200,10 +2202,9 @@ def _client_api_create(*, username, email, password, client_name, client_branch,
         integration_client.insert_user(rec)
     except integration_client.IntegrationError as ex:
         raise HTTPException(502, f"Could not create the client through the integration service: {ex}")
-    u = userstore.find_by_credentials(username, email or "")
-    if not u:
-        raise HTTPException(502, "The integration service accepted the client, but it is not visible in client_users.")
-    return u
+    return userstore.UserView(username=username, email=email, password_hash="", role=userstore.CLIENT_ROLE,
+                              client_name=client_name, client_branch=client_branch,
+                              embryologist_name=embryologist_name, store="client", id=None)
 
 
 def _client_api_update(u, *, new_email, new_password, client_name, client_branch, embryologist_name, actor):
