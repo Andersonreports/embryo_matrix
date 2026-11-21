@@ -259,7 +259,29 @@ async def login(request: Request, db: Session = Depends(get_db)):
     username = str(body.get("username", "")).strip()
     email = str(body.get("email", "")).strip()
     u = userstore.find_by_credentials(username, email)
-    if not u or not auth.verify_password(str(body.get("password", "")), u.password_hash):
+    if not u:
+        _login_fails[ip] = recent + [now]
+        raise HTTPException(401, "Wrong username, email or password")
+    password = str(body.get("password", ""))
+    # CLIENT login via IT's integration (gated: only when the integration is switched on). IT checks the
+    # password and sends the OTP itself; we hold its OTP hash in a pending record for the verify step.
+    # Staff, and clients while the integration is off, fall through to the local path below unchanged.
+    if u.is_client and integration_client.configured():
+        try:
+            ok, it_hash, msg = integration_client.client_login_start(u.username, u.email or email, password)
+        except integration_client.IntegrationError:
+            raise HTTPException(502, "The sign-in service is temporarily unavailable. Please try again.")
+        if not ok:
+            _login_fails[ip] = recent + [now]
+            raise HTTPException(401, "Wrong username, email or password")
+        if not it_hash:
+            raise HTTPException(502, "Could not start verification. Please try again.")
+        key = auth.start_pending_external(u.username, u.role, u.email or email, it_hash)
+        resp = JSONResponse({"ok": True, "otp": True, "sentTo": _mask_email(u.email or email)})
+        resp.set_cookie(auth.PENDING, key, max_age=auth.OTP_SECONDS, httponly=True, samesite="lax")
+        return resp
+    # LOCAL path: verify the password here.
+    if not auth.verify_password(password, u.password_hash):
         _login_fails[ip] = recent + [now]
         raise HTTPException(401, "Wrong username, email or password")
     # Second factor is for CLIENTS only, and only when they have an email to send the code to.
@@ -289,10 +311,25 @@ async def login_verify(request: Request, db: Session = Depends(get_db)):
     if not auth.peek_pending(key):
         raise HTTPException(400, "Your code has expired - please sign in again")
     body = await request.json()
-    sess = auth.verify_pending(key, str(body.get("code", "")))
-    if not sess:
-        _login_fails[ip] = recent + [now]
-        raise HTTPException(401, "Wrong or expired code")
+    code = str(body.get("code", ""))
+    ext = auth.pending_external(key)
+    if ext:
+        # IT-driven 2FA: IT verifies the OTP against the hash we stored at login.
+        try:
+            verified = integration_client.client_otp_verify(ext["username"], ext["email"], code, ext["hash"])
+        except integration_client.IntegrationError:
+            raise HTTPException(502, "The verification service is temporarily unavailable. Please try again.")
+        if not verified:
+            auth.external_fail(key)
+            _login_fails[ip] = recent + [now]
+            raise HTTPException(401, "Wrong or expired code")
+        auth.drop_pending(key)
+        sess = {"username": ext["username"], "role": ext["role"], "email": ext["email"]}
+    else:
+        sess = auth.verify_pending(key, code)
+        if not sess:
+            _login_fails[ip] = recent + [now]
+            raise HTTPException(401, "Wrong or expired code")
     log_activity(db, "login", "", user=sess)
     resp = JSONResponse({"ok": True})
     resp.set_cookie(auth.COOKIE, auth.make_token(sess["username"], sess["role"], sess.get("email", "")), max_age=auth.SESSION_SECONDS, httponly=True, samesite="lax")
@@ -305,6 +342,18 @@ def login_resend(request: Request):
     pend = auth.peek_pending(key)
     if not pend:
         raise HTTPException(400, "Your code has expired - please sign in again")
+    ext = auth.pending_external(key)
+    if ext:
+        # IT-driven 2FA: ask IT to send a fresh OTP and store its new hash.
+        try:
+            new_hash = integration_client.client_otp_resend(ext["username"], ext["email"])
+        except integration_client.IntegrationError:
+            raise HTTPException(502, "The verification service is temporarily unavailable. Please try again.")
+        if not new_hash or not auth.external_set_hash(key, new_hash):
+            raise HTTPException(429, "Too many codes requested - please sign in again")
+        resp = JSONResponse({"ok": True, "sentTo": _mask_email(ext["email"])})
+        resp.set_cookie(auth.PENDING, key, max_age=auth.OTP_SECONDS, httponly=True, samesite="lax")
+        return resp
     code = auth.rotate_code(key)
     if code is None:
         raise HTTPException(429, "Too many codes requested - please sign in again")

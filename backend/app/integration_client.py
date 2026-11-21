@@ -314,6 +314,77 @@ def verify_otp_user(username: str, email: str, otp: str, hash: str) -> dict:
                     json_body={"username": _s(username), "email": _s(email), "otp": _s(otp), "hash": hash})
 
 
+# ---------------------------------------------------------------------------
+# Client login orchestration (IT handles password check + OTP send/verify).
+# NOTE: IT returned no response examples, so the parsing below is tolerant and MUST be checked against
+# a real response during testing. _request already raises IntegrationError on any non-2xx, so reaching
+# here means HTTP 2xx; we then look for a logical failure flag in the body.
+# ---------------------------------------------------------------------------
+
+_FAIL_WORDS = ("invalid", "wrong", "incorrect", "fail", "expire", "not found", "no user",
+               "mismatch", "does not", "unauthor", "denied")
+
+
+def _it_message(resp) -> str:
+    if isinstance(resp, dict):
+        return str(resp.get("message") or resp.get("error") or "")
+    return ""
+
+
+def _it_rejected(resp) -> bool:
+    """True when a 2xx body still signals a logical failure (bad password / wrong OTP)."""
+    if not isinstance(resp, dict):
+        return False  # a bare 2xx with no/odd body -> treat as success
+    for k in ("success", "ok", "status"):
+        if k in resp and isinstance(resp[k], bool):
+            return not resp[k]
+    if "success" in resp and str(resp["success"]).strip().lower() in ("false", "0", "no"):
+        return True
+    msg = _it_message(resp).lower()
+    return bool(msg) and any(w in msg for w in _FAIL_WORDS)
+
+
+def _it_hash(resp) -> str:
+    """Pull IT's OTP hash out of a login/verify response (several possible shapes)."""
+    if not isinstance(resp, dict):
+        return ""
+    if resp.get("hash"):
+        return str(resp["hash"])
+    d = resp.get("data")
+    if isinstance(d, str):
+        return d
+    if isinstance(d, dict) and d.get("hash"):
+        return str(d["hash"])
+    return ""
+
+
+def client_login_start(username: str, email: str, password: str) -> tuple[bool, str, str]:
+    """Check a client's password via login_user and make sure an OTP is sent, returning its hash.
+    Returns (ok, otp_hash, message). ok=False => bad credentials. Raises IntegrationError on transport
+    failure. If login_user doesn't itself return a hash, verify_user is called to send the OTP."""
+    resp = login_user(username, email, password)
+    if _it_rejected(resp):
+        return False, "", _it_message(resp) or "Wrong username, email or password"
+    h = _it_hash(resp)
+    if not h:
+        vresp = verify_user(username, email)
+        if _it_rejected(vresp):
+            return False, "", _it_message(vresp) or "Could not start verification"
+        h = _it_hash(vresp)
+    return True, h, ""
+
+
+def client_otp_resend(username: str, email: str) -> str:
+    """Ask IT to send a fresh OTP; returns the new hash ("" on failure). Raises on transport failure."""
+    vresp = verify_user(username, email)
+    return "" if _it_rejected(vresp) else _it_hash(vresp)
+
+
+def client_otp_verify(username: str, email: str, code: str, hash: str) -> bool:
+    """Verify a client's OTP via verify_otp_user. Raises IntegrationError on transport failure."""
+    return not _it_rejected(verify_otp_user(username, email, code, hash))
+
+
 # ===========================================================================
 # Payload mappers: our internal shapes -> IT's flat record shapes
 # ===========================================================================

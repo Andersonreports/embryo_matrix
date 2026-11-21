@@ -117,3 +117,50 @@ def verify_pending(key: str, code: str) -> dict | None:
 
 def drop_pending(key: str) -> None:
     _pending.pop(key or "", None)
+
+
+# ---------------------------------------------------------------------------
+# External (IT-integration) 2FA. For CLIENT logins when the integration is on, IT's service checks the
+# password and sends/verifies the OTP. We don't hold our own code here - we hold IT's opaque OTP "hash"
+# (returned by login_user/verify_user) and the account, so /api/login/verify can call verify_otp_user.
+# ---------------------------------------------------------------------------
+
+def start_pending_external(username: str, role: str, email: str, it_hash: str) -> str:
+    """Open a pending record for IT-driven 2FA (no local code; carries IT's OTP hash). Returns the key."""
+    _prune_pending()
+    key = secrets.token_urlsafe(24)
+    _pending[key] = {"u": username, "r": role, "email": email, "it_hash": it_hash,
+                     "external": True, "exp": time.time() + OTP_SECONDS, "attempts": 0, "sends": 1}
+    return key
+
+
+def pending_external(key: str) -> dict | None:
+    """The IT-flow pending record for this key, or None (also None for a local-OTP record)."""
+    _prune_pending()
+    v = _pending.get(key or "")
+    if not v or not v.get("external") or v["exp"] <= time.time():
+        return None
+    return {"username": v["u"], "role": v["r"], "email": v["email"], "hash": v["it_hash"]}
+
+
+def external_set_hash(key: str, it_hash: str) -> bool:
+    """Store a fresh OTP hash on a resend; False if the record is gone or the resend cap is hit."""
+    _prune_pending()
+    v = _pending.get(key or "")
+    if not v or not v.get("external") or v["exp"] <= time.time() or v["sends"] >= OTP_MAX_SENDS:
+        return False
+    v["it_hash"] = it_hash
+    v["exp"] = time.time() + OTP_SECONDS
+    v["attempts"] = 0
+    v["sends"] += 1
+    return True
+
+
+def external_fail(key: str) -> None:
+    """Count a wrong IT OTP; burn the record once attempts run out (same cap as the local flow)."""
+    v = _pending.get(key or "")
+    if not v:
+        return
+    v["attempts"] += 1
+    if v["attempts"] >= OTP_MAX_ATTEMPTS:
+        _pending.pop(key, None)
