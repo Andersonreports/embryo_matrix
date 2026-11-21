@@ -384,13 +384,22 @@ def seq_sample_payload(b: dict, s: dict) -> dict:
     }
 
 
-def user_payload(*, username: str, password: str = "", client_name: str = "", client_branch: str = "",
-                 embryologist_name: str = "", role: str = "", actor: str = "", user_id=None) -> dict:
-    """Map our user fields to IT's embryo_matrix_data record. password is plaintext (IT's API expects
-    it, like the Postman example); only send it when we actually have it (on create, or a reset)."""
+def user_payload(*, username: str, email: str = "", password: str = "", client_name: str = "",
+                 client_branch: str = "", embryologist_name: str = "", role: str = "", actor: str = "",
+                 user_id=None) -> dict:
+    """Map our user fields to IT's embryo_matrix_data record.
+    - id: the DB row id (SERIAL/AUTO_INCREMENT), IT's unique user key. Sent whenever we have it.
+      The Postman insert example omits it (DB generates on insert) while update sends it (id:101); we
+      forward it in both because IT asked for the id to travel with the user, and sending the same id
+      keeps both sides in step. Not shown in the UI.
+    - email: our identity is the (username, email) PAIR - username alone isn't unique - so IT needs
+      email to identify the user too. (The Postman example left it out; we include it deliberately.)
+    - password is plaintext (IT's API expects it, like the Postman example); only sent when we have it
+      (on create, or a reset)."""
     now = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     rec = {
         "username": _s(username),
+        "email": _s(email),
         "client_name": _s(client_name),
         "client_branch": _s(client_branch),
         "embryologist_name": _s(embryologist_name),

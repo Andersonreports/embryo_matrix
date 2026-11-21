@@ -2141,9 +2141,10 @@ def _push_user_to_integration(action: str, u, password: str = "", actor: str = "
     def run():
         try:
             rec = integration_client.user_payload(
-                username=u.username, password=password or "", client_name=u.client_name or "",
-                client_branch=u.client_branch or "", embryologist_name=u.embryologist_name or "",
-                role=u.role or "", actor=actor)
+                username=u.username, email=u.email or "", password=password or "",
+                client_name=u.client_name or "", client_branch=u.client_branch or "",
+                embryologist_name=u.embryologist_name or "", role=u.role or "", actor=actor,
+                user_id=u.id)
             (integration_client.insert_user if action == "insert" else integration_client.update_user)(rec)
         except Exception:
             logging.getLogger(__name__).warning("integration user %s push failed", action, exc_info=True)

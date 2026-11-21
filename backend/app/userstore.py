@@ -105,6 +105,10 @@ class UserView:
     embryologist_name: str | None
     store: str  # 'client' | 'team'
     anderson_emp_id: int | None = None  # team logins only; always None for a client
+    # The table's primary-key id (SERIAL / AUTO_INCREMENT). Not shown in the UI, but forwarded to the
+    # IT integration as the unique user key. Note: client_users and team_users have independent id
+    # sequences, so this is unique only WITHIN a store, not across both.
+    id: int | None = None
 
     @property
     def is_client(self) -> bool:
@@ -123,7 +127,8 @@ def _to_view(row, store: str) -> UserView:
     return UserView(username=row.username, email=row.email, password_hash=row.password_hash,
                     role=row.role, client_name=row.client_name, client_branch=row.client_branch,
                     embryologist_name=row.embryologist_name, store=store,
-                    anderson_emp_id=getattr(row, "anderson_emp_id", None))
+                    anderson_emp_id=getattr(row, "anderson_emp_id", None),
+                    id=getattr(row, "id", None))
 
 
 def init() -> None:
