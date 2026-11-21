@@ -2301,10 +2301,32 @@ async def integration_verify_otp(request: Request):
                              str(body.get("email", "")), str(body.get("otp", "")), str(body.get("hash", "")))
 
 
+def _client_view_from_rec(rec: dict) -> "userstore.UserView":
+    """An IT client record (from get_embryo_matrix_users_list / get_embryologist_data) as a UserView.
+    password_hash is empty (clients authenticate through IT, never a local password check)."""
+    return userstore.UserView(
+        username=str(rec.get("username") or ""), email=rec.get("email"),
+        password_hash="", role=str(rec.get("role") or userstore.CLIENT_ROLE),
+        client_name=rec.get("client_name"), client_branch=rec.get("client_branch"),
+        embryologist_name=rec.get("embryologist_name"), store="client", id=rec.get("id"))
+
+
 @app.get("/api/users")
 def list_users(request: Request, db: Session = Depends(get_db)):
     _require_user_admin(request)
-    return {"roles": ALL_ROLES, "clients": client_directory(), "canonical_clients": _canonical_clients(), "users": [_user_row(u) for u in userstore.list_all()]}
+    local = userstore.list_all()
+    rows = [_user_row(u) for u in local if not u.is_client]  # staff (team store) always local
+    if integration_client.configured():
+        # Clients are API-only: list them from IT, not the local store. Fall back to any local client
+        # rows if IT can't be reached, so the screen still renders.
+        try:
+            recs = integration_client.user_records(integration_client.get_embryo_matrix_users_list())
+            rows += [_user_row(_client_view_from_rec(r)) for r in recs]
+        except integration_client.IntegrationError:
+            rows += [_user_row(u) for u in local if u.is_client]
+    else:
+        rows += [_user_row(u) for u in local if u.is_client]
+    return {"roles": ALL_ROLES, "clients": client_directory(), "canonical_clients": _canonical_clients(), "users": rows}
 
 @app.post("/api/users")
 def create_user(payload: dict, request: Request, db: Session = Depends(get_db)):

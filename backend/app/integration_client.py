@@ -385,6 +385,24 @@ def client_otp_verify(username: str, email: str, code: str, hash: str) -> bool:
     return not _it_rejected(verify_otp_user(username, email, code, hash))
 
 
+def user_records(resp) -> list[dict]:
+    """Best-effort: pull a list of user dicts out of a get_embryo_matrix_users_list / get_embryologist_data
+    response. Tolerant of several shapes (list, {data:[...]}, {users:[...]}, a single record) - tune once
+    IT's real response is seen."""
+    if isinstance(resp, list):
+        return [r for r in resp if isinstance(r, dict)]
+    if isinstance(resp, dict):
+        for key in ("data", "users", "result", "rows", "records"):
+            v = resp.get(key)
+            if isinstance(v, list):
+                return [r for r in v if isinstance(r, dict)]
+            if isinstance(v, dict):
+                return [v]
+        if any(k in resp for k in ("username", "email", "id")):
+            return [resp]
+    return []
+
+
 # ===========================================================================
 # Payload mappers: our internal shapes -> IT's flat record shapes
 # ===========================================================================
