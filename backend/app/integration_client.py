@@ -457,7 +457,7 @@ def seq_sample_payload(b: dict, s: dict) -> dict:
 
 def user_payload(*, username: str, email: str = "", password: str = "", client_name: str = "",
                  client_branch: str = "", embryologist_name: str = "", role: str = "", actor: str = "",
-                 user_id=None) -> dict:
+                 user_id=None, created_by: str = "", created_at: str = "") -> dict:
     """Map our user fields to IT's embryo_matrix_data record.
     - id: the DB row id (SERIAL/AUTO_INCREMENT), IT's unique user key. Sent whenever we have it.
       The Postman insert example omits it (DB generates on insert) while update sends it (id:101); we
@@ -468,6 +468,9 @@ def user_payload(*, username: str, email: str = "", password: str = "", client_n
     - password is plaintext (IT's API expects it, like the Postman example); only sent when we have it
       (on create, or a reset)."""
     now = __import__("datetime").datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Match IT's Postman example, which carries ALL of these on BOTH insert and update (the only
+    # difference there is that update also has "id"). created_by/created_at are always sent - IT's
+    # insert requires them (omitting them gave HTTP 500 "Failed to insert data").
     rec = {
         "username": _s(username),
         "email": _s(email),
@@ -475,6 +478,8 @@ def user_payload(*, username: str, email: str = "", password: str = "", client_n
         "client_branch": _s(client_branch),
         "embryologist_name": _s(embryologist_name),
         "role": _s(role),
+        "created_by": _s(created_by) or _s(actor) or "EmbryoMatrix",
+        "created_at": _s(created_at) or now,
         "last_updated_by": _s(actor) or "EmbryoMatrix",
         "last_updated_at": now,
     }
@@ -482,9 +487,6 @@ def user_payload(*, username: str, email: str = "", password: str = "", client_n
         rec["id"] = user_id
     if password:
         rec["password"] = password
-    else:
-        rec["created_by"] = _s(actor) or "EmbryoMatrix"
-        rec["created_at"] = now
     return rec
 
 
