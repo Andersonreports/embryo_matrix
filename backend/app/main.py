@@ -181,7 +181,16 @@ async def identify_user(request: Request, call_next):
         sess = auth.read_token(request.cookies.get(auth.COOKIE, ""))
         if sess:  # re-resolve on every request (by the username+email pair) so a role change or removal applies at once
             v = userstore.find_by_credentials(sess["username"], sess.get("email", ""))
-            sess = {"username": v.username, "role": v.role, "email": v.email or ""} if v else None
+            if v:
+                sess = {"username": v.username, "role": v.role, "email": v.email or ""}
+            elif sess.get("role") == userstore.CLIENT_ROLE and integration_client.configured():
+                # API-only client: it isn't in any local store, so we can't re-resolve it here. The
+                # session token is signed and time-limited, so trust it as-is (a client's role never
+                # changes - it is always the client role). Without this, every request after the OTP
+                # would null the session and bounce the client back to the login page.
+                pass
+            else:
+                sess = None
         request.state.user = sess or {}
         # /uploads/ holds patient files. Lab-PC sync still pulls them anonymously over the LAN,
         # but a request relayed by a tunnel/reverse proxy (these headers) must sign in, so
