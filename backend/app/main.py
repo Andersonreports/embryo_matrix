@@ -2130,9 +2130,13 @@ def _canonical_clients() -> list:
 # ---------------------------------------------------------------------------
 
 def _push_user_to_integration(action: str, u, password: str = "", actor: str = "") -> None:
-    """Best-effort mirror of a user create/update to IT's user store. Background + guarded, so it never
-    blocks or fails the admin action. password is plaintext and only sent when we actually have it."""
+    """Best-effort mirror of a CLIENT user create/update to IT's user store. Background + guarded, so it
+    never blocks or fails the admin action. password is plaintext and only sent when we actually have it.
+    IT's user endpoints are client-side only (embryo_matrix_data: client_name/branch/embryologist_name),
+    which maps to our client_users (PG) table; internal staff logins (team_users/MySQL) are NEVER sent."""
     if not integration_client.configured() or not u:
+        return
+    if not getattr(u, "is_client", False):  # staff/team logins have no place in IT's client store
         return
     def run():
         try:
