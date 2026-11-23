@@ -2199,10 +2199,18 @@ def _canonical_clients() -> list:
 # actually log in before enabling the integration. (DELETE has no API endpoint yet, so client deletion
 # still goes direct; ask IT for a delete_user keyed by id.)
 
+def _on_it_client_db() -> bool:
+    """True when our client store is a real database (IT's PostgreSQL via CLIENTS_DB_URL), rather than the
+    local SQLite fallback. When True, IT's API writes the same table we read, so we read the row back and
+    never write a local copy (that would be a double-write). When False (dev, or before IT wires the DB),
+    we keep a local cache copy so reads work."""
+    return userstore.clients_engine.dialect.name != "sqlite"
+
+
 def _client_api_create(*, username, email, password, client_name, client_branch, embryologist_name, actor):
-    """Create a CLIENT login through IT's integration. Clients are API-only - we do NOT read client_users
-    directly - so we return a view built from what we submitted. The DB-generated id is fetched from IT's
-    reads later, when an operation needs it. Raises HTTPException on failure."""
+    """Create a CLIENT login through IT's integration (the source of truth, which writes IT's PostgreSQL).
+    On IT's DB we read the new row back; on the local SQLite fallback we cache a copy so our reads (login
+    resolution, the embryo view's clinic filter, the user list) work. Raises HTTPException on failure."""
     rec = integration_client.user_payload(
         username=username, email=email or "", password=password,
         client_name=client_name or "", client_branch=client_branch or "",
@@ -2211,13 +2219,28 @@ def _client_api_create(*, username, email, password, client_name, client_branch,
         integration_client.insert_user(rec)
     except integration_client.IntegrationError as ex:
         raise HTTPException(502, f"Could not create the client through the integration service: {ex}")
-    return userstore.UserView(username=username, email=email, password_hash="", role=userstore.CLIENT_ROLE,
-                              client_name=client_name, client_branch=client_branch,
-                              embryologist_name=embryologist_name, store="client", id=None)
+    if _on_it_client_db():
+        # Connected to IT's PostgreSQL: the API insert populated it; read it back (gives the real id).
+        return userstore.find_by_credentials(username, email or "") or userstore.UserView(
+            username=username, email=email, password_hash="", role=userstore.CLIENT_ROLE,
+            client_name=client_name, client_branch=client_branch, embryologist_name=embryologist_name,
+            store="client", id=None)
+    # Local fallback: cache a copy (with the hashed password, so a local login also works if the
+    # integration is ever turned off). Its local id is not IT's id - that's fine for reads.
+    try:
+        return userstore.create(username=username, email=email, password_hash=auth.hash_password(password),
+                                role=userstore.CLIENT_ROLE, client_name=client_name,
+                                client_branch=client_branch, embryologist_name=embryologist_name)
+    except Exception:  # already cached, or any cache-write issue - don't fail the create IT already did
+        return userstore.find_by_credentials(username, email or "") or userstore.UserView(
+            username=username, email=email, password_hash="", role=userstore.CLIENT_ROLE,
+            client_name=client_name, client_branch=client_branch, embryologist_name=embryologist_name,
+            store="client", id=None)
 
 
 def _client_api_update(u, *, new_email, new_password, client_name, client_branch, embryologist_name, actor):
-    """Update a CLIENT login through IT's integration, keyed by its id, then read the row back (same PG).
+    """Update a CLIENT login through IT's integration (source of truth), then mirror it to our read store.
+    On IT's DB the API write updated the row we read; on the local fallback we update the cache copy.
     Only for a client that stays a client - a role change crossing the client/team line goes through
     userstore (it moves the row between databases)."""
     email = (new_email if new_email is not None else u.email) or ""
@@ -2229,7 +2252,17 @@ def _client_api_update(u, *, new_email, new_password, client_name, client_branch
         integration_client.update_user(rec)
     except integration_client.IntegrationError as ex:
         raise HTTPException(502, f"Could not update the client through the integration service: {ex}")
-    return userstore.find_by_credentials(u.username, email)
+    if not _on_it_client_db():
+        # Keep the local cache copy in step.
+        changes = {"email": email, "client_name": client_name, "client_branch": client_branch,
+                   "embryologist_name": embryologist_name}
+        if new_password:
+            changes["password_hash"] = auth.hash_password(new_password)
+        try:
+            userstore.update(u.username, changes, u.email or "")
+        except Exception:
+            pass
+    return userstore.find_by_credentials(u.username, email) or u
 
 
 def _integration_call(fn, *args, **kwargs):
@@ -2323,20 +2356,10 @@ def _client_view_from_rec(rec: dict) -> "userstore.UserView":
 @app.get("/api/users")
 def list_users(request: Request, db: Session = Depends(get_db)):
     _require_user_admin(request)
-    local = userstore.list_all()
-    rows = [_user_row(u) for u in local if not u.is_client]  # staff (team store) always local
-    if integration_client.configured():
-        # Clients are API-only: list them from IT, not the local store. Fall back to any local client
-        # rows if IT can't be reached, so the screen still renders.
-        try:
-            # Short timeout: IT's read endpoints have been hanging; don't make the admin screen wait.
-            recs = integration_client.user_records(integration_client.get_embryo_matrix_users_list(timeout=8))
-            rows += [_user_row(_client_view_from_rec(r)) for r in recs]
-        except integration_client.IntegrationError:
-            rows += [_user_row(u) for u in local if u.is_client]
-    else:
-        rows += [_user_row(u) for u in local if u.is_client]
-    return {"roles": ALL_ROLES, "clients": client_directory(), "canonical_clients": _canonical_clients(), "users": rows}
+    # Read every login from our store: team (MySQL/SQLite) + clients (IT's PostgreSQL in production, or the
+    # local cache in dev). Client writes still go through IT's API; this only reads.
+    return {"roles": ALL_ROLES, "clients": client_directory(), "canonical_clients": _canonical_clients(),
+            "users": [_user_row(u) for u in userstore.list_all()]}
 
 @app.post("/api/users")
 def create_user(payload: dict, request: Request, db: Session = Depends(get_db)):
