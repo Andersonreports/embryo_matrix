@@ -2023,8 +2023,9 @@ def _wga_kit_text(r: dict, label: str) -> str:
 
 @app.get("/api/my-embryos")
 def my_embryos(request: Request, db: Session = Depends(get_db)):
-    """The signed-in client's embryos with where each one is (received, WGA, sequencing, report) and its dates, test,
-    sequencer, kit and storage. No result, QC or outcome data is returned here."""
+    """The signed-in client's embryos with where each one is (received, WGA, sequencing, report), its dates,
+    test, sequencer, kit and storage, plus each embryo's result (Euploid / Aneuploid / Mosaic /
+    Inconclusive). The result is approval-gated: it stays "No result" until the result file is approved."""
     user = request.state.user or {}
     if user.get("role") != "embryologist":
         raise HTTPException(403, "Only a client login has an embryo list")
@@ -2035,6 +2036,7 @@ def my_embryos(request: Request, db: Session = Depends(get_db)):
         want = want_client = _norm_name(user.get("username") or ""); loose = True
     if not want and not want_client:
         return {"items": []}
+    gate = _approval_gate(db)  # a result from a file awaiting approval stays hidden until approved
     items = []
     for r in _sheet_rows(db):
         canon = _canon_embryologist(_field(r, "embryologist name", "embryologist"))
@@ -2060,7 +2062,8 @@ def my_embryos(request: Request, db: Session = Depends(get_db)):
             tr_on, tr_dept = _field(r, "transferred on"), _field(r, "transferred department")
         case_id = _field(r, "case id") or _field(r, "sample id", "sample no")
         for lab in labels:
-            items.append({"patient": patient, "embryo": lab, "sampleId": _field(r, "sample id", "sample no"), "caseId": case_id, "test": _field(r, "test name", "test"),
+            items.append({"patient": patient, "embryo": lab, "result": _embryo_result(r, lab, gate),
+                          "sampleId": _field(r, "sample id", "sample no"), "caseId": case_id, "test": _field(r, "test name", "test"),
                           "clinic": _field(r, "center name", "hospital clinic name", "client"), "sequencer": _field(r, "seq platform") if stage >= 3 else "",
                           "stage": stage, "status": _STAGE_TEXT[stage], "biopsy": _field(r, "date of biopsy"), "received": _field(r, "date sample received"),
                           "trfReceived": _field(r, "date trf received"), "wga": _field(r, "wga done on") if stage >= 2 else "",
