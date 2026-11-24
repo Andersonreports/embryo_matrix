@@ -4,13 +4,20 @@ company's own login, set BUILTIN_LOGIN=false and the X-Auth-User / X-Auth-Role h
 import base64, hashlib, hmac, json, os, secrets, time
 from pathlib import Path
 
-from .config import BACKEND_DIR
+from .config import BACKEND_DIR, settings
 
 COOKIE = "em_session"
 SESSION_SECONDS = 12 * 3600
 _SECRET_FILE = Path(BACKEND_DIR) / ".session_secret"
 
 def _secret() -> bytes:
+    # Prefer a fixed secret from the environment (SECRET_KEY) so sessions survive restarts/redeploys
+    # everywhere, including ephemeral/container hosts. Only when it's unset do we fall back to a
+    # random per-machine file - fine for a single long-lived dev process, but on a host whose
+    # filesystem is reset on restart that file is regenerated and every session cookie dies.
+    env_secret = (settings.secret_key or "").strip()
+    if env_secret:
+        return env_secret.encode()
     if not _SECRET_FILE.exists():
         _SECRET_FILE.write_text(secrets.token_hex(32))
         os.chmod(_SECRET_FILE, 0o600)

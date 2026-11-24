@@ -15,6 +15,11 @@ _pick = lambda new, old: new if new.exists() or not old.exists() else old
 
 class Settings(BaseSettings):
     app_name: str = "Embryo Matrix"
+    # Signs the login session cookie (and the OTP codes). MUST be a fixed value in any deployment
+    # that restarts/redeploys: if left blank the server falls back to a random per-machine file
+    # (.session_secret), which on an ephemeral/container host is regenerated on every restart -
+    # silently invalidating every session cookie and logging everyone out. Set SECRET_KEY in .env.
+    secret_key: str = ""
     database_url: str = f"sqlite:///{_pick(DB_DIR / 'embryomatrix.db', BACKEND_DIR / 'embryomatrix.db').as_posix()}"
     uploads_dir: Path = _pick(DB_DIR / "uploads", BACKEND_DIR / "app" / "uploads")
     # Pipe-separated Google Sheet IDs. Each must be shared as "Anyone with the
